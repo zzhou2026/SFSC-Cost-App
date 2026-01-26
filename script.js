@@ -15,8 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logoutButton');
 
     const maisonView = document.getElementById('maisonView');
-    const currentQuarterInput = document.getElementById('currentQuarter');
-    const licenseCountInput = document.getElementById('licenseCount');
+    const quarterSelect = document.getElementById('quarterSelect'); // 季度选择器
+    const clientelingLicenseCountInput = document.getElementById('clientelingLicenseCount'); // Clienteling 数量输入框
+    const fullLicenseCountInput = document.getElementById('fullLicenseCount');           // Full 数量输入框
     const submitSfscDataButton = document.getElementById('submitSfscDataButton');
     const maisonSubmitMessage = document.getElementById('maisonSubmitMessage');
     const maisonHistoryTableContainer = document.getElementById('maisonHistoryTableContainer');
@@ -52,26 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         element.className = 'message';
     }
 
-    // Get current quarter (e.g., 2024Q1, 2024Q2)
-    function getCurrentQuarter() {
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = now.getMonth() + 1; // getMonth() returns 0-11
-
-        let quarter = '';
-        if (month >= 1 && month <= 3) {
-            quarter = 'Q1';
-        } else if (month >= 4 && month <= 6) {
-            quarter = 'Q2';
-        } else if (month >= 7 && month <= 9) {
-            quarter = 'Q3';
-        } else {
-            quarter = 'Q4';
-        }
-        return `${year}${quarter}`;
-    }
-
-    // Render data into an HTML table
+    // 将数据渲染成 HTML 表格
     function renderTable(containerElement, data, headersToShowMapping) {
         if (!data || data.length === 0) {
             containerElement.innerHTML = '<p>No data available at the moment.</p>';
@@ -80,7 +62,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let tableHTML = '<table><thead><tr>';
         
-        // Generate table headers (in English)
+        // Generate table headers
         headersToShowMapping.forEach(header => {
             tableHTML += `<th>${header.label}</th>`;
         });
@@ -109,6 +91,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
         tableHTML += '</tbody></table>';
         containerElement.innerHTML = tableHTML;
+    }
+
+    // --- 新增函数：填充季度选择器 ---
+    async function populateQuarterSelect() {
+        const numberOfFutureQuarters = 4; // 当前季度 + 未来4个季度 = 5个季度选项
+        const result = await callAppsScript('getQuarterList', { numberOfFutureQuarters: numberOfFutureQuarters });
+        if (result.success && result.data) {
+            quarterSelect.innerHTML = ''; // 清空现有选项
+            result.data.forEach(quarter => {
+                const option = document.createElement('option');
+                option.value = quarter;
+                option.textContent = quarter;
+                quarterSelect.appendChild(option);
+            });
+        } else {
+            console.error('Failed to load quarter list:', result.message);
+            // 可以显示一个错误信息给用户
+        }
     }
 
 
@@ -182,11 +182,13 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const quarter = currentQuarterInput.value;
-        const licenseCount = parseInt(licenseCountInput.value, 10);
+        const quarter = quarterSelect.value; // 从下拉选择器获取季度
+        const clientelingLicenseCount = parseInt(clientelingLicenseCountInput.value, 10);
+        const fullLicenseCount = parseInt(fullLicenseCountInput.value, 10);
 
-        if (!quarter || isNaN(licenseCount) || licenseCount < 0) {
-            showMessage(maisonSubmitMessage, 'Please enter a valid quarter and number of licenses!');
+        if (!quarter || isNaN(clientelingLicenseCount) || clientelingLicenseCount < 0 || 
+            isNaN(fullLicenseCount) || fullLicenseCount < 0) {
+            showMessage(maisonSubmitMessage, 'Please enter a valid quarter and valid license counts!');
             return;
         }
         clearMessage(maisonSubmitMessage);
@@ -194,13 +196,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await callAppsScript('submitSfscData', {
             maisonName: currentUser.maisonName,
             quarter: quarter,
-            licenseCount: licenseCount,
+            clientelingLicenseCount: clientelingLicenseCount, // 传递两种许可证数量
+            fullLicenseCount: fullLicenseCount,               // 传递两种许可证数量
             submittedBy: currentUser.username
         });
 
         if (result.success) {
             showMessage(maisonSubmitMessage, `Data submitted successfully! Calculated Cost: ${result.calculatedCost}`, true);
-            licenseCountInput.value = ''; 
+            clientelingLicenseCountInput.value = '0'; // 清空输入框
+            fullLicenseCountInput.value = '0';       // 清空输入框
             if (currentUser.role === 'maison') {
                 loadMaisonHistoryData(); 
             }
@@ -257,11 +261,11 @@ document.addEventListener('DOMContentLoaded', () => {
         maisonView.classList.add('hidden');
         adminView.classList.add('hidden');
 
-        currentQuarterInput.value = getCurrentQuarter(); 
-
+        // Maison 用户登录后，填充季度选择器
         if (currentUser.role === 'maison') {
             maisonView.classList.remove('hidden');
-            loadMaisonHistoryData();
+            populateQuarterSelect(); // 调用填充季度选择器函数
+            loadMaisonHistoryData(); 
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
             loadAdminOverviewData();
@@ -277,7 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
-                    { key: 'LicenseCount', label: 'License Count' },
+                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // 新增
+                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // 新增
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'Timestamp', label: 'Submission Time' }
                 ];
@@ -297,7 +302,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
-                    { key: 'LicenseCount', label: 'License Count' },
+                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // 新增
+                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // 新增
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'SubmittedBy', label: 'Submitted By' },
                     { key: 'Timestamp', label: 'Submission Time' }

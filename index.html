@@ -1,6 +1,5 @@
-<!-- 修改后 (英语版本) -->
 <!DOCTYPE html>
-<html lang="en"> <!-- 注意这里 lang="en" 表示英语 -->
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -28,10 +27,18 @@
             <!-- Maison User View -->
             <div id="maisonView" class="user-view hidden">
                 <h3>Submit SFSC License Quantities</h3>
-                <label for="currentQuarter">Current Quarter:</label>
-                <input type="text" id="currentQuarter" placeholder="e.g. 2024Q1" value="" readonly>
-                <label for="licenseCount">Number of Licenses:</label>
-                <input type="number" id="licenseCount" placeholder="Enter quantity" min="0">
+                <label for="quarterSelect">Select Quarter:</label>
+                <!-- 季度下拉选择器 -->
+                <select id="quarterSelect">
+                    <!-- 选项将通过 JavaScript 动态填   -->
+                </select>
+
+                <label for="clientelingLicenseCount">Clienteling License Count:</label>
+                <input type="number" id="clientelingLicenseCount" placeholder="Enter Clienteling quantity" min="0" value="0">
+                
+                <label for="fullLicenseCount">Full License Count:</label>
+                <input type="number" id="fullLicenseCount" placeholder="Enter Full quantity" min="0" value="0">
+                
                 <button id="submitSfscDataButton">Submit Data</button>
                 <p id="maisonSubmitMessage" class="message"></p>
 
