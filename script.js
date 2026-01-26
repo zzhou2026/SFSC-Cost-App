@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // --- 【Very Important!】Please replace this with your Apps Script Web App URL ---
+    // --- 【非常重要！】请在这里替换成你的 Apps Script Web App URL ---
     const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIVoYBQtqkFB52frxB8e81899ISf_pDwJ_Fj3f9blb7mI2c3QhT4pHoz3sQuG1l6EDVQ/exec'; 
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     // Reminder: Replace the URL above with your own!
@@ -114,7 +114,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableHTML += `<td><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
             }
             if (options.includeAdminApprovalButtons) {
-                // Admin 的审批按钮
+                // Admin 的审  按钮
                 tableHTML += `<td>
                                 <button class="approve-button-table" data-record-id="${row.RecordId}">Approve</button>
                                 <button class="reject-button-table" data-record-id="${row.RecordId}">Reject</button>
