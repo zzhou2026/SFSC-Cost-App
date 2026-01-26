@@ -144,6 +144,7 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 15px;
+    table-layout: fixed; /* 修正：使用固定表格布局 */
 }
 
 table th, table td {
@@ -151,6 +152,8 @@ table th, table td {
     padding: 10px;
     text-align: left;
     white-space: nowrap; /* Prevent content from wrapping */
+    overflow: hidden; /* 隐藏溢出内容 */
+    text-overflow: ellipsis; /* 溢出时显示省略号 */
 }
 
 table th {
@@ -348,3 +351,13 @@ label {
 .status-pending { background-color: #6c757d; } /* Gray */
 .status-approved { background-color: #28a745; } /* Green */
 .status-rejected { background-color: #dc3545; } /* Red */
+
+/* 新增样式：确保 Approval Status 和 Approval Action 列的宽度 */
+table th:nth-child(8), table td:nth-child(8) { /* Approval Status 列 */
+    width: 120px; 
+    min-width: 120px;
+}
+table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
+    width: 180px; 
+    min-width: 180px;
+}
