@@ -29,15 +29,25 @@
                 <h3>Submit SFSC License Quantities</h3>
                 <label for="quarterSelect">Select Quarter:</label>
                 <!-- 季度下拉选择器 -->
-                <select id="quarterSelect">
+                <select id="quarterSelect" class="form-control">
                     <!-- 选项将通过 JavaScript 动态填充 -->
                 </select>
 
-                <label for="clientelingLicenseCount">Clienteling License Count:</label>
-                <input type="number" id="clientelingLicenseCount" placeholder="Enter Clienteling quantity" min="0" value="0">
+                <label for="clientelingLicenseCount">Number of Clienteling Licenses:</label>
+                <input type="number" id="clientelingLicenseCount" class="form-control" placeholder="Enter Clienteling quantity" min="0" value="0">
                 
-                <label for="fullLicenseCount">Full License Count:</label>
-                <input type="number" id="fullLicenseCount" placeholder="Enter Full quantity" min="0" value="0">
+                <label for="fullLicenseCount">Number of Full Licenses:</label>
+                <input type="number" id="fullLicenseCount" class="form-control" placeholder="Enter Full quantity" min="0" value="0">
+                
+                <label for="monthsSelect">Months for Calculation:</label>
+                <!-- 月份选择器 -->
+                <select id="monthsSelect" class="form-control">
+                    <!-- 选项将通过 JavaScript 动态填充，默认12 -->
+                </select>
+
+                <label>Calculated Cost (Preview):</label>
+                <!-- 成本预览显示 -->
+                <input type="text" id="costPreview" class="form-control" value="0.00" readonly>
                 
                 <button id="submitSfscDataButton">Submit Data</button>
                 <p id="maisonSubmitMessage" class="message"></p>

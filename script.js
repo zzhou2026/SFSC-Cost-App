@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const quarterSelect = document.getElementById('quarterSelect'); // 季度选择器
     const clientelingLicenseCountInput = document.getElementById('clientelingLicenseCount'); // Clienteling 数量输入框
     const fullLicenseCountInput = document.getElementById('fullLicenseCount');           // Full 数量输入框
+    const monthsSelect = document.getElementById('monthsSelect'); // 月份选择器
+    const costPreview = document.getElementById('costPreview');   // 成本预览显示
     const submitSfscDataButton = document.getElementById('submitSfscDataButton');
     const maisonSubmitMessage = document.getElementById('maisonSubmitMessage');
     const maisonHistoryTableContainer = document.getElementById('maisonHistoryTableContainer');
@@ -27,6 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const exportDataButton = document.getElementById('exportDataButton');
 
     let currentUser = null; // Stores current logged-in user info
+    let configPrices = { ClientelingUnitPrice: 0, FullUnitPrice: 0, FixedCost: 0 }; // 存储从后端获取的单价
 
     // --- Helper Functions ---
     function showPage(pageElement) {
@@ -111,12 +114,41 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    // --- 新增函数：填充月份选择器 ---
+    function populateMonthsSelect() {
+        monthsSelect.innerHTML = '';
+        for (let i = 1; i <= 12; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            monthsSelect.appendChild(option);
+        }
+        monthsSelect.value = 12; // 默认选择 12 个月
+    }
+
+    // --- 新增函数：实时计算并更新成本预览 ---
+    function updateCostPreview() {
+        const clientelingCount = parseInt(clientelingLicenseCountInput.value, 10) || 0;
+        const fullCount = parseInt(fullLicenseCountInput.value, 10) || 0;
+        const months = parseInt(monthsSelect.value, 10) || 12; // 默认12个月
+
+        // 使用从后端获取的最新价格进行计算
+        const calculatedCost = (
+            (clientelingCount * configPrices.ClientelingUnitPrice * months) +
+            (fullCount * configPrices.FullUnitPrice * months) +
+            configPrices.FixedCost
+        );
+        costPreview.value = calculatedCost.toFixed(2); // 保留两位小数
+    }
 
     // --- Core function to call Apps Script backend ---
     async function callAppsScript(action, payload = {}) {
         try {
-            loginMessage.textContent = 'Requesting...'; 
-            loginMessage.classList.add('loading'); 
+            // 显示加载提示，但只针对需要用户感知的操作
+            if (action !== 'getQuarterList' && action !== 'getConfig') { // 隐藏背景请求的提示
+                 loginMessage.textContent = 'Requesting...'; 
+                 loginMessage.classList.add('loading'); 
+            }
 
             const response = await fetch(APP_SCRIPT_URL, {
                 method: 'POST',
@@ -130,7 +162,9 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             const result = JSON.parse(text);
             
-            loginMessage.classList.remove('loading'); 
+            if (action !== 'getQuarterList' && action !== 'getConfig') {
+                loginMessage.classList.remove('loading'); 
+            }
             return result;
 
         } catch (error) {
@@ -157,6 +191,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.success) {
             showMessage(loginMessage, 'Login successful!', true);
             currentUser = { username: username, role: result.role, maisonName: result.maisonName };
+            // 登录成功后，获取配置信息
+            const configResult = await callAppsScript('getConfig');
+            if (configResult.success && configResult.data) {
+                configPrices = configResult.data;
+            } else {
+                console.error('Failed to load config prices:', configResult.message);
+                // 可以在这里给用户一个警告
+            }
+
             setTimeout(() => {
                 showMainPage();
             }, 500); 
@@ -183,12 +226,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const quarter = quarterSelect.value; // Get quarter from dropdown
-        const clientelingLicenseCount = parseInt(clientelingLicenseCountInput.value, 10);
-        const fullLicenseCount = parseInt(fullLicenseCountInput.value, 10);
+        const clientelingLicenseCount = parseInt(clientelingLicenseCountInput.value, 10) || 0;
+        const fullLicenseCount = parseInt(fullLicenseCountInput.value, 10) || 0;
 
-        if (!quarter || isNaN(clientelingLicenseCount) || clientelingLicenseCount < 0 || 
-            isNaN(fullLicenseCount) || fullLicenseCount < 0) {
-            showMessage(maisonSubmitMessage, 'Please enter a valid quarter and valid license counts!');
+        if (!quarter || clientelingLicenseCount < 0 || fullLicenseCount < 0) {
+            showMessage(maisonSubmitMessage, 'Please enter a valid quarter and valid license counts (non-negative)!');
             return;
         }
         clearMessage(maisonSubmitMessage);
@@ -196,8 +238,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await callAppsScript('submitSfscData', {
             maisonName: currentUser.maisonName,
             quarter: quarter,
-            clientelingLicenseCount: clientelingLicenseCount, // Pass both license counts
-            fullLicenseCount: fullLicenseCount,               // Pass both license counts
+            clientelingLicenseCount: clientelingLicenseCount, 
+            fullLicenseCount: fullLicenseCount,               
             submittedBy: currentUser.username
         });
 
@@ -205,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(maisonSubmitMessage, `Data submitted successfully! Calculated Cost: ${result.calculatedCost}`, true);
             clientelingLicenseCountInput.value = '0'; // Clear input fields
             fullLicenseCountInput.value = '0';       // Clear input fields
+            updateCostPreview(); // 提交成功后更新成本预览
             if (currentUser.role === 'maison') {
                 loadMaisonHistoryData(); 
             }
@@ -212,6 +255,11 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message);
         }
     });
+    
+    // 实时更新成本预览
+    clientelingLicenseCountInput.addEventListener('input', updateCostPreview);
+    fullLicenseCountInput.addEventListener('input', updateCostPreview);
+    monthsSelect.addEventListener('change', updateCostPreview);
 
     // Export Data button click event (Admin View)
     exportDataButton.addEventListener('click', async () => {
@@ -265,6 +313,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentUser.role === 'maison') {
             maisonView.classList.remove('hidden');
             populateQuarterSelect(); // Call function to populate quarter selector
+            populateMonthsSelect(); // 填充月份选择器
+            updateCostPreview(); // 初始化成本预览
             loadMaisonHistoryData(); 
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
