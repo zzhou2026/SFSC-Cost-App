@@ -337,7 +337,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fullCount = parseInt(calcFullLicenseCountInput.value, 10) || 0;
         const months = parseInt(calcMonthsSelect.value, 10) || 12;
 
-        if (clientelingCount < 0 || fullCount < 0 || months < 1 || months > 12) {
+        if (clientelingCount < 0 || fullCount < 0 || months < 1 || months > 12 || isNaN(clientelingCount) || isNaN(fullCount) || isNaN(months)) {
             showMessage(calculatorErrorMessage, 'Please enter valid positive license counts and months (1-12)!');
             calculatedCostDisplay.textContent = 'Estimated Cost: NaN €'; // 显示错误时将成本显示为 NaN
             return;
@@ -359,7 +359,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await callAppsScript('getAllSfscData');
 
         if (result.success && result.data && result.data.length > 0) {
-            // CSV 导出时，不包含 RecordId，因为 RecordId 是内  标识
+            // CSV 导出时，不包含 RecordId，因为 RecordId 是内部标识
             const headersToExport = [
                 { key: 'MaisonName', label: 'Maison Name' },
                 { key: 'Quarter', label: 'Quarter' },
