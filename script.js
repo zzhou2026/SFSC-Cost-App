@@ -15,11 +15,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const logoutButton = document.getElementById('logoutButton');
 
     const maisonView = document.getElementById('maisonView');
-    const quarterSelect = document.getElementById('quarterSelect'); // 季度选择器
-    const clientelingLicenseCountInput = document.getElementById('clientelingLicenseCount'); // Clienteling 数量输入框
-    const fullLicenseCountInput = document.getElementById('fullLicenseCount');           // Full 数量输入框
-    // const monthsSelect = document.getElementById('monthsSelect'); // 移除了实时预览的月份选择器
-    // const costPreview = document.getElementById('costPreview');   // 移除了实时预览的成本显示
+    const quarterSelect = document.getElementById('quarterSelect');
+    const clientelingLicenseCountInput = document.getElementById('clientelingLicenseCount');
+    const fullLicenseCountInput = document.getElementById('fullLicenseCount');
     const submitSfscDataButton = document.getElementById('submitSfscDataButton');
     const maisonSubmitMessage = document.getElementById('maisonSubmitMessage');
     const maisonHistoryTableContainer = document.getElementById('maisonHistoryTableContainer');
@@ -37,9 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const calculatorErrorMessage = document.getElementById('calculatorErrorMessage');
 
 
-    let currentUser = null; // Stores current logged-in user info
-    // 从后端获取配置价格，并修正默认值
+    let currentUser = null; 
     let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 }; 
+    let currentMaisonExistingRecordId = null; // 用于存储当前Maison当前季度已存在记录的RecordId
 
     // --- Helper Functions ---
     function showPage(pageElement) {
@@ -66,8 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
         element.className = 'message';
     }
 
-    // 将数据渲染成 HTML 表格
-    function renderTable(containerElement, data, headersToShowMapping) {
+    // 将数据渲染成 HTML 表格 (包含删除按钮)
+    function renderTable(containerElement, data, headersToShowMapping, includeDeleteButton = false) {
         if (!data || data.length === 0) {
             containerElement.innerHTML = '<p>No data available at the moment.</p>';
             return;
@@ -75,18 +73,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let tableHTML = '<table><thead><tr>';
         
-        // Generate table headers
         headersToShowMapping.forEach(header => {
             tableHTML += `<th>${header.label}</th>`;
         });
+        if (includeDeleteButton) {
+            tableHTML += '<th>Action</th>'; // 添加操作列
+        }
         tableHTML += '</tr></thead><tbody>';
 
-        // Generate table rows
         data.forEach(row => {
             tableHTML += '<tr>';
             headersToShowMapping.forEach(header => {
-                let cellValue = row[header.key]; // Use internal key to access data
-                // Date/time formatting
+                let cellValue = row[header.key]; 
                 if (header.key === 'Timestamp' && cellValue) {
                     try {
                         const date = new Date(cellValue);
@@ -94,17 +92,52 @@ document.addEventListener('DOMContentLoaded', () => {
                             cellValue = date.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                         }
                     } catch (e) {
-                        // If parsing fails, keep original value
+                        // Keep original value
                     }
                 }
                 tableHTML += `<td>${cellValue !== undefined ? cellValue : ''}</td>`;
             });
+            if (includeDeleteButton) {
+                // 每个删除按钮绑定 recordId
+                tableHTML += `<td><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
+            }
             tableHTML += '</tr>';
         });
 
         tableHTML += '</tbody></table>';
         containerElement.innerHTML = tableHTML;
+
+        // 为删除按钮添加事件监听器
+        if (includeDeleteButton) {
+            containerElement.querySelectorAll('.delete-button-table').forEach(button => {
+                button.addEventListener('click', handleDeleteRecord);
+            });
+        }
     }
+
+    // --- 删除记录的事件处理函数 ---
+    async function handleDeleteRecord(event) {
+        const recordIdToDelete = event.target.dataset.recordId;
+        if (!recordIdToDelete) {
+            alert('Error: Record ID not found for deletion.');
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+            const result = await callAppsScript('deleteSfscData', { recordId: recordIdToDelete });
+            if (result.success) {
+                showMessage(maisonSubmitMessage, 'Record deleted successfully!', true);
+                if (currentUser.role === 'maison') {
+                    loadMaisonHistoryData(); // 刷新数据
+                } else if (currentUser.role === 'admin') {
+                    loadAdminOverviewData(); // 刷新数据
+                }
+            } else {
+                showMessage(maisonSubmitMessage, 'Failed to delete record: ' + result.message, false);
+            }
+        }
+    }
+
 
     // --- 填充季度选择器 ---
     async function populateQuarterSelect() {
@@ -120,11 +153,12 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             console.error('Failed to load quarter list:', result.message);
-            // Optionally display an error message to the user
+            maisonSubmitMessage.textContent = 'Failed to load quarter options. Please refresh.';
+            maisonSubmitMessage.classList.add('error');
         }
     }
 
-    // --- 新增函数：填充月份选择器 (用于计算工具) ---
+    // --- 填充月份选择器 (用于计算工具) ---
     function populateCalcMonthsSelect() {
         calcMonthsSelect.innerHTML = '';
         for (let i = 1; i <= 12; i++) {
@@ -138,10 +172,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 成本计算函数 (用于计算工具) ---
     function calculateCostForTool(clientelingCount, fullCount, months) {
+        // 注意：这里使用 configPrices 中的值，这些值在登录时从后端获取
+        const cUnitPrice = parseFloat(configPrices.ClientelingUnitPrice) || 16; 
+        const fUnitPrice = parseFloat(configPrices.FullUnitPrice) || 52;   
+        const fixed = parseFloat(configPrices.FixedCost) || 0;             
+
         return (
-            (clientelingCount * configPrices.ClientelingUnitPrice * months) +
-            (fullCount * configPrices.FullUnitPrice * months) +
-            configPrices.FixedCost
+            (clientelingCount * cUnitPrice * months) +
+            (fullCount * fUnitPrice * months) +
+            fixed
         );
     }
 
@@ -149,7 +188,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function callAppsScript(action, payload = {}) {
         try {
             // 显示加载提示，但只针对需要用户感知的操作
-            if (action !== 'getQuarterList' && action !== 'getConfig') { 
+            // getConfig 和 checkExistingRecord 是后台请求，不显示 loading
+            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord') { 
                  loginMessage.textContent = 'Requesting...'; 
                  loginMessage.classList.add('loading'); 
             }
@@ -172,14 +212,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             const result = JSON.parse(text);
             
-            if (action !== 'getQuarterList' && action !== 'getConfig') {
+            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord') {
                 loginMessage.classList.remove('loading'); 
             }
             return result;
 
         } catch (error) {
             console.error('Error calling Apps Script:', error);
-            return { success: false, message: 'Network error or server unreachable: ' + error.message };
+            // 更详细的网络错误提示
+            return { success: false, message: 'Network error or backend API call failed: ' + error.message };
         }
     }
 
@@ -201,17 +242,18 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.success) {
             showMessage(loginMessage, 'Login successful!', true);
             currentUser = { username: username, role: result.role, maisonName: result.maisonName };
-            // 登录成功后，获取配置信息
+            // 登录成功后，获取配置信息，并保存到 configPrices 变量
             const configResult = await callAppsScript('getConfig');
             if (configResult.success && configResult.data) {
-                configPrices = configResult.data;
-                // 确保获取到的价格是数字类型，并提供默认值
-                configPrices.ClientelingUnitPrice = parseFloat(configPrices.ClientelingUnitPrice) || 16;
-                configPrices.FullUnitPrice = parseFloat(configPrices.FullUnitPrice) || 52;
-                configPrices.FixedCost = parseFloat(configPrices.FixedCost) || 0;
+                // 解析从后端获取的配置值，并确保它们是数字
+                configPrices.ClientelingUnitPrice = parseFloat(configResult.data.ClientelingUnitPrice) || 16;
+                configPrices.FullUnitPrice = parseFloat(configResult.data.FullUnitPrice) || 52;
+                configPrices.FixedCost = parseFloat(configResult.data.FixedCost) || 0;
             } else {
                 console.error('Failed to load config prices:', configResult.message);
                 showMessage(loginMessage, 'Failed to load configuration prices. Using default prices.', false);
+                // 即使加载失败，也要使用默认值
+                configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 };
             }
 
             setTimeout(() => {
@@ -239,48 +281,65 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const quarter = quarterSelect.value; // Get quarter from dropdown
+        const quarter = quarterSelect.value; 
         const clientelingLicenseCount = parseInt(clientelingLicenseCountInput.value, 10);
         const fullLicenseCount = parseInt(fullLicenseCountInput.value, 10);
 
         if (!quarter || isNaN(clientelingLicenseCount) || clientelingLicenseCount < 0 || 
             isNaN(fullLicenseCount) || fullLicenseCount < 0) {
-            showMessage(maisonSubmitMessage, 'Please enter a valid quarter and valid license counts (non-negative)!');
+            showMessage(maisonSubmitMessage, 'Please enter a valid quarter and valid license counts (non-negative)!', false);
             return;
         }
         clearMessage(maisonSubmitMessage);
+
+        let recordIdToUpdate = null; // 初始化为 null
+        // 检查是否存在现有记录
+        const checkResult = await callAppsScript('checkExistingRecord', { 
+            maisonName: currentUser.maisonName, 
+            quarter: quarter 
+        });
+
+        if (checkResult.success && checkResult.exists) {
+            // 如果存在，弹窗询问是否更新
+            if (!confirm(`You have already submitted data for ${quarter}. Do you want to UPDATE the existing record?`)) {
+                showMessage(maisonSubmitMessage, 'Submission cancelled.', false);
+                return; // 用户取消，中断提交
+            }
+            recordIdToUpdate = checkResult.recordId; // 获取到旧记录的 RecordId
+        }
 
         const result = await callAppsScript('submitSfscData', {
             maisonName: currentUser.maisonName,
             quarter: quarter,
             clientelingLicenseCount: clientelingLicenseCount, 
             fullLicenseCount: fullLicenseCount,               
-            submittedBy: currentUser.username
+            submittedBy: currentUser.username,
+            recordIdToUpdate: recordIdToUpdate // 将 RecordIdToUpdate 传递给后端
         });
 
         if (result.success) {
-            showMessage(maisonSubmitMessage, `Data submitted successfully! Calculated Cost: ${result.calculatedCost} €`, true);
+            showMessage(maisonSubmitMessage, `${recordIdToUpdate ? 'Data updated' : 'Data submitted'} successfully! Calculated Cost: ${result.calculatedCost} €`, true);
             clientelingLicenseCountInput.value = '0'; // Clear input fields
             fullLicenseCountInput.value = '0';       // Clear input fields
             // updateCostPreview(); // No longer needed for real-time preview
             if (currentUser.role === 'maison') {
-                loadMaisonHistoryData(); 
+                loadMaisonHistoryData(); // 刷新数据
             }
         } else {
-            showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message);
+            showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message, false);
         }
     });
     
     // --- 成本计算工具的事件监听 ---
     seeCostButton.addEventListener('click', () => {
-        clearMessage(calculatorErrorMessage);
+        clearMessage(calculatorErrorMessage); // 清除之前的错误信息
         const clientelingCount = parseInt(calcClientelingLicenseCountInput.value, 10) || 0;
         const fullCount = parseInt(calcFullLicenseCountInput.value, 10) || 0;
         const months = parseInt(calcMonthsSelect.value, 10) || 12;
 
         if (clientelingCount < 0 || fullCount < 0 || months < 1 || months > 12) {
             showMessage(calculatorErrorMessage, 'Please enter valid positive license counts and months (1-12)!');
-            calculatedCostDisplay.textContent = 'Estimated Cost: NaN €';
+            calculatedCostDisplay.textContent = 'Estimated Cost: NaN €'; // 显示错误时将成本显示为 NaN
             return;
         }
 
@@ -289,16 +348,6 @@ document.addEventListener('DOMContentLoaded', () => {
         calculatedCostDisplay.classList.remove('error'); // 确保不是错误样式
         calculatedCostDisplay.classList.add('success'); // 显示为成功样式
     });
-
-    // 初始化成本计算工具的许可证数量为提交框的默认值
-    // clientelingLicenseCountInput.addEventListener('input', () => {
-    //     calcClientelingLicenseCountInput.value = clientelingLicenseCountInput.value;
-    // });
-    // fullLicenseCountInput.addEventListener('input', () => {
-    //     calcFullLicenseCountInput.value = fullLicenseCountInput.value;
-    // });
-    // 为了确保“See Cost”按钮能获取到最新的值，我们在每次点击时再读取，或者在主输入框变化时同步
-    // 但这里我们让它们独立，避免混淆
 
     // Export Data button click event (Admin View)
     exportDataButton.addEventListener('click', async () => {
@@ -310,13 +359,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await callAppsScript('getAllSfscData');
 
         if (result.success && result.data && result.data.length > 0) {
-            const headers = Object.keys(result.data[0]); 
-            let csv = headers.join(',') + '\n';
+            // CSV 导出时，不包含 RecordId，因为 RecordId 是内  标识
+            const headersToExport = [
+                { key: 'MaisonName', label: 'Maison Name' },
+                { key: 'Quarter', label: 'Quarter' },
+                { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
+                { key: 'FullLicenseCount', label: 'Full Licenses' },
+                { key: 'CalculatedCost', label: 'Calculated Cost (€)' },
+                { key: 'SubmittedBy', label: 'Submitted By' },
+                { key: 'Timestamp', label: 'Submission Time' }
+            ];
+            
+            let csv = headersToExport.map(h => h.label).join(',') + '\n'; // CSV 表头
             result.data.forEach(row => {
-                const values = headers.map(header => {
-                    let value = row[header];
+                const values = headersToExport.map(header => {
+                    let value = row[header.key];
+                    // 处理可能的特殊字符和日期格式
+                    if (header.key === 'Timestamp' && value) {
+                        try {
+                            const date = new Date(value);
+                            if (!isNaN(date)) {
+                                value = date.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                            }
+                        } catch (e) { /* keep original value */ }
+                    }
                     if (typeof value === 'string') {
-                        value = `"${value.replace(/"/g, '""')}"`;
+                        value = `"${value.replace(/"/g, '""')}"`; // 转义双引号
                     }
                     return value;
                 });
@@ -334,7 +402,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.removeChild(link);
             showMessage(loginMessage, 'Data exported successfully as CSV!', true);
         } else {
-            showMessage(loginMessage, 'Export failed: No data or an error occurred.');
+            showMessage(loginMessage, 'Export failed: No data or an error occurred.', false);
         }
     });
 
@@ -377,8 +445,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'FullLicenseCount', label: 'Full Licenses' },             
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'Timestamp', label: 'Submission Time' }
+                    // RecordId 不显示在表格中，但作为数据属性存储在删除按钮上
                 ];
-                renderTable(maisonHistoryTableContainer, result.data, headersEn);
+                // Maison 用户可以删除自己的记录
+                renderTable(maisonHistoryTableContainer, result.data, headersEn, true); 
             } else {
                 maisonHistoryTableContainer.innerHTML = '<p>Failed to load historical data: ' + result.message + '</p>';
             }
@@ -399,8 +469,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'SubmittedBy', label: 'Submitted By' },
                     { key: 'Timestamp', label: 'Submission Time' }
+                    // RecordId 不显示在表格中
                 ];
-                renderTable(adminDataTableContainer, result.data, headersEn);
+                // Admin 也可以删除记录，但这里我们只在Maison视图开启
+                renderTable(adminDataTableContainer, result.data, headersEn, false); 
             } else {
                 adminDataTableContainer.innerHTML = '<p>Failed to load all data: ' + result.message + '</p>';
             }

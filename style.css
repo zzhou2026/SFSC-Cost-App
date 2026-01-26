@@ -234,6 +234,7 @@ label {
 .login-button:hover {
     background-color: #004d40;
 }
+
 /* --- Cost Calculator Section Styles --- */
 .cost-calculator-section {
     background-color: #f0f8ff; /* Light azure background */
@@ -284,4 +285,20 @@ label {
 
 #calculatorErrorMessage {
     color: #dc3545; /* Red for calculator errors */
+}
+
+/* Delete button in table */
+.delete-button-table {
+    background-color: #dc3545; /* Red color */
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    margin: 0; /* Override default button margin */
+    transition: background-color 0.2s;
+}
+.delete-button-table:hover {
+    background-color: #c82333;
 }
