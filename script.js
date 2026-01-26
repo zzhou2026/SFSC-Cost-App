@@ -37,7 +37,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null; 
     let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 }; 
-    let currentMaisonExistingRecordId = null; // 用于存储当前Maison当前季度已存在记录的RecordId
 
     // --- Helper Functions ---
     function showPage(pageElement) {
@@ -64,8 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
         element.className = 'message';
     }
 
-    // 将数据渲染成 HTML 表格 (包含删除按钮)
-    function renderTable(containerElement, data, headersToShowMapping, includeDeleteButton = false) {
+    // 将数据渲染成 HTML 表格 (包含删除按钮或审批按钮)
+    function renderTable(containerElement, data, headersToShowMapping, options = {}) {
         if (!data || data.length === 0) {
             containerElement.innerHTML = '<p>No data available at the moment.</p>';
             return;
@@ -76,8 +75,11 @@ document.addEventListener('DOMContentLoaded', () => {
         headersToShowMapping.forEach(header => {
             tableHTML += `<th>${header.label}</th>`;
         });
-        if (includeDeleteButton) {
-            tableHTML += '<th>Action</th>'; // 添加操作列
+        if (options.includeMaisonDeleteButton) {
+            tableHTML += '<th>Action</th>'; // Maison 的删除操作列
+        }
+        if (options.includeAdminApprovalButtons) {
+            tableHTML += '<th>Approval Action</th>'; // Admin 的审批操作列
         }
         tableHTML += '</tr></thead><tbody>';
 
@@ -94,12 +96,29 @@ document.addEventListener('DOMContentLoaded', () => {
                     } catch (e) {
                         // Keep original value
                     }
+                } else if (header.key === 'ApprovalStatus' && cellValue) {
+                    // 为 ApprovalStatus 添加状态徽章
+                    let statusClass = '';
+                    switch (cellValue) {
+                        case 'Pending': statusClass = 'status-pending'; break;
+                        case 'Approved': statusClass = 'status-approved'; break;
+                        case 'Rejected': statusClass = 'status-rejected'; break;
+                        default: statusClass = 'status-pending'; break;
+                    }
+                    cellValue = `<span class="status-badge ${statusClass}">${cellValue}</span>`;
                 }
                 tableHTML += `<td>${cellValue !== undefined ? cellValue : ''}</td>`;
             });
-            if (includeDeleteButton) {
+            if (options.includeMaisonDeleteButton) {
                 // 每个删除按钮绑定 recordId
                 tableHTML += `<td><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
+            }
+            if (options.includeAdminApprovalButtons) {
+                // Admin 的审批按钮
+                tableHTML += `<td>
+                                <button class="approve-button-table" data-record-id="${row.RecordId}">Approve</button>
+                                <button class="reject-button-table" data-record-id="${row.RecordId}">Reject</button>
+                              </td>`;
             }
             tableHTML += '</tr>';
         });
@@ -108,9 +127,18 @@ document.addEventListener('DOMContentLoaded', () => {
         containerElement.innerHTML = tableHTML;
 
         // 为删除按钮添加事件监听器
-        if (includeDeleteButton) {
+        if (options.includeMaisonDeleteButton) {
             containerElement.querySelectorAll('.delete-button-table').forEach(button => {
                 button.addEventListener('click', handleDeleteRecord);
+            });
+        }
+        // 为审批按钮添加事件监听器
+        if (options.includeAdminApprovalButtons) {
+            containerElement.querySelectorAll('.approve-button-table').forEach(button => {
+                button.addEventListener('click', (event) => handleApprovalAction(event, 'Approved'));
+            });
+            containerElement.querySelectorAll('.reject-button-table').forEach(button => {
+                button.addEventListener('click', (event) => handleApprovalAction(event, 'Rejected'));
             });
         }
     }
@@ -130,10 +158,35 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentUser.role === 'maison') {
                     loadMaisonHistoryData(); // 刷新数据
                 } else if (currentUser.role === 'admin') {
-                    loadAdminOverviewData(); // 刷新数据
+                    // Admin 视图不显示删除按钮，但如果 Admin 也删除了，也要刷新
+                    loadAdminOverviewData(); 
                 }
             } else {
                 showMessage(maisonSubmitMessage, 'Failed to delete record: ' + result.message, false);
+            }
+        }
+    }
+
+    // --- Admin 审批操作的事件处理函数 ---
+    async function handleApprovalAction(event, newStatus) {
+        const recordIdToUpdate = event.target.dataset.recordId;
+        if (!recordIdToUpdate) {
+            alert('Error: Record ID not found for approval action.');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to set this record's status to "${newStatus}"?`)) {
+            const result = await callAppsScript('updateApprovalStatus', { recordId: recordIdToUpdate, newStatus: newStatus });
+            if (result.success) {
+                showMessage(loginMessage, `Record ${recordIdToUpdate} status updated to ${newStatus}.`, true);
+                loadAdminOverviewData(); // 刷新 Admin 概览数据
+                // 也要刷新Maison的历史数据，以便Maison用户看到状态变化
+                // 仅当当前用户是 Maison 角色时才刷新，Admin 审批后 Maison 刷新自己的视图
+                if (currentUser.role === 'maison') {
+                    loadMaisonHistoryData(); 
+                }
+            } else {
+                showMessage(loginMessage, `Failed to update record status: ${result.message}`, false);
             }
         }
     }
@@ -212,7 +265,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             const result = JSON.parse(text);
             
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord') {
+            if (action !== 'getQuarterList' && action !== 'getConfig' && action === 'checkExistingRecord') {
                 loginMessage.classList.remove('loading'); 
             }
             return result;
@@ -321,7 +374,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(maisonSubmitMessage, `${recordIdToUpdate ? 'Data updated' : 'Data submitted'} successfully! Calculated Cost: ${result.calculatedCost} €`, true);
             clientelingLicenseCountInput.value = '0'; // Clear input fields
             fullLicenseCountInput.value = '0';       // Clear input fields
-            // updateCostPreview(); // No longer needed for real-time preview
             if (currentUser.role === 'maison') {
                 loadMaisonHistoryData(); // 刷新数据
             }
@@ -367,7 +419,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 { key: 'FullLicenseCount', label: 'Full Licenses' },
                 { key: 'CalculatedCost', label: 'Calculated Cost (€)' },
                 { key: 'SubmittedBy', label: 'Submitted By' },
-                { key: 'Timestamp', label: 'Submission Time' }
+                { key: 'Timestamp', label: 'Submission Time' },
+                { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：导出时包含审批状态
             ];
             
             let csv = headersToExport.map(h => h.label).join(',') + '\n'; // CSV 表头
@@ -444,11 +497,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, 
                     { key: 'FullLicenseCount', label: 'Full Licenses' },             
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
-                    { key: 'Timestamp', label: 'Submission Time' }
-                    // RecordId 不显示在表格中，但作为数据属性存储在删除按钮上
+                    { key: 'Timestamp', label: 'Submission Time' },
+                    { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：显示审批状态
                 ];
                 // Maison 用户可以删除自己的记录
-                renderTable(maisonHistoryTableContainer, result.data, headersEn, true); 
+                renderTable(maisonHistoryTableContainer, result.data, headersEn, { includeMaisonDeleteButton: true }); 
             } else {
                 maisonHistoryTableContainer.innerHTML = '<p>Failed to load historical data: ' + result.message + '</p>';
             }
@@ -468,11 +521,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'FullLicenseCount', label: 'Full Licenses' },             
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'SubmittedBy', label: 'Submitted By' },
-                    { key: 'Timestamp', label: 'Submission Time' }
-                    // RecordId 不显示在表格中
+                    { key: 'Timestamp', label: 'Submission Time' },
+                    { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：显示审批状态
                 ];
-                // Admin 也可以删除记录，但这里我们只在Maison视图开启
-                renderTable(adminDataTableContainer, result.data, headersEn, false); 
+                // Admin 审批界面，包含审批按钮
+                renderTable(adminDataTableContainer, result.data, headersEn, { includeAdminApprovalButtons: true }); 
             } else {
                 adminDataTableContainer.innerHTML = '<p>Failed to load all data: ' + result.message + '</p>';
             }
