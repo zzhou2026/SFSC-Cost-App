@@ -1,0 +1,174 @@
+body {
+    margin: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    background-color: #e0f7fa; /* 淡蓝色背景 */
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    color: #333;
+    line-height: 1.6;
+}
+
+.app-container {
+    background-color: #ffffff;
+    padding: 30px 40px;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    width: 90%;
+    max-width: 800px; /* 限制 App 最大宽度 */
+    text-align: center;
+}
+
+h1 {
+    color: #00796b;
+    margin-bottom: 25px;
+    font-size: 2.2em;
+}
+
+h2 {
+    color: #00796b;
+    margin-top: 20px;
+    margin-bottom: 20px;
+    font-size: 1.8em;
+}
+
+h3 {
+    color: #00796b;
+    margin-top: 30px;
+    margin-bottom: 15px;
+    font-size: 1.4em;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 5px;
+}
+
+.page {
+    transition: opacity 0.5s ease-in-out;
+}
+
+.hidden {
+    display: none;
+    opacity: 0;
+}
+
+.active {
+    display: block;
+    opacity: 1;
+}
+
+input[type="text"],
+input[type="password"],
+input[type="number"] {
+    width: calc(100% - 20px);
+    padding: 12px;
+    margin: 10px 0;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 1em;
+    box-sizing: border-box; /* 确保 padding 不会撑大宽度 */
+}
+
+button {
+    background-color: #00796b;
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1em;
+    margin-top: 15px;
+    transition: background-color 0.3s ease;
+}
+
+button:hover {
+    background-color: #004d40;
+}
+
+#logoutButton {
+    background-color: #d32f2f;
+    margin-bottom: 20px;
+}
+
+#logoutButton:hover {
+    background-color: #b71c1c;
+}
+
+.message {
+    margin-top: 10px;
+    font-weight: bold;
+    color: #e53935; /* 错误消息 */
+}
+
+.message.success {
+    color: #43a047; /* 成功消息 */
+}
+
+.user-view {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.table-container {
+    margin-top: 20px;
+    overflow-x: auto; /* 当表格内容过宽时显示滚动条 */
+    max-height: 400px; /* 限制表格最大高度 */
+    overflow-y: auto;
+    border: 1px solid #eee;
+    border-radius: 8px;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 15px;
+}
+
+table th, table td {
+    border: 1px solid #ddd;
+    padding: 10px;
+    text-align: left;
+    white-space: nowrap; /* 防止内容自动换行 */
+}
+
+table th {
+    background-color: #e0f2f7;
+    color: #004d40;
+    font-weight: bold;
+    position: sticky; /* 表头固定 */
+    top: -10px; /* 微调，让表头稍微超出容器一点点，更像固定 */
+    z-index: 1; /* 确保表头在滚动时位于内容之上 */
+}
+
+table tr:nth-child(even) {
+    background-color: #f5f5f5;
+}
+
+table tr:hover {
+    background-color: #e0e0e0;
+}
+
+#exportDataButton {
+    background-color: #1e88e5;
+    margin-top: 20px;
+}
+
+#exportDataButton:hover {
+    background-color: #1565c0;
+}
+
+label {
+    display: block;
+    text-align: left;
+    margin-top: 15px;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: #00796b;
+}
+
+#currentQuarter {
+    background-color: #f0f0f0;
+    cursor: not-allowed;
+}

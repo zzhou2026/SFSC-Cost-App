@@ -1,0 +1,57 @@
+<!-- 修改后 (英语版本) -->
+<!DOCTYPE html>
+<html lang="en"> <!-- 注意这里 lang="en" 表示英语 -->
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SFSC Cost Management Application</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app-container">
+        <h1>SFSC Cost Management Application</h1>
+
+        <!-- Login Page -->
+        <div id="loginPage" class="page active">
+            <h2>Login</h2>
+            <input type="text" id="username" placeholder="Username">
+            <input type="password" id="password" placeholder="Password">
+            <button id="loginButton">Login</button>
+            <p id="loginMessage" class="message"></p>
+        </div>
+
+        <!-- Main Page (displayed after login) -->
+        <div id="mainPage" class="page hidden">
+            <h2 id="welcomeMessage"></h2>
+            <button id="logoutButton">Logout</button>
+            
+            <!-- Maison User View -->
+            <div id="maisonView" class="user-view hidden">
+                <h3>Submit SFSC License Quantities</h3>
+                <label for="currentQuarter">Current Quarter:</label>
+                <input type="text" id="currentQuarter" placeholder="e.g. 2024Q1" value="" readonly>
+                <label for="licenseCount">Number of Licenses:</label>
+                <input type="number" id="licenseCount" placeholder="Enter quantity" min="0">
+                <button id="submitSfscDataButton">Submit Data</button>
+                <p id="maisonSubmitMessage" class="message"></p>
+
+                <h3>My Historical Data</h3>
+                <div id="maisonHistoryTableContainer" class="table-container">
+                    <!-- Maison historical data will be displayed here -->
+                </div>
+            </div>
+
+            <!-- Admin View -->
+            <div id="adminView" class="user-view hidden">
+                <h3>Overview of SFSC Costs for All Maisons</h3>
+                <div id="adminDataTableContainer" class="table-container">
+                    <!-- Admin data will be displayed here -->
+                </div>
+                <button id="exportDataButton">Export Data (CSV)</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
