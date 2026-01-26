@@ -187,3 +187,101 @@ label {
     font-weight: bold;
     color: #00796b;
 }
+
+/* --- Login Page Specific Styles --- */
+.login-form-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    max-width: 350px; /* Limit width for a compact look */
+    margin: 0 auto; /* Center the form */
+    padding: 20px;
+    background-color: #f0f0f0; /* Light gray background for the form area */
+    border-radius: 8px;
+    box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05); /* Subtle inner shadow */
+}
+
+.login-form-container h2 {
+    margin-top: 10px;
+    margin-bottom: 20px;
+    font-size: 1.5em;
+    color: #333;
+}
+
+.form-control-login {
+    width: calc(100% - 20px); /* Adjust width */
+    padding: 10px;
+    margin: 8px 0;
+    border: 1px solid #bdbdbd; /* Slightly darker border */
+    border-radius: 4px;
+    font-size: 0.95em;
+    box-sizing: border-box;
+}
+
+.login-button {
+    width: 100%; /* Full width button */
+    padding: 12px;
+    margin-top: 20px;
+    background-color: #00796b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    font-size: 1em;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+}
+
+.login-button:hover {
+    background-color: #004d40;
+}
+/* --- Cost Calculator Section Styles --- */
+.cost-calculator-section {
+    background-color: #f0f8ff; /* Light azure background */
+    border: 1px solid #b3e0ff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.cost-calculator-section h3 {
+    color: #0056b3; /* Darker blue for heading */
+    margin-top: 0;
+    border-bottom: 1px solid #cceeff;
+    padding-bottom: 10px;
+}
+
+.cost-calculator-section p {
+    color: #555;
+    font-size: 0.9em;
+    margin-bottom: 20px;
+}
+
+.cost-calculator-section .form-control {
+    background-color: #e6f7ff; /* Lighter background for inputs in calculator */
+    border-color: #99d6ff;
+}
+
+.cost-calculator-button {
+    background-color: #007bff; /* Primary blue for calculator button */
+    margin-top: 20px;
+}
+
+.cost-calculator-button:hover {
+    background-color: #0056b3;
+}
+
+#calculatedCostDisplay {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #007bff; /* Blue for calculated cost */
+    background-color: #e6f7ff;
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 20px;
+    border: 1px solid #b3e0ff;
+}
+
+#calculatorErrorMessage {
+    color: #dc3545; /* Red for calculator errors */
+}

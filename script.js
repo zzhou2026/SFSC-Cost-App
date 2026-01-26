@@ -18,8 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const quarterSelect = document.getElementById('quarterSelect'); // 季度选择器
     const clientelingLicenseCountInput = document.getElementById('clientelingLicenseCount'); // Clienteling 数量输入框
     const fullLicenseCountInput = document.getElementById('fullLicenseCount');           // Full 数量输入框
-    const monthsSelect = document.getElementById('monthsSelect'); // 月份选择器
-    const costPreview = document.getElementById('costPreview');   // 成本预览显示
+    // const monthsSelect = document.getElementById('monthsSelect'); // 移除了实时预览的月份选择器
+    // const costPreview = document.getElementById('costPreview');   // 移除了实时预览的成本显示
     const submitSfscDataButton = document.getElementById('submitSfscDataButton');
     const maisonSubmitMessage = document.getElementById('maisonSubmitMessage');
     const maisonHistoryTableContainer = document.getElementById('maisonHistoryTableContainer');
@@ -28,8 +28,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminDataTableContainer = document.getElementById('adminDataTableContainer');
     const exportDataButton = document.getElementById('exportDataButton');
 
+    // --- Cost Calculator Tool Elements ---
+    const calcClientelingLicenseCountInput = document.getElementById('calcClientelingLicenseCount');
+    const calcFullLicenseCountInput = document.getElementById('calcFullLicenseCount');
+    const calcMonthsSelect = document.getElementById('calcMonthsSelect');
+    const seeCostButton = document.getElementById('seeCostButton');
+    const calculatedCostDisplay = document.getElementById('calculatedCostDisplay');
+    const calculatorErrorMessage = document.getElementById('calculatorErrorMessage');
+
+
     let currentUser = null; // Stores current logged-in user info
-    let configPrices = { ClientelingUnitPrice: 0, FullUnitPrice: 0, FixedCost: 0 }; // 存储从后端获取的单价
+    // 从后端获取配置价格，并修正默认值
+    let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 }; 
 
     // --- Helper Functions ---
     function showPage(pageElement) {
@@ -96,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
         containerElement.innerHTML = tableHTML;
     }
 
-    // --- 新增函数：填充季度选择器 ---
+    // --- 填充季度选择器 ---
     async function populateQuarterSelect() {
         const numberOfFutureQuarters = 4; // Current quarter + 4 future quarters = 5 total options
         const result = await callAppsScript('getQuarterList', { numberOfFutureQuarters: numberOfFutureQuarters });
@@ -114,40 +124,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 新增函数：填充月份选择器 ---
-    function populateMonthsSelect() {
-        monthsSelect.innerHTML = '';
+    // --- 新增函数：填充月份选择器 (用于计算工具) ---
+    function populateCalcMonthsSelect() {
+        calcMonthsSelect.innerHTML = '';
         for (let i = 1; i <= 12; i++) {
             const option = document.createElement('option');
             option.value = i;
             option.textContent = i;
-            monthsSelect.appendChild(option);
+            calcMonthsSelect.appendChild(option);
         }
-        monthsSelect.value = 12; // 默认选择 12 个月
+        calcMonthsSelect.value = 12; // 默认选择 12 个月
     }
 
-    // --- 新增函数：实时计算并更新成本预览 ---
-    function updateCostPreview() {
-        const clientelingCount = parseInt(clientelingLicenseCountInput.value, 10) || 0;
-        const fullCount = parseInt(fullLicenseCountInput.value, 10) || 0;
-        const months = parseInt(monthsSelect.value, 10) || 12; // 默认12个月
-
-        // 使用从后端获取的最新价格进行计算
-        const calculatedCost = (
+    // --- 成本计算函数 (用于计算工具) ---
+    function calculateCostForTool(clientelingCount, fullCount, months) {
+        return (
             (clientelingCount * configPrices.ClientelingUnitPrice * months) +
             (fullCount * configPrices.FullUnitPrice * months) +
             configPrices.FixedCost
         );
-        costPreview.value = calculatedCost.toFixed(2); // 保留两位小数
     }
 
     // --- Core function to call Apps Script backend ---
     async function callAppsScript(action, payload = {}) {
         try {
             // 显示加载提示，但只针对需要用户感知的操作
-            if (action !== 'getQuarterList' && action !== 'getConfig') { // 隐藏背景请求的提示
+            if (action !== 'getQuarterList' && action !== 'getConfig') { 
                  loginMessage.textContent = 'Requesting...'; 
                  loginMessage.classList.add('loading'); 
+            }
+            
+            // 确保payload中的数值是实际的数字，而不是可能为空的字符串
+            if (action === 'submitSfscData') {
+                payload.clientelingLicenseCount = parseInt(payload.clientelingLicenseCount, 10) || 0;
+                payload.fullLicenseCount = parseInt(payload.fullLicenseCount, 10) || 0;
             }
 
             const response = await fetch(APP_SCRIPT_URL, {
@@ -195,9 +205,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const configResult = await callAppsScript('getConfig');
             if (configResult.success && configResult.data) {
                 configPrices = configResult.data;
+                // 确保获取到的价格是数字类型，并提供默认值
+                configPrices.ClientelingUnitPrice = parseFloat(configPrices.ClientelingUnitPrice) || 16;
+                configPrices.FullUnitPrice = parseFloat(configPrices.FullUnitPrice) || 52;
+                configPrices.FixedCost = parseFloat(configPrices.FixedCost) || 0;
             } else {
                 console.error('Failed to load config prices:', configResult.message);
-                // 可以在这里给用户一个警告
+                showMessage(loginMessage, 'Failed to load configuration prices. Using default prices.', false);
             }
 
             setTimeout(() => {
@@ -226,10 +240,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const quarter = quarterSelect.value; // Get quarter from dropdown
-        const clientelingLicenseCount = parseInt(clientelingLicenseCountInput.value, 10) || 0;
-        const fullLicenseCount = parseInt(fullLicenseCountInput.value, 10) || 0;
+        const clientelingLicenseCount = parseInt(clientelingLicenseCountInput.value, 10);
+        const fullLicenseCount = parseInt(fullLicenseCountInput.value, 10);
 
-        if (!quarter || clientelingLicenseCount < 0 || fullLicenseCount < 0) {
+        if (!quarter || isNaN(clientelingLicenseCount) || clientelingLicenseCount < 0 || 
+            isNaN(fullLicenseCount) || fullLicenseCount < 0) {
             showMessage(maisonSubmitMessage, 'Please enter a valid quarter and valid license counts (non-negative)!');
             return;
         }
@@ -244,10 +259,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         if (result.success) {
-            showMessage(maisonSubmitMessage, `Data submitted successfully! Calculated Cost: ${result.calculatedCost}`, true);
+            showMessage(maisonSubmitMessage, `Data submitted successfully! Calculated Cost: ${result.calculatedCost} €`, true);
             clientelingLicenseCountInput.value = '0'; // Clear input fields
             fullLicenseCountInput.value = '0';       // Clear input fields
-            updateCostPreview(); // 提交成功后更新成本预览
+            // updateCostPreview(); // No longer needed for real-time preview
             if (currentUser.role === 'maison') {
                 loadMaisonHistoryData(); 
             }
@@ -256,10 +271,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
-    // 实时更新成本预览
-    clientelingLicenseCountInput.addEventListener('input', updateCostPreview);
-    fullLicenseCountInput.addEventListener('input', updateCostPreview);
-    monthsSelect.addEventListener('change', updateCostPreview);
+    // --- 成本计算工具的事件监听 ---
+    seeCostButton.addEventListener('click', () => {
+        clearMessage(calculatorErrorMessage);
+        const clientelingCount = parseInt(calcClientelingLicenseCountInput.value, 10) || 0;
+        const fullCount = parseInt(calcFullLicenseCountInput.value, 10) || 0;
+        const months = parseInt(calcMonthsSelect.value, 10) || 12;
+
+        if (clientelingCount < 0 || fullCount < 0 || months < 1 || months > 12) {
+            showMessage(calculatorErrorMessage, 'Please enter valid positive license counts and months (1-12)!');
+            calculatedCostDisplay.textContent = 'Estimated Cost: NaN €';
+            return;
+        }
+
+        const estimatedCost = calculateCostForTool(clientelingCount, fullCount, months);
+        calculatedCostDisplay.textContent = `Estimated Cost: ${estimatedCost.toFixed(2)} €`;
+        calculatedCostDisplay.classList.remove('error'); // 确保不是错误样式
+        calculatedCostDisplay.classList.add('success'); // 显示为成功样式
+    });
+
+    // 初始化成本计算工具的许可证数量为提交框的默认值
+    // clientelingLicenseCountInput.addEventListener('input', () => {
+    //     calcClientelingLicenseCountInput.value = clientelingLicenseCountInput.value;
+    // });
+    // fullLicenseCountInput.addEventListener('input', () => {
+    //     calcFullLicenseCountInput.value = fullLicenseCountInput.value;
+    // });
+    // 为了确保“See Cost”按钮能获取到最新的值，我们在每次点击时再读取，或者在主输入框变化时同步
+    // 但这里我们让它们独立，避免混淆
 
     // Export Data button click event (Admin View)
     exportDataButton.addEventListener('click', async () => {
@@ -313,8 +352,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentUser.role === 'maison') {
             maisonView.classList.remove('hidden');
             populateQuarterSelect(); // Call function to populate quarter selector
-            populateMonthsSelect(); // 填充月份选择器
-            updateCostPreview(); // 初始化成本预览
+            populateCalcMonthsSelect(); // 填充成本计算工具的月份选择器
+            // 初始化成本计算工具的输入框，与提交框同步
+            calcClientelingLicenseCountInput.value = clientelingLicenseCountInput.value;
+            calcFullLicenseCountInput.value = fullLicenseCountInput.value;
+            calculatedCostDisplay.textContent = 'Estimated Cost: 0.00 €'; // 重置显示
             loadMaisonHistoryData(); 
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
@@ -331,8 +373,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
-                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // New
-                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // New
+                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, 
+                    { key: 'FullLicenseCount', label: 'Full Licenses' },             
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'Timestamp', label: 'Submission Time' }
                 ];
@@ -352,8 +394,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
-                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // New
-                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // New
+                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, 
+                    { key: 'FullLicenseCount', label: 'Full Licenses' },             
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'SubmittedBy', label: 'Submitted By' },
                     { key: 'Timestamp', label: 'Submission Time' }

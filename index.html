@@ -10,14 +10,17 @@
     <div class="app-container">
         <h1>SFSC Cost Management Application</h1>
 
-        <!-- Login Page -->
+        <!-- 登录页面 -->
         <div id="loginPage" class="page active">
-            <h2>Login</h2>
-            <input type="text" id="username" placeholder="Username">
-            <input type="password" id="password" placeholder="Password">
-            <button id="loginButton">Login</button>
-            <p id="loginMessage" class="message"></p>
+            <div class="login-form-container">
+                <h2>Login</h2>
+                <input type="text" id="username" placeholder="Username" class="form-control-login">
+                <input type="password" id="password" placeholder="Password" class="form-control-login">
+                <button id="loginButton" class="login-button">Login</button>
+                <p id="loginMessage" class="message"></p>
+            </div>
         </div>
+
 
         <!-- Main Page (displayed after login) -->
         <div id="mainPage" class="page hidden">
@@ -39,24 +42,37 @@
                 <label for="fullLicenseCount">Number of Full Licenses:</label>
                 <input type="number" id="fullLicenseCount" class="form-control" placeholder="Enter Full quantity" min="0" value="0">
                 
-                <label for="monthsSelect">Months for Calculation:</label>
-                <!-- 月份选择器 -->
-                <select id="monthsSelect" class="form-control">
-                    <!-- 选项将通过 JavaScript 动态填充，默认12 -->
-                </select>
-
-                <label>Calculated Cost (Preview):</label>
-                <!-- 成本预览显示 -->
-                <input type="text" id="costPreview" class="form-control" value="0.00" readonly>
-                
                 <button id="submitSfscDataButton">Submit Data</button>
                 <p id="maisonSubmitMessage" class="message"></p>
+
+                <!-- 新增：成本计算工具 -->
+                <div class="cost-calculator-section">
+                    <h3>Cost Calculation Tool</h3>
+                    <p>Get an estimate of the cost based on license numbers and months.</p>
+                    
+                    <label for="calcClientelingLicenseCount">Clienteling Licenses:</label>
+                    <input type="number" id="calcClientelingLicenseCount" class="form-control" min="0" value="0">
+
+                    <label for="calcFullLicenseCount">Full Licenses:</label>
+                    <input type="number" id="calcFullLicenseCount" class="form-control" min="0" value="0">
+
+                    <label for="calcMonthsSelect">Months:</label>
+                    <select id="calcMonthsSelect" class="form-control">
+                        <!-- 月份选项将通过 JavaScript 填充 -->
+                    </select>
+
+                    <button id="seeCostButton" class="cost-calculator-button">See Cost</button>
+                    <p id="calculatedCostDisplay" class="message success">Estimated Cost: 0.00 €</p>
+                    <p id="calculatorErrorMessage" class="message"></p>
+                </div>
+                <!-- 成本计算工具结束 -->
 
                 <h3>My Historical Data</h3>
                 <div id="maisonHistoryTableContainer" class="table-container">
                     <!-- Maison historical data will be displayed here -->
                 </div>
             </div>
+
 
             <!-- Admin View -->
             <div id="adminView" class="user-view hidden">
