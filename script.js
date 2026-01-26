@@ -95,10 +95,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // --- 新增函数：填充季度选择器 ---
     async function populateQuarterSelect() {
-        const numberOfFutureQuarters = 4; // 当前季度 + 未来4个季度 = 5个季度选项
+        const numberOfFutureQuarters = 4; // Current quarter + 4 future quarters = 5 total options
         const result = await callAppsScript('getQuarterList', { numberOfFutureQuarters: numberOfFutureQuarters });
         if (result.success && result.data) {
-            quarterSelect.innerHTML = ''; // 清空现有选项
+            quarterSelect.innerHTML = ''; // Clear existing options
             result.data.forEach(quarter => {
                 const option = document.createElement('option');
                 option.value = quarter;
@@ -107,7 +107,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         } else {
             console.error('Failed to load quarter list:', result.message);
-            // 可以显示一个错误信息给用户
+            // Optionally display an error message to the user
         }
     }
 
@@ -182,7 +182,7 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
 
-        const quarter = quarterSelect.value; // 从下拉选择器获取季度
+        const quarter = quarterSelect.value; // Get quarter from dropdown
         const clientelingLicenseCount = parseInt(clientelingLicenseCountInput.value, 10);
         const fullLicenseCount = parseInt(fullLicenseCountInput.value, 10);
 
@@ -196,15 +196,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await callAppsScript('submitSfscData', {
             maisonName: currentUser.maisonName,
             quarter: quarter,
-            clientelingLicenseCount: clientelingLicenseCount, // 传递两种许可证数量
-            fullLicenseCount: fullLicenseCount,               // 传递两种许可证数量
+            clientelingLicenseCount: clientelingLicenseCount, // Pass both license counts
+            fullLicenseCount: fullLicenseCount,               // Pass both license counts
             submittedBy: currentUser.username
         });
 
         if (result.success) {
             showMessage(maisonSubmitMessage, `Data submitted successfully! Calculated Cost: ${result.calculatedCost}`, true);
-            clientelingLicenseCountInput.value = '0'; // 清空输入框
-            fullLicenseCountInput.value = '0';       // 清空输入框
+            clientelingLicenseCountInput.value = '0'; // Clear input fields
+            fullLicenseCountInput.value = '0';       // Clear input fields
             if (currentUser.role === 'maison') {
                 loadMaisonHistoryData(); 
             }
@@ -261,10 +261,10 @@ document.addEventListener('DOMContentLoaded', () => {
         maisonView.classList.add('hidden');
         adminView.classList.add('hidden');
 
-        // Maison 用户登录后，填充季度选择器
+        // Maison user login, populate quarter selector
         if (currentUser.role === 'maison') {
             maisonView.classList.remove('hidden');
-            populateQuarterSelect(); // 调用填充季度选择器函数
+            populateQuarterSelect(); // Call function to populate quarter selector
             loadMaisonHistoryData(); 
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
@@ -281,8 +281,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
-                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // 新增
-                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // 新增
+                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // New
+                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // New
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'Timestamp', label: 'Submission Time' }
                 ];
@@ -298,12 +298,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentUser && currentUser.role === 'admin') {
             const result = await callAppsScript('getAllSfscData');
             if (result.success && result.data) {
-                 // Define English table headers and corresponding internal keys
+                // Define English table headers and corresponding internal keys
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
-                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // 新增
-                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // 新增
+                    { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, // New
+                    { key: 'FullLicenseCount', label: 'Full Licenses' },             // New
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'SubmittedBy', label: 'Submitted By' },
                     { key: 'Timestamp', label: 'Submission Time' }
