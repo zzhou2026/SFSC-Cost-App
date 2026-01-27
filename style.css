@@ -391,7 +391,7 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 #emailDisplay {
     font-size: 0.95em; /* 控制显示已登记邮箱文本的字体大小 */
     color: #333; /* 控制显示已登记邮箱文本的颜色 */
-    margin-top: 3px; /* 进一步减少此行与上方元素的间距 */
+    margin-top: 13px; /* 进一步减少此行与上方元素的间距 */
     margin-bottom: 3px; /* 进一步减少此行与下方元素的间距 */
     font-weight: bold; /* 控制文本加粗 */
     display: flex; /* 启用Flexbox布局 */
