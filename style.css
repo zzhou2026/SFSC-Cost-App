@@ -362,14 +362,14 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     min-width: 180px;
 }
 
-/* --- NEW: Email Management Section Styles --- */
+/* --- Email Management Section Styles --- */
 .email-management-section {
     background-color: #f9f9f9; /* Light background for the section */
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    padding: 10px 15px; /* Reduced vertical padding (top/bottom) to 10px */
-    margin-top: 20px; /* Space from welcome message */
-    margin-bottom: 20px; /* Space to logout button */
+    padding: 2px 10px; /* FURTHER REDUCED vertical padding */
+    margin-top: 10px; /* FURTHER REDUCED margin from welcome message */
+    margin-bottom: 10px; /* FURTHER REDUCED margin to logout button */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     text-align: center; /* Center content within the section */
     display: flex; /* Make it a flex container */
@@ -379,25 +379,26 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 
 .email-management-section h3 {
     color: #00796b;
-    font-size: 1.2em; /* Smaller heading */
-    margin-top: 0;
-    margin-bottom: 10px; /* Reduced margin-bottom */
+    font-size: 1.1em; /* Further reduced heading size */
+    margin-top: 5px; /* Reduced margin-top */
+    margin-bottom: 5px; /* Further reduced margin-bottom */
     border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 5px; /* Reduced padding-bottom */
+    padding-bottom: 4px; /* Reduced padding-bottom */
     width: 100%; /* Ensure heading spans full width for border */
 }
 
 #emailDisplay {
-    font-size: 1em;
+    font-size: 0.95em; /* Slightly smaller font for display */
     color: #333;
-    /* margin-bottom: 10px; -- REMOVED for tighter spacing */
+    margin-top: 5px; /* Added a small top margin for spacing */
+    margin-bottom: 5px; /* Further reduced margin-bottom */
     font-weight: bold;
     display: flex; /* Make it a flex container */
     align-items: center; /* Vertically align text */
     justify-content: center; /* Center horizontally */
     gap: 5px; /* Small gap between "Your registered email:" and the actual email */
     flex-wrap: wrap; /* Allow wrapping */
-    min-height: 30px; /* Ensure a minimum height for consistent vertical alignment */
+    min-height: 20px; /* FURTHER REDUCED minimum height */
 }
 
 #registeredEmailValue {
@@ -412,7 +413,7 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     width: 100%; /* Allow form to take full width of parent */
     margin-top: 5px; /* Reduced margin-top */
     flex-wrap: wrap; /* Allow elements to wrap on smaller screens */
-    gap: 10px; /* Space between input group and buttons */
+    gap: 8px; /* Reduced gap between input group and buttons */
 }
 
 /* Adjusted: email-input-group to hold label and input */
@@ -423,7 +424,7 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     flex-grow: 1; /* Allow it to grow and take available space */
     flex-basis: auto; /* Allow it to shrink if needed, but prefer content size */
     justify-content: center; /* Center label and input inside its own group */
-    min-width: 250px; /* Minimum width for the input group to avoid excessive shrinking */
+    min-width: 200px; /* Further reduced minimum width for the input group */
 }
 
 .email-input-group label {
@@ -435,19 +436,20 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 
 .email-management-section .form-control {
     width: 100%; /* Input takes full width of its parent (email-input-group) */
-    max-width: 200px; /* Limit input width */
+    max-width: 160px; /* Further limit input width */
     flex-grow: 1; /* Allow input to grow if space available */
     margin: 0; /* Remove default margin for inline elements */
-    padding: 8px 10px; /* Reduced padding for input */
-    min-width: 100px; /* Ensure input is not too small */
+    padding: 5px 8px; /* FURTHER REDUCED padding for input */
+    min-height: 28px; /* Adjusted minimum height */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+    font-size: 0.9em; /* Consistent font size */
 }
 
 .email-buttons {
     display: flex; /* Use flexbox for buttons */
     justify-content: center; /* Center buttons horizontally */
     flex-wrap: wrap; /* Allow buttons to wrap */
-    gap: 10px; /* Space between buttons */
-    /* margin-top: 5px; -- REMOVED, now part of parent .email-form's gap */
+    gap: 6px; /* Further reduced gap between buttons */
     flex-shrink: 0; /* Prevent buttons from shrinking too much */
 }
 
@@ -455,13 +457,14 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 .email-action-button {
     background-color: #00796b;
     color: white;
-    padding: 8px 15px; /* Smaller padding for compactness */
+    padding: 5px 10px; /* FURTHER REDUCED padding for buttons */
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 0.9em; /* Smaller font size */
+    font-size: 0.8em; /* FURTHER REDUCED font size */
     margin: 0; /* Remove default margin for inline elements */
     transition: background-color 0.3s ease;
+    min-width: 60px; /* Reduced minimum width for buttons */
 }
 
 .email-action-button:hover {
@@ -477,17 +480,20 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 }
 
 #emailMessage {
-    margin-top: 10px; /* Reduced margin-top */
-    font-size: 0.9em;
-    min-height: 20px; /* Give message area a minimum height */
+    margin-top: 5px; /* Further reduced margin-top */
+    font-size: 0.8em; /* Further reduced font size */
+    min-height: 16px; /* Further reduced minimum height */
+    text-align: center;
+    width: 100%; /* Ensure it takes full width for centering */
 }
 
 /* Ensure editEmailButton (when visible) also uses flex styles */
 #editEmailButton {
-    margin-top: 10px; /* Add some space above it */
+    margin-top: 5px; /* Further reduced margin-top */
     display: block; /* Make it a block element to take full width of container */
     margin-left: auto; /* Center it horizontally with auto margins */
     margin-right: auto;
-    max-width: 150px; /* Limit its width */
-    padding: 8px 15px; /* Consistent button padding */
+    max-width: 100px; /* Further limit its width */
+    padding: 5px 10px; /* Consistent button padding */
+    font-size: 0.8em; /* Consistent font size */
 }
