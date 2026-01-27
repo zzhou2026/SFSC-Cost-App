@@ -391,7 +391,7 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 #emailDisplay {
     font-size: 0.95em; /* Slightly smaller font for display */
     color: #333;
-    margin-top: 5px; /* Added a small top margin for spacing */
+    margin-top: 10px; /* Added a small top margin for spacing */
     margin-bottom: 5px; /* Reduced margin-bottom */
     font-weight: bold;
     display: flex;
