@@ -26,6 +26,23 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminDataTableContainer = document.getElementById('adminDataTableContainer');
     const exportDataButton = document.getElementById('exportDataButton');
 
+    // Email Broadcast Elements (Admin)
+    const emailBroadcastSection = document.getElementById('emailBroadcastSection');
+    const userListContainer = document.getElementById('userListContainer');
+    const selectAllButton = document.getElementById('selectAllButton');
+    const deselectAllButton = document.getElementById('deselectAllButton');
+    const userSearchInput = document.getElementById('userSearchInput');
+    const emailSubjectInput = document.getElementById('emailSubjectInput');
+    const emailContentInput = document.getElementById('emailContentInput');
+    const openOutlookButton = document.getElementById('openOutlookButton');
+    const copyEmailsButton = document.getElementById('copyEmailsButton');
+    const emailBroadcastMessage = document.getElementById('emailBroadcastMessage');
+    const recipientCountDisplay = document.getElementById('recipientCountDisplay');
+    
+    let allUsers = []; // Store all users data
+    let filteredUsers = []; // Store filtered users for display
+    let currentRecipientEmails = []; // Store current recipient emails
+
     // NEW: Email Management Elements
     const emailManagementSection = document.getElementById('emailManagementSection');
     const emailDisplay = document.getElementById('emailDisplay');
@@ -504,6 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
             loadAdminOverviewData();
+            initEmailBroadcast(); // Initialize email broadcast functionality
         }
     }
 
@@ -635,6 +653,222 @@ document.addEventListener('DOMContentLoaded', () => {
         initEmailManagement();
         clearMessage(emailMessage);
     });
+
+    // --- Email Broadcast Functions (Admin) - User Selection ---
+
+    // Initialize email broadcast section
+    async function initEmailBroadcast() {
+        if (!currentUser || currentUser.role !== 'admin') {
+            emailBroadcastSection.classList.add('hidden');
+            return;
+        }
+        emailBroadcastSection.classList.remove('hidden');
+        
+        // Load all users
+        await loadAllUsers();
+        
+        // Set up event listeners
+        selectAllButton.addEventListener('click', handleSelectAll);
+        deselectAllButton.addEventListener('click', handleDeselectAll);
+        userSearchInput.addEventListener('input', handleUserSearch);
+        openOutlookButton.addEventListener('click', handleOpenOutlook);
+        copyEmailsButton.addEventListener('click', handleCopyEmails);
+        
+        // Update recipient count when checkboxes change
+        updateRecipientCount();
+    }
+
+    // Load all users from backend
+    async function loadAllUsers() {
+        userListContainer.innerHTML = '<p class="loading-text">Loading users...</p>';
+        
+        const result = await callAppsScript('getAllUsers');
+        if (result.success && result.data) {
+            allUsers = result.data.filter(user => user.email && user.email.trim() !== '');
+            filteredUsers = [...allUsers];
+            renderUserList();
+            updateRecipientCount();
+        } else {
+            userListContainer.innerHTML = '<p class="error-text">Failed to load users: ' + (result.message || 'Unknown error') + '</p>';
+        }
+    }
+
+    // Render user list with checkboxes
+    function renderUserList() {
+        if (filteredUsers.length === 0) {
+            userListContainer.innerHTML = '<p class="no-users-text">No users found.</p>';
+            return;
+        }
+
+        let html = '<div class="user-list">';
+        filteredUsers.forEach((user, index) => {
+            const userId = `user-${index}-${user.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            html += `
+                <div class="user-checkbox-item">
+                    <input type="checkbox" 
+                           id="${userId}" 
+                           class="user-checkbox" 
+                           data-email="${user.email || ''}"
+                           data-username="${user.username || ''}"
+                           data-maison="${user.maisonName || ''}"
+                           ${user.email ? '' : 'disabled'}>
+                    <label for="${userId}" class="user-checkbox-label">
+                        <span class="user-name">${user.username || 'N/A'}</span>
+                        <span class="user-email">${user.email || 'No email'}</span>
+                        ${user.maisonName ? `<span class="user-maison">${user.maisonName}</span>` : ''}
+                    </label>
+                </div>
+            `;
+        });
+        html += '</div>';
+        userListContainer.innerHTML = html;
+
+        // Add change listeners to all checkboxes
+        userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateRecipientCount);
+        });
+    }
+
+    // Handle select all
+    function handleSelectAll() {
+        userListContainer.querySelectorAll('.user-checkbox:not(:disabled)').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateRecipientCount();
+    }
+
+    // Handle deselect all
+    function handleDeselectAll() {
+        userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateRecipientCount();
+    }
+
+    // Handle user search
+    function handleUserSearch() {
+        const searchTerm = userSearchInput.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            filteredUsers = [...allUsers];
+        } else {
+            filteredUsers = allUsers.filter(user => {
+                const username = (user.username || '').toLowerCase();
+                const email = (user.email || '').toLowerCase();
+                const maison = (user.maisonName || '').toLowerCase();
+                return username.includes(searchTerm) || 
+                       email.includes(searchTerm) || 
+                       maison.includes(searchTerm);
+            });
+        }
+        
+        renderUserList();
+        updateRecipientCount();
+    }
+
+    // Update recipient emails based on selected users
+    function updateRecipientEmails() {
+        const selectedCheckboxes = userListContainer.querySelectorAll('.user-checkbox:checked');
+        currentRecipientEmails = Array.from(selectedCheckboxes)
+            .map(cb => cb.dataset.email)
+            .filter(email => email && email.trim() !== '');
+        updateRecipientCount();
+    }
+
+    // Update recipient count display
+    function updateRecipientCount() {
+        updateRecipientEmails();
+        const count = currentRecipientEmails.length;
+        if (count > 0) {
+            recipientCountDisplay.textContent = `Selected: ${count} recipient(s)`;
+            recipientCountDisplay.classList.remove('hidden');
+            recipientCountDisplay.style.color = '#00796b';
+        } else {
+            recipientCountDisplay.textContent = 'No recipients selected. Please select at least one user.';
+            recipientCountDisplay.classList.remove('hidden');
+            recipientCountDisplay.style.color = '#999';
+        }
+    }
+
+    // Handle open Outlook button click
+    function handleOpenOutlook() {
+        updateRecipientEmails();
+        
+        if (currentRecipientEmails.length === 0) {
+            showMessage(emailBroadcastMessage, 'No recipients selected. Please select at least one user with email address.', false);
+            return;
+        }
+
+        const subject = emailSubjectInput.value.trim();
+        const body = emailContentInput.value.trim();
+
+        // Create mailto link
+        // Multiple recipients: use comma-separated list
+        const to = currentRecipientEmails.join(',');
+        
+        // Encode subject and body for URL
+        const encodedSubject = encodeURIComponent(subject);
+        const encodedBody = encodeURIComponent(body);
+
+        // Create mailto URL
+        let mailtoUrl = `mailto:${to}`;
+        const params = [];
+        if (subject) {
+            params.push(`subject=${encodedSubject}`);
+        }
+        if (body) {
+            params.push(`body=${encodedBody}`);
+        }
+        if (params.length > 0) {
+            mailtoUrl += '?' + params.join('&');
+        }
+
+        // Open mailto link (will open default email client, e.g., Outlook)
+        window.location.href = mailtoUrl;
+        
+        showMessage(emailBroadcastMessage, `Opening Outlook with ${currentRecipientEmails.length} recipient(s)... If it doesn't open, please check your default email client settings.`, true);
+    }
+
+    // Handle copy emails button click
+    function handleCopyEmails() {
+        updateRecipientEmails();
+        
+        if (currentRecipientEmails.length === 0) {
+            showMessage(emailBroadcastMessage, 'No recipients to copy. Please select at least one user with email address.', false);
+            return;
+        }
+
+        try {
+            // Copy email list to clipboard
+            const emailList = currentRecipientEmails.join('; '); // Use semicolon for Outlook
+            navigator.clipboard.writeText(emailList).then(() => {
+                showMessage(emailBroadcastMessage, `Copied ${currentRecipientEmails.length} email(s) to clipboard!`, true);
+            }).catch(() => {
+                // Fallback for older browsers
+                fallbackCopyToClipboard(emailList);
+            });
+        } catch (err) {
+            // Fallback for older browsers
+            fallbackCopyToClipboard(currentRecipientEmails.join('; '));
+        }
+    }
+
+    // Fallback copy to clipboard function
+    function fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showMessage(emailBroadcastMessage, `Copied ${currentRecipientEmails.length} email(s) to clipboard!`, true);
+        } catch (e) {
+            showMessage(emailBroadcastMessage, 'Failed to copy emails. Please select and copy manually.', false);
+        }
+        document.body.removeChild(textArea);
+    }
 
     // --- On first load, show the login page ---
     showPage(loginPage);

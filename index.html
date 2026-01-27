@@ -102,6 +102,40 @@
                     <!-- Admin data will be displayed here -->
                 </div>
                 <button id="exportDataButton">Export Data (CSV)</button>
+                
+                <!-- Email Broadcast Section -->
+                <div id="emailBroadcastSection" class="email-broadcast-section">
+                    <h3>Send Email to Users via Outlook</h3>
+                    <p>Select users from the list below and compose email in Outlook.</p>
+                    
+                    <!-- User Selection -->
+                    <div class="user-selection-header">
+                        <label>Select Recipients:</label>
+                        <div class="selection-controls">
+                            <button id="selectAllButton" class="selection-button">Select All</button>
+                            <button id="deselectAllButton" class="selection-button">Deselect All</button>
+                            <input type="text" id="userSearchInput" class="user-search-input" placeholder="Search users...">
+                        </div>
+                    </div>
+                    
+                    <div id="userListContainer" class="user-list-container">
+                        <!-- User list will be dynamically populated -->
+                        <p class="loading-text">Loading users...</p>
+                    </div>
+                    
+                    <label for="emailSubjectInput">Email Subject:</label>
+                    <input type="text" id="emailSubjectInput" class="form-control" placeholder="Enter email subject">
+                    
+                    <label for="emailContentInput">Email Content:</label>
+                    <textarea id="emailContentInput" class="form-control email-textarea" placeholder="Enter email content" rows="6"></textarea>
+                    
+                    <div class="email-action-buttons">
+                        <button id="openOutlookButton" class="email-broadcast-button">Open in Outlook</button>
+                        <button id="copyEmailsButton" class="email-broadcast-button-secondary">Copy Email List</button>
+                    </div>
+                    <p id="emailBroadcastMessage" class="message"></p>
+                    <p id="recipientCountDisplay" class="recipient-count"></p>
+                </div>
             </div>
         </div>
     </div>
