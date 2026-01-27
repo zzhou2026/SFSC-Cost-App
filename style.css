@@ -374,7 +374,8 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     text-align: center; /* Center content within the section */
     display: flex;
     flex-direction: column;
-    align-items: center; /* Center all child elements vertically */
+    align-items: center; /* Center all children horizontally */
+    justify-content: center; /* NEW: Vertically center all content within the gray box */
 }
 
 .email-management-section h3 {
