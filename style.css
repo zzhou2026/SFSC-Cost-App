@@ -364,106 +364,106 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 
 /* --- Email Management Section Styles --- */
 .email-management-section {
-    background-color: #f9f9f9; /* Light background for the section */
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 2px 10px; /* Reduced vertical padding for the overall section */
-    margin-top: 10px; /* Reduced margin from welcome message */
-    margin-bottom: 10px; /* Reduced margin to logout button */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    text-align: center; /* Center content within the section */
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Center all children horizontally */
-    justify-content: center; /* NEW: Vertically center all content within the gray box */
+    background-color: #f9f9f9; /* 控制邮箱管理灰色背景框的颜色 */
+    border: 1px solid #e0e0e0; /* 控制灰色背景框的边框颜色和粗细 */
+    border-radius: 8px; /* 控制灰色背景框的圆角大小 */
+    padding: 2px 5px; /* 进一步减少上下内边距，左右内边距也略减 */
+    margin-top: 5px; /* 进一步减少与上方元素的间距 */
+    margin-bottom: 5px; /* 进一步减少与下方元素的间距 */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); /* 控制灰色背景框的阴影效果 */
+    text-align: center; /* 确保内部文本居中 */
+    display: flex; /* 启用Flexbox布局，使其内部子元素可以更灵活地排列 */
+    flex-direction: column; /* 让内部子元素（如h3, emailDisplay, emailForm等）垂直堆叠 */
+    align-items: center; /* 在Flex容器的交叉轴（这里是水平方向）上将子元素水平居中 */
+    justify-content: center; /* 让内部子元素整体在灰色框内垂直居中 */
 }
 
 .email-management-section h3 {
-    color: #00796b;
-    font-size: 1.1em; /* Smaller heading */
-    margin-top: 5px; /* Reduced margin-top */
-    margin-bottom: 5px; /* Reduced margin-bottom */
-    border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 4px; /* Reduced padding-bottom */
-    width: 100%; /* Ensure heading spans full width for border */
+    color: #00796b; /* 控制标题“Manage Your Email”的文本颜色 */
+    font-size: 1.1em; /* 控制标题的字体大小 */
+    margin-top: 3px; /* 进一步减少标题与灰色框顶部的间距 */
+    margin-bottom: 3px; /* 进一步减少标题与下方元素的间距 */
+    border-bottom: 1px solid #e0e0e0; /* 标题下划线 */
+    padding-bottom: 3px; /* 进一步减少标题文本与下划线之间的间距 */
+    width: 100%; /* 确保标题宽度与父容器一致，使下划线横跨整个宽度 */
 }
 
 #emailDisplay {
-    font-size: 0.95em; /* Slightly smaller font for display */
-    color: #333;
-    margin-top: 10px; /* Added a small top margin for spacing */
-    margin-bottom: 5px; /* Reduced margin-bottom */
-    font-weight: bold;
-    display: flex;
-    align-items: center; /* Vertically center items */
-    justify-content: center; /* Horizontally center items */
-    gap: 5px;
-    flex-wrap: wrap;
-    min-height: 20px; /* Reduced minimum height */
+    font-size: 0.95em; /* 控制显示已登记邮箱文本的字体大小 */
+    color: #333; /* 控制显示已登记邮箱文本的颜色 */
+    margin-top: 3px; /* 进一步减少此行与上方元素的间距 */
+    margin-bottom: 3px; /* 进一步减少此行与下方元素的间距 */
+    font-weight: bold; /* 控制文本加粗 */
+    display: flex; /* 启用Flexbox布局 */
+    align-items: center; /* 让已登记邮箱文本和邮箱值在行内垂直居中 */
+    justify-content: center; /* 让已登记邮箱文本和邮箱值在行内水平居中 */
+    gap: 5px; /* 控制此行内部子元素之间的间距 */
+    flex-wrap: wrap; /* 允许文本在空间不足时换行 */
+    min-height: 18px; /* 进一步减小最小高度 */
 }
 
 #registeredEmailValue {
-    color: #00796b; /* Highlight registered email */
+    color: #00796b; /* 控制实际登记邮箱地址文本的颜色 */
 }
 
 .email-form {
-    display: flex;
-    flex-direction: row; /* Main layout for form elements to be in a row */
-    align-items: center; /* Vertically center items in the row */
-    justify-content: center; /* Horizontally center items */
+    display: flex; /* 启用Flexbox布局 */
+    flex-direction: row; /* 让表单内的子元素水平排列 */
+    align-items: center; /* 让表单内的子元素在行内垂直居中 */
+    justify-content: center; /* 让表单内的子元素在行内水平居中 */
     width: 100%;
-    margin-top: 5px; /* Reduced margin-top */
-    flex-wrap: wrap;
-    gap: 8px; /* Space between input group and buttons */
+    margin-top: 3px; /* 进一步减少表单与上方元素的间距 */
+    flex-wrap: wrap; /* 允许表单内容在空间不足时换行 */
+    gap: 6px; /* 进一步减少表单内子元素之间的水平间距 */
 }
 
 .email-input-group {
-    display: flex;
-    align-items: center; /* Vertically center label and input */
-    gap: 5px;
-    flex-grow: 1; /* Allow it to grow */
+    display: flex; /* 启用Flexbox布局 */
+    align-items: center; /* 让标签和输入框在组内垂直居中 */
+    gap: 4px; /* 进一步减少标签和输入框之间的间距 */
+    flex-grow: 1; /* 允许此组在有额外空间时增长 */
     flex-basis: auto;
-    justify-content: center; /* Horizontally center label and input */
-    min-width: 200px; /* Minimum width */
+    justify-content: center; /* 让标签和输入框在组内水平居中 */
+    min-width: 180px; /* 进一步减小最小宽度 */
 }
 
 .email-input-group label {
-    margin: 0; /* Remove all margins */
-    white-space: nowrap;
-    flex-shrink: 0;
+    margin: 0; /* 移除标签所有外边距 */
+    white-space: nowrap; /* 防止标签文本换行 */
+    flex-shrink: 0; /* 防止标签在空间不足时缩小 */
 }
 
 .email-management-section .form-control {
-    width: 100%;
-    max-width: 160px;
+    width: 100%; /* 输入框占据其父元素的全部宽度 */
+    max-width: 140px; /* 进一步限制输入框的最大宽度 */
     flex-grow: 1;
-    margin: 0; /* Remove all margins */
-    padding: 5px 8px; /* Reduced padding */
-    min-height: 28px;
+    margin: 0; /* 移除输入框所有外边距 */
+    padding: 4px 6px; /* 进一步减少输入框的内边距 */
+    min-height: 26px; /* 调整最小高度 */
     box-sizing: border-box;
-    font-size: 0.9em;
+    font-size: 0.9em; /* 输入框字体大小 */
 }
 
 .email-buttons {
-    display: flex;
-    justify-content: center;
-    align-items: center; /* Vertically center buttons */
-    flex-wrap: wrap;
-    gap: 6px; /* Reduced gap between buttons */
-    flex-shrink: 0;
+    display: flex; /* 启用Flexbox布局 */
+    justify-content: center; /* 让按钮在组内水平居中 */
+    align-items: center; /* 让按钮在组内垂直居中 */
+    flex-wrap: wrap; /* 允许按钮在空间不足时换行 */
+    gap: 4px; /* 进一步减少按钮之间的间距 */
+    flex-shrink: 0; /* 防止按钮在空间不足时缩小 */
 }
 
 .email-action-button {
     background-color: #00796b;
     color: white;
-    padding: 5px 10px; /* Reduced padding */
+    padding: 4px 8px; /* 进一步减少按钮的内边距 */
     border: none;
     border-radius: 5px;
     cursor: pointer;
-    font-size: 0.8em; /* Reduced font size */
-    margin: 0; /* Remove all margins */
+    font-size: 0.75em; /* 进一步减小按钮字体大小 */
+    margin: 0; /* 移除按钮所有外边距 */
     transition: background-color 0.3s ease;
-    min-width: 60px;
+    min-width: 50px; /* 进一步减小最小宽度 */
 }
 
 .email-action-button:hover {
@@ -479,19 +479,19 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 }
 
 #emailMessage {
-    margin-top: 5px; /* Reduced margin-top */
-    font-size: 0.8em;
-    min-height: 16px;
+    margin-top: 3px; /* 进一步减少消息文本与上方元素的间距 */
+    font-size: 0.75em; /* 进一步减小消息文本字体大小 */
+    min-height: 14px; /* 进一步减小最小高度 */
     text-align: center;
     width: 100%;
 }
 
 #editEmailButton {
-    margin-top: 5px; /* Reduced margin-top */
+    margin-top: 3px; /* 进一步减少编辑按钮与上方元素的间距 */
     display: block;
     margin-left: auto;
     margin-right: auto;
-    max-width: 100px;
-    padding: 5px 10px;
-    font-size: 0.8em;
+    max-width: 90px; /* 进一步限制最大宽度 */
+    padding: 4px 8px; /* 进一步减少内边距 */
+    font-size: 0.75em; /* 进一步减小字体大小 */
 }
