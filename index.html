@@ -23,7 +23,7 @@
 
         <!-- Main Page (displayed after login) -->
         <div id="mainPage" class="page hidden">
-            <h2 id="welcomeMessage"></h2> <!-- 统一显示欢迎消息 -->
+            <h2 id="welcomeMessage"></h2> 
             
             <!-- Maison User View -->
             <div id="maisonView" class="user-view hidden">
@@ -33,17 +33,23 @@
                     <h3>Manage Your Email</h3>
                     <p id="emailDisplay" class="hidden">Your registered email: <span id="registeredEmailValue"></span></p>
                     <div id="emailForm" class="email-form hidden">
-                        <label for="userEmailInput">Email Address:</label>
-                        <input type="email" id="userEmailInput" class="form-control" placeholder="Enter your email address">
-                        <button id="submitEmailButton" class="email-action-button">Register Email</button>
-                        <button id="cancelEditEmailButton" class="email-action-button hidden">Cancel</button>
+                        <!-- NEW: Wrap label and input in a div for easier styling -->
+                        <div class="email-input-group">
+                            <label for="userEmailInput">Email Address:</label>
+                            <input type="email" id="userEmailInput" class="form-control" placeholder="Enter your email address">
+                        </div>
+                        <!-- END NEW -->
+                        <div class="email-buttons"> <!-- NEW: A container for buttons -->
+                            <button id="submitEmailButton" class="email-action-button">Register Email</button>
+                            <button id="cancelEditEmailButton" class="email-action-button hidden">Cancel</button>
+                        </div>
                     </div>
                     <button id="editEmailButton" class="email-action-button hidden">Edit Email</button>
                     <p id="emailMessage" class="message"></p>
                 </div>
                 <!-- END NEW: Email Management Section -->
 
-                <button id="logoutButton">Logout</button> <!-- 保持一个 Logout 按钮 -->
+                <button id="logoutButton">Logout</button> 
                 
                 <h3>Submit SFSC License Quantities</h3>
                 <label for="quarterSelect">Select Quarter:</label>
