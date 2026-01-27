@@ -63,107 +63,85 @@ document.addEventListener('DOMContentLoaded', () => {
         element.className = 'message';
     }
 
-   function renderTable(containerElement, data, headersToShowMapping, options = {}) {
-    if (!data || data.length === 0) {
-        containerElement.innerHTML = '<p>No data available at the moment.</p>';
-        return;
-    }
+    // 将数据渲染成 HTML 表格 (包含删除按钮或审批按钮)
+    function renderTable(containerElement, data, headersToShowMapping, options = {}) {
+        if (!data || data.length === 0) {
+            containerElement.innerHTML = '<p>No data available at the moment.</p>';
+            return;
+        }
 
-    let tableHTML = '<table><thead><tr>';
-    
-    // 渲染表头，添加 Tooltip 显示完整列名
-    headersToShowMapping.forEach(header => {
-        tableHTML += `<th data-tooltip="${header.label}">${header.label}</th>`;
-    });
-    if (options.includeMaisonDeleteButton) {
-        tableHTML += '<th data-tooltip="Action">Action</th>'; // Maison 的删除操作列
-    }
-    if (options.includeAdminApprovalButtons) {
-        tableHTML += '<th data-tooltip="Approval Action">Approval Action</th>'; // Admin 的审批操作列
-    }
-    tableHTML += '</tr></thead><tbody>';
-
-    // 渲染数据行
-    data.forEach(row => {
-        tableHTML += '<tr>';
+        let tableHTML = '<table><thead><tr>';
+        
         headersToShowMapping.forEach(header => {
-            let cellValue = row[header.key];
-            let displayValue = cellValue; // 显示在单元格中的值
-            let tooltipValue = cellValue; // Tooltip 中显示的完整值
-            
-            // 处理时间格式
-            if (header.key === 'Timestamp' && cellValue) {
-                try {
-                    const date = new Date(cellValue);
-                    if (!isNaN(date)) {
-                        displayValue = date.toLocaleString('en-US', { 
-                            year: 'numeric', 
-                            month: '2-digit', 
-                            day: '2-digit', 
-                            hour: '2-digit', 
-                            minute: '2-digit' 
-                        });
-                        tooltipValue = displayValue; // Tooltip 也显示格式化后的时间
-                    }
-                } catch (e) {
-                    // Keep original value
-                }
-            } 
-            // 处理审批状态徽章
-            else if (header.key === 'ApprovalStatus' && cellValue) {
-                let statusClass = '';
-                switch (cellValue) {
-                    case 'Pending': statusClass = 'status-pending'; break;
-                    case 'Approved': statusClass = 'status-approved'; break;
-                    case 'Rejected': statusClass = 'status-rejected'; break;
-                    default: statusClass = 'status-pending'; break;
-                }
-                displayValue = `<span class="status-badge ${statusClass}">${cellValue}</span>`;
-                tooltipValue = cellValue; // Tooltip 只显示文本（如 "Approved"）
-            }
-            
-            // 添加 data-tooltip 属性，只显示单元格的值
-            const tooltip = tooltipValue !== undefined && tooltipValue !== null && tooltipValue !== '' 
-                ? `data-tooltip="${tooltipValue}"` 
-                : '';
-            
-            tableHTML += `<td ${tooltip}>${displayValue !== undefined && displayValue !== null ? displayValue : ''}</td>`;
+            tableHTML += `<th>${header.label}</th>`;
         });
-        
-        // Maison 删除按钮列
         if (options.includeMaisonDeleteButton) {
-            tableHTML += `<td data-tooltip="Delete this record"><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
+            tableHTML += '<th>Action</th>'; // Maison 的删除操作列
         }
-        
-        // Admin 审批按钮列
         if (options.includeAdminApprovalButtons) {
-            tableHTML += `<td data-tooltip="Approve or Reject this record">
-                            <button class="approve-button-table" data-record-id="${row.RecordId}">Approve</button>
-                            <button class="reject-button-table" data-record-id="${row.RecordId}">Reject</button>
-                          </td>`;
+            tableHTML += '<th>Approval Action</th>'; // Admin 的审批操作列
         }
-        tableHTML += '</tr>';
-    });
+        tableHTML += '</tr></thead><tbody>';
 
-    tableHTML += '</tbody></table>';
-    containerElement.innerHTML = tableHTML;
+        data.forEach(row => {
+            tableHTML += '<tr>';
+            headersToShowMapping.forEach(header => {
+                let cellValue = row[header.key]; 
+                if (header.key === 'Timestamp' && cellValue) {
+                    try {
+                        const date = new Date(cellValue);
+                        if (!isNaN(date)) {
+                            cellValue = date.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                        }
+                    } catch (e) {
+                        // Keep original value
+                    }
+                } else if (header.key === 'ApprovalStatus' && cellValue) {
+                    // 为 ApprovalStatus 添加状态徽章
+                    let statusClass = '';
+                    switch (cellValue) {
+                        case 'Pending': statusClass = 'status-pending'; break;
+                        case 'Approved': statusClass = 'status-approved'; break;
+                        case 'Rejected': statusClass = 'status-rejected'; break;
+                        default: statusClass = 'status-pending'; break;
+                    }
+                    cellValue = `<span class="status-badge ${statusClass}">${cellValue}</span>`;
+                }
+                tableHTML += `<td>${cellValue !== undefined ? cellValue : ''}</td>`;
+            });
+            if (options.includeMaisonDeleteButton) {
+                // 每个删除按钮绑定 recordId
+                tableHTML += `<td><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
+            }
+            if (options.includeAdminApprovalButtons) {
+                // Admin 的审  按钮
+                tableHTML += `<td>
+                                <button class="approve-button-table" data-record-id="${row.RecordId}">Approve</button>
+                                <button class="reject-button-table" data-record-id="${row.RecordId}">Reject</button>
+                              </td>`;
+            }
+            tableHTML += '</tr>';
+        });
 
-    // 为删除按钮添加事件监听器
-    if (options.includeMaisonDeleteButton) {
-        containerElement.querySelectorAll('.delete-button-table').forEach(button => {
-            button.addEventListener('click', handleDeleteRecord);
-        });
+        tableHTML += '</tbody></table>';
+        containerElement.innerHTML = tableHTML;
+
+        // 为删除按钮添加事件监听器
+        if (options.includeMaisonDeleteButton) {
+            containerElement.querySelectorAll('.delete-button-table').forEach(button => {
+                button.addEventListener('click', handleDeleteRecord);
+            });
+        }
+        // 为审批按钮添加事件监听器
+        if (options.includeAdminApprovalButtons) {
+            containerElement.querySelectorAll('.approve-button-table').forEach(button => {
+                button.addEventListener('click', (event) => handleApprovalAction(event, 'Approved'));
+            });
+            containerElement.querySelectorAll('.reject-button-table').forEach(button => {
+                button.addEventListener('click', (event) => handleApprovalAction(event, 'Rejected'));
+            });
+        }
     }
-    // 为审批按钮添加事件监听器
-    if (options.includeAdminApprovalButtons) {
-        containerElement.querySelectorAll('.approve-button-table').forEach(button => {
-            button.addEventListener('click', (event) => handleApprovalAction(event, 'Approved'));
-        });
-        containerElement.querySelectorAll('.reject-button-table').forEach(button => {
-            button.addEventListener('click', (event) => handleApprovalAction(event, 'Rejected'));
-        });
-    }
-}
 
     // --- 删除记录的事件处理函数 ---
     async function handleDeleteRecord(event) {
