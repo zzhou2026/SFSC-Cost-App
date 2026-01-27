@@ -361,32 +361,43 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     width: 180px; 
     min-width: 180px;
 }
+
 /* --- NEW: Email Management Section Styles --- */
 .email-management-section {
     background-color: #f9f9f9; /* Light background for the section */
     border: 1px solid #e0e0e0;
     border-radius: 8px;
-    padding: 15px; /* Reduced padding for compactness */
+    padding: 10px 15px; /* Reduced vertical padding (top/bottom) to 10px */
     margin-top: 20px; /* Space from welcome message */
     margin-bottom: 20px; /* Space to logout button */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
     text-align: center; /* Center content within the section */
+    display: flex; /* Make it a flex container */
+    flex-direction: column; /* Arrange children vertically */
+    align-items: center; /* Center children horizontally */
 }
 
 .email-management-section h3 {
     color: #00796b;
     font-size: 1.2em; /* Smaller heading */
     margin-top: 0;
-    margin-bottom: 15px;
+    margin-bottom: 10px; /* Reduced margin-bottom */
     border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 8px;
+    padding-bottom: 5px; /* Reduced padding-bottom */
+    width: 100%; /* Ensure heading spans full width for border */
 }
 
 #emailDisplay {
     font-size: 1em;
     color: #333;
-    margin-bottom: 10px;
+    /* margin-bottom: 10px; -- REMOVED for tighter spacing */
     font-weight: bold;
+    display: flex; /* Make it a flex container */
+    align-items: center; /* Vertically align text */
+    justify-content: center; /* Center horizontally */
+    gap: 5px; /* Small gap between "Your registered email:" and the actual email */
+    flex-wrap: wrap; /* Allow wrapping */
+    min-height: 30px; /* Ensure a minimum height for consistent vertical alignment */
 }
 
 #registeredEmailValue {
@@ -394,107 +405,41 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 }
 
 .email-form {
-    display: flex;
-    flex-direction: column;
-    align-items: center; /* Center form elements */
-    margin-top: 10px;
+    display: flex; /* Make the form itself a flex container */
+    flex-direction: row; /* Arrange its children (input-group and buttons) horizontally */
+    align-items: center; /* Center them vertically */
+    justify-content: center; /* Center contents horizontally */
+    width: 100%; /* Allow form to take full width of parent */
+    margin-top: 5px; /* Reduced margin-top */
+    flex-wrap: wrap; /* Allow elements to wrap on smaller screens */
+    gap: 10px; /* Space between input group and buttons */
 }
 
-.email-management-section .form-control {
-    width: calc(100% - 20px); /* Adjust width */
-    max-width: 300px; /* Limit input width for compactness */
-    margin: 8px auto; /* Center input */
-    background-color: #ffffff;
-}
-
-.email-action-button {
-    background-color: #00796b;
-    color: white;
-    padding: 8px 15px; /* Smaller padding for compactness */
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 0.9em; /* Smaller font size */
-    margin: 5px; /* Space between buttons */
-    transition: background-color 0.3s ease;
-}
-
-.email-action-button:hover {
-    background-color: #004d40;
-}
-
-#cancelEditEmailButton {
-    background-color: #6c757d; /* Gray for cancel button */
-}
-
-#cancelEditEmailButton:hover {
-    background-color: #5a6268;
-}
-
-#emailMessage {
-    margin-top: 10px;
-    font-size: 0.9em;
-}
-/* --- NEW: Email Management Section Styles --- */
-.email-management-section {
-    background-color: #f9f9f9; /* Light background for the section */
-    border: 1px solid #e0e0e0;
-    border-radius: 8px;
-    padding: 15px; /* Reduced padding for compactness */
-    margin-top: 20px; /* Space from welcome message */
-    margin-bottom: 20px; /* Space to logout button */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
-    text-align: center; /* Center content within the section */
-}
-
-.email-management-section h3 {
-    color: #00796b;
-    font-size: 1.2em; /* Smaller heading */
-    margin-top: 0;
-    margin-bottom: 15px;
-    border-bottom: 1px solid #e0e0e0;
-    padding-bottom: 8px;
-}
-
-#emailDisplay {
-    font-size: 1em;
-    color: #333;
-    margin-bottom: 10px;
-    font-weight: bold;
-}
-
-#registeredEmailValue {
-    color: #00796b; /* Highlight registered email */
-}
-
-.email-form {
-    /* display: flex; */ /* 移除这个，因为它会影响整个表单，我们只需要控制内部元素 */
-    /* flex-direction: column; */
-    /* align-items: center; */
-    margin-top: 10px;
-}
-
-/* NEW: Style for the input group and buttons container to enable inline display */
+/* Adjusted: email-input-group to hold label and input */
 .email-input-group {
     display: flex; /* Use flexbox */
     align-items: center; /* Vertically align items in the middle */
-    justify-content: center; /* Center the group horizontally */
-    margin-bottom: 10px; /* Space between input group and buttons */
-    flex-wrap: wrap; /* Allow items to wrap to next line on smaller screens */
-    gap: 10px; /* Space between label, input */
+    gap: 5px; /* Space between label and input */
+    flex-grow: 1; /* Allow it to grow and take available space */
+    flex-basis: auto; /* Allow it to shrink if needed, but prefer content size */
+    justify-content: center; /* Center label and input inside its own group */
+    min-width: 250px; /* Minimum width for the input group to avoid excessive shrinking */
 }
 
 .email-input-group label {
     margin-top: 0; /* Override default label margin */
     margin-bottom: 0;
     white-space: nowrap; /* Prevent label from wrapping */
+    flex-shrink: 0; /* Prevent label from shrinking */
 }
 
 .email-management-section .form-control {
-    width: auto; /* Allow input to take its natural width */
-    max-width: 250px; /* Limit input width */
+    width: 100%; /* Input takes full width of its parent (email-input-group) */
+    max-width: 200px; /* Limit input width */
     flex-grow: 1; /* Allow input to grow if space available */
     margin: 0; /* Remove default margin for inline elements */
+    padding: 8px 10px; /* Reduced padding for input */
+    min-width: 100px; /* Ensure input is not too small */
 }
 
 .email-buttons {
@@ -502,7 +447,8 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     justify-content: center; /* Center buttons horizontally */
     flex-wrap: wrap; /* Allow buttons to wrap */
     gap: 10px; /* Space between buttons */
-    margin-top: 5px; /* Space above buttons */
+    /* margin-top: 5px; -- REMOVED, now part of parent .email-form's gap */
+    flex-shrink: 0; /* Prevent buttons from shrinking too much */
 }
 
 
@@ -531,18 +477,17 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 }
 
 #emailMessage {
-    margin-top: 10px;
+    margin-top: 10px; /* Reduced margin-top */
     font-size: 0.9em;
+    min-height: 20px; /* Give message area a minimum height */
 }
 
 /* Ensure editEmailButton (when visible) also uses flex styles */
 #editEmailButton {
     margin-top: 10px; /* Add some space above it */
-}
-
-/* If you want the edit email button to also be small and centered when displayed alone */
-.email-management-section button#editEmailButton {
     display: block; /* Make it a block element to take full width of container */
-    margin: 10px auto 0 auto; /* Center it horizontally with auto margins */
+    margin-left: auto; /* Center it horizontally with auto margins */
+    margin-right: auto;
     max-width: 150px; /* Limit its width */
+    padding: 8px 15px; /* Consistent button padding */
 }
