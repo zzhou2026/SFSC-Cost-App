@@ -361,3 +361,77 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     width: 180px; 
     min-width: 180px;
 }
+/* --- NEW: Email Management Section Styles --- */
+.email-management-section {
+    background-color: #f9f9f9; /* Light background for the section */
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 15px; /* Reduced padding for compactness */
+    margin-top: 20px; /* Space from welcome message */
+    margin-bottom: 20px; /* Space to logout button */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    text-align: center; /* Center content within the section */
+}
+
+.email-management-section h3 {
+    color: #00796b;
+    font-size: 1.2em; /* Smaller heading */
+    margin-top: 0;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #e0e0e0;
+    padding-bottom: 8px;
+}
+
+#emailDisplay {
+    font-size: 1em;
+    color: #333;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+#registeredEmailValue {
+    color: #00796b; /* Highlight registered email */
+}
+
+.email-form {
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Center form elements */
+    margin-top: 10px;
+}
+
+.email-management-section .form-control {
+    width: calc(100% - 20px); /* Adjust width */
+    max-width: 300px; /* Limit input width for compactness */
+    margin: 8px auto; /* Center input */
+    background-color: #ffffff;
+}
+
+.email-action-button {
+    background-color: #00796b;
+    color: white;
+    padding: 8px 15px; /* Smaller padding for compactness */
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em; /* Smaller font size */
+    margin: 5px; /* Space between buttons */
+    transition: background-color 0.3s ease;
+}
+
+.email-action-button:hover {
+    background-color: #004d40;
+}
+
+#cancelEditEmailButton {
+    background-color: #6c757d; /* Gray for cancel button */
+}
+
+#cancelEditEmailButton:hover {
+    background-color: #5a6268;
+}
+
+#emailMessage {
+    margin-top: 10px;
+    font-size: 0.9em;
+}

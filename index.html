@@ -24,6 +24,30 @@
         <!-- Main Page (displayed after login) -->
         <div id="mainPage" class="page hidden">
             <h2 id="welcomeMessage"></h2>
+            <!-- Maison User View -->
+            <div id="maisonView" class="user-view hidden">
+                <h2 id="welcomeMessage"></h2>
+                
+                <!-- NEW: Email Management Section -->
+                <div id="emailManagementSection" class="email-management-section">
+                    <h3>Manage Your Email</h3>
+                    <p id="emailDisplay" class="hidden">Your registered email: <span id="registeredEmailValue"></span></p>
+                    <div id="emailForm" class="email-form hidden">
+                        <label for="userEmailInput">Email Address:</label>
+                        <input type="email" id="userEmailInput" class="form-control" placeholder="Enter your email address">
+                        <button id="submitEmailButton" class="email-action-button">Register Email</button>
+                        <button id="cancelEditEmailButton" class="email-action-button hidden">Cancel</button>
+                    </div>
+                    <button id="editEmailButton" class="email-action-button hidden">Edit Email</button>
+                    <p id="emailMessage" class="message"></p>
+                </div>
+                <!-- END NEW: Email Management Section -->
+
+                <button id="logoutButton">Logout</button>
+                
+                <h3>Submit SFSC License Quantities</h3>
+                <!-- ... existing code ... -->
+
             <button id="logoutButton">Logout</button>
             
             <!-- Maison User View -->

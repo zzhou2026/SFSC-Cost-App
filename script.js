@@ -26,6 +26,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const adminDataTableContainer = document.getElementById('adminDataTableContainer');
     const exportDataButton = document.getElementById('exportDataButton');
 
+    // NEW: Email Management Elements
+    const emailManagementSection = document.getElementById('emailManagementSection');
+    const emailDisplay = document.getElementById('emailDisplay');
+    const registeredEmailValueSpan = document.getElementById('registeredEmailValue');
+    const emailForm = document.getElementById('emailForm');
+    const userEmailInput = document.getElementById('userEmailInput');
+    const submitEmailButton = document.getElementById('submitEmailButton');
+    const editEmailButton = document.getElementById('editEmailButton');
+    const cancelEditEmailButton = document.getElementById('cancelEditEmailButton');
+    const emailMessage = document.getElementById('emailMessage');
+
+
     // --- Cost Calculator Tool Elements ---
     const calcClientelingLicenseCountInput = document.getElementById('calcClientelingLicenseCount');
     const calcFullLicenseCountInput = document.getElementById('calcFullLicenseCount');
@@ -61,6 +73,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function clearMessage(element) {
         element.textContent = '';
         element.className = 'message';
+    }
+
+    // NEW: Email Validation Helper
+    function isValidEmail(email) {
+        // Simple regex for email validation
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        return emailRegex.test(email);
     }
 
     // 将数据渲染成 HTML 表格 (包含删除按钮或审批按钮)
@@ -242,7 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             // 显示加载提示，但只针对需要用户感知的操作
             // getConfig 和 checkExistingRecord 是后台请求，不显示 loading
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord') { 
+            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail') { 
                  loginMessage.textContent = 'Requesting...'; 
                  loginMessage.classList.add('loading'); 
             }
@@ -265,7 +284,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             const result = JSON.parse(text);
             
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action === 'checkExistingRecord') {
+            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail') {
                 loginMessage.classList.remove('loading'); 
             }
             return result;
@@ -324,13 +343,15 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.value = '';
         clearMessage(loginMessage);
         clearMessage(maisonSubmitMessage);
+        // NEW: Clear email messages on logout
+        clearMessage(emailMessage); 
         showPage(loginPage);
     });
 
     // Submit SFSC Data button click event (Maison View)
     submitSfscDataButton.addEventListener('click', async () => {
         if (!currentUser || currentUser.role !== 'maison') {
-            showMessage(maisonSubmitMessage, 'Please log in as a Maison user!');
+            showMessage(maisonSubmitMessage, 'Please log in as a Maison user!', false); // Changed to false for consistent styling
             return;
         }
 
@@ -378,7 +399,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadMaisonHistoryData(); // 刷新数据
             }
         } else {
-            showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message, false);
+            showMessage(maaisonSubmitMessage, 'Data submission failed: ' + result.message, false);
         }
     });
     
@@ -390,7 +411,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const months = parseInt(calcMonthsSelect.value, 10) || 12;
 
         if (clientelingCount < 0 || fullCount < 0 || months < 1 || months > 12 || isNaN(clientelingCount) || isNaN(fullCount) || isNaN(months)) {
-            showMessage(calculatorErrorMessage, 'Please enter valid positive license counts and months (1-12)!');
+            showMessage(calculatorErrorMessage, 'Please enter valid positive license counts and months (1-12)!', false); // Added false
             calculatedCostDisplay.textContent = 'Estimated Cost: NaN €'; // 显示错误时将成本显示为 NaN
             return;
         }
@@ -479,6 +500,7 @@ document.addEventListener('DOMContentLoaded', () => {
             calcFullLicenseCountInput.value = fullLicenseCountInput.value;
             calculatedCostDisplay.textContent = 'Estimated Cost: 0.00 €'; // 重置显示
             loadMaisonHistoryData(); 
+            initEmailManagement(); // NEW: Initialize email management section
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
             loadAdminOverviewData();
@@ -531,6 +553,88 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
+    // --- NEW: Email Management Logic ---
+
+    // Function to update the email management UI based on current user's email
+    async function initEmailManagement() {
+        if (!currentUser || currentUser.role !== 'maison') {
+            emailManagementSection.classList.add('hidden'); // Hide if not maison user
+            return;
+        }
+        emailManagementSection.classList.remove('hidden'); // Show for maison user
+        clearMessage(emailMessage);
+
+        const result = await callAppsScript('getUserEmail', { username: currentUser.username });
+        if (result.success && result.email) {
+            registeredEmailValueSpan.textContent = result.email;
+            emailDisplay.classList.remove('hidden'); // Show registered email
+            emailForm.classList.add('hidden'); // Hide form
+            editEmailButton.classList.remove('hidden'); // Show edit button
+            submitEmailButton.textContent = 'Register Email'; // Reset button text
+            cancelEditEmailButton.classList.add('hidden'); // Hide cancel button
+            userEmailInput.value = result.email; // Pre-fill input
+        } else {
+            // No email registered or error fetching
+            registeredEmailValueSpan.textContent = '';
+            emailDisplay.classList.add('hidden'); // Hide registered email display
+            emailForm.classList.remove('hidden'); // Show form
+            editEmailButton.classList.add('hidden'); // Hide edit button
+            submitEmailButton.textContent = 'Register Email'; // Ensure text is "Register"
+            cancelEditEmailButton.classList.add('hidden'); // Hide cancel button
+            userEmailInput.value = ''; // Clear input
+        }
+    }
+
+    // Event listener for Submit/Register Email Button
+    submitEmailButton.addEventListener('click', async () => {
+        if (!currentUser || currentUser.role !== 'maison') {
+            showMessage(emailMessage, 'Please log in as a Maison user to manage email.', false);
+            return;
+        }
+
+        const email = userEmailInput.value.trim();
+        if (!email) {
+            showMessage(emailMessage, 'Email address cannot be empty.', false);
+            return;
+        }
+        if (!isValidEmail(email)) {
+            showMessage(emailMessage, 'Please enter a valid email address.', false);
+            return;
+        }
+
+        clearMessage(emailMessage);
+        showMessage(emailMessage, 'Saving email...', true); // Temporary loading message
+
+        const result = await callAppsScript('updateUserEmail', { username: currentUser.username, email: email });
+
+        if (result.success) {
+            showMessage(emailMessage, 'Email saved successfully!', true);
+            // Refresh UI to show the registered email
+            initEmailManagement(); 
+        } else {
+            showMessage(emailMessage, 'Failed to save email: ' + result.message, false);
+        }
+    });
+
+    // Event listener for Edit Email Button
+    editEmailButton.addEventListener('click', () => {
+        emailDisplay.classList.add('hidden'); // Hide display
+        editEmailButton.classList.add('hidden'); // Hide edit button
+
+        emailForm.classList.remove('hidden'); // Show form
+        userEmailInput.value = registeredEmailValueSpan.textContent; // Pre-fill with current email
+        submitEmailButton.textContent = 'Save Changes'; // Change button text
+        cancelEditEmailButton.classList.remove('hidden'); // Show cancel button
+        clearMessage(emailMessage);
+    });
+
+    // Event listener for Cancel Edit Email Button
+    cancelEditEmailButton.addEventListener('click', () => {
+        // Revert to initial state (display registered email, hide form)
+        initEmailManagement();
+        clearMessage(emailMessage);
+    });
 
     // --- On first load, show the login page ---
     showPage(loginPage);
