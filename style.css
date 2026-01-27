@@ -361,3 +361,78 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     width: 180px; 
     min-width: 180px;
 }
+/* ========================================
+   Tooltip 样式 - 鼠标悬停显示完整内容 (0.1s 淡入动画, 白底黑字)
+   ======================================== */
+
+/* 为所有表格单元格添加 Tooltip 功能 */
+table th, table td {
+    position: relative; /* 确保 Tooltip 相对于单元格定位 */
+    cursor: help;       /* 鼠标变成问号，提示用户可以悬停查看 */
+}
+
+/* Tooltip 容器 -   示在单元格上方 */
+table th[data-tooltip]:hover::before,
+table td[data-tooltip]:hover::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%; /* 显示在单元格上方 */
+    left: 50%;
+    transform: translateX(-50%) translateY(-5px); /* 稍微上移并居中 */
+    background-color: rgba(255, 255, 255, 0.95); /* 白色背景 */
+    color: #333; /* 深灰色文字 */
+    padding: 8px 12px;
+    border-radius: 6px;
+    white-space: nowrap; /* 不换行，显示完整内容 */
+    font-size: 0.9em;
+    line-height: 1.4;
+    z-index: 1000; /* 确保在其他元  之上 */
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); /* 轻微阴影，适应浅色背景 */
+    pointer-events: none; /* 防止 Tooltip 阻碍鼠标事件 */
+    
+    /* 淡入动画 */
+    opacity: 0;
+    transition: opacity 0.1s ease-out, transform 0.1s ease-out; /* 0.1秒动画 */
+    transform-origin: bottom center; /* 动画起点 */
+}
+
+/* Tooltip 小三角箭头 - 也显示在单元格上方 */
+table th[data-tooltip]:hover::after,
+table td[data-tooltip]:hover::after {
+    content: '';
+    position: absolute;
+    bottom: 100%; /* 定位在单元格上方 */
+    left: 50%;
+    transform: translateX(-50%) translateY(5px); /* 定位在 Tooltip 底部 */
+    border: 6px solid transparent;
+    border-top-color: rgba(255, 255, 255, 0.95); /* 箭头颜色与 Tooltip 背景一致 */
+    z-index: 1000;
+    pointer-events: none;
+    
+    /* 淡入动画 */
+    opacity: 0;
+    transition: opacity 0.1s ease-out, transform 0.1s ease-out; /* 0.1秒动画 */
+    transform-origin: top center; /* 动画起点 */
+}
+
+/* 激活 Tooltip 动画状态 */
+table th[data-tooltip]:hover::before,
+table td[data-tooltip]:hover::before,
+table th[data-tooltip]:hover::after,
+table td[data-tooltip]:hover::after {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0); /* 动画结束位置 */
+}
+
+/* 隐藏 RecordId 列 */
+table th:first-child,
+table td:first-child {
+    display: none;
+}
+
+/* 可选：如果内容太长，限制 Tooltip 最大宽度并换行 */
+/* table th[data-tooltip]:hover::before,
+table td[data-tooltip]:hover::before {
+    max-width: 300px;
+    white-space: normal;
+} */

@@ -72,32 +72,50 @@ document.addEventListener('DOMContentLoaded', () => {
 
         let tableHTML = '<table><thead><tr>';
         
+        // 渲染表头，添加 Tooltip 显示完整列名
         headersToShowMapping.forEach(header => {
-            tableHTML += `<th>${header.label}</th>`;
+            // 确保 header.label 存在且非空才添加 data-tooltip
+            const headerTooltip = header.label ? `data-tooltip="${header.label}"` : '';
+            tableHTML += `<th ${headerTooltip}>${header.label}</th>`;
         });
+        // Maison 的删除操作列
         if (options.includeMaisonDeleteButton) {
-            tableHTML += '<th>Action</th>'; // Maison 的删除操作列
+            tableHTML += '<th data-tooltip="Action">Action</th>'; 
         }
+        // Admin 的审批操作列
         if (options.includeAdminApprovalButtons) {
-            tableHTML += '<th>Approval Action</th>'; // Admin 的审批操作列
+            tableHTML += '<th data-tooltip="Approval Action">Approval Action</th>'; 
         }
         tableHTML += '</tr></thead><tbody>';
 
+        // 渲染数据行
         data.forEach(row => {
             tableHTML += '<tr>';
             headersToShowMapping.forEach(header => {
-                let cellValue = row[header.key]; 
+                let cellValue = row[header.key];
+                let displayValue = cellValue; // 显示在单元格中的值
+                let tooltipValue = cellValue; // Tooltip 中显示的完整值
+                
+                // 处理时间格式
                 if (header.key === 'Timestamp' && cellValue) {
                     try {
                         const date = new Date(cellValue);
                         if (!isNaN(date)) {
-                            cellValue = date.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                            displayValue = date.toLocaleString('en-US', { 
+                                year: 'numeric', 
+                                month: '2-digit', 
+                                day: '2-digit', 
+                                hour: '2-digit', 
+                                minute: '2-digit' 
+                            });
+                            tooltipValue = displayValue; // Tooltip 也显示格式化后的时间
                         }
                     } catch (e) {
                         // Keep original value
                     }
-                } else if (header.key === 'ApprovalStatus' && cellValue) {
-                    // 为 ApprovalStatus 添加状态徽章
+                } 
+                // 处理审批状态徽章
+                else if (header.key === 'ApprovalStatus' && cellValue) {
                     let statusClass = '';
                     switch (cellValue) {
                         case 'Pending': statusClass = 'status-pending'; break;
@@ -105,17 +123,26 @@ document.addEventListener('DOMContentLoaded', () => {
                         case 'Rejected': statusClass = 'status-rejected'; break;
                         default: statusClass = 'status-pending'; break;
                     }
-                    cellValue = `<span class="status-badge ${statusClass}">${cellValue}</span>`;
+                    displayValue = `<span class="status-badge ${statusClass}">${cellValue}</span>`;
+                    tooltipValue = cellValue; // Tooltip 只显示文本（如 "Approved"）
                 }
-                tableHTML += `<td>${cellValue !== undefined ? cellValue : ''}</td>`;
+                
+                // 添加 data-tooltip 属性，只显示单元格的值。确保值非空才添加 tooltip
+                const tooltip = (tooltipValue !== undefined && tooltipValue !== null && tooltipValue !== '') 
+                    ? `data-tooltip="${tooltipValue}"` 
+                    : '';
+                
+                tableHTML += `<td ${tooltip}>${displayValue !== undefined && displayValue !== null ? displayValue : ''}</td>`;
             });
+            
+            // Maison 删除按钮列
             if (options.includeMaisonDeleteButton) {
-                // 每个删除按钮绑定 recordId
-                tableHTML += `<td><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
+                tableHTML += `<td data-tooltip="Delete this record"><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
             }
+            
+            // Admin 审批按钮列
             if (options.includeAdminApprovalButtons) {
-                // Admin 的审  按钮
-                tableHTML += `<td>
+                tableHTML += `<td data-tooltip="Approve or Reject this record">
                                 <button class="approve-button-table" data-record-id="${row.RecordId}">Approve</button>
                                 <button class="reject-button-table" data-record-id="${row.RecordId}">Reject</button>
                               </td>`;
@@ -186,7 +213,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadMaisonHistoryData(); 
                 }
             } else {
-                showMessage(loginMessage, `Failed to update record status: ${result.message}`, false);
+                showMessage(loginMessage, `Failed to update record status: ${result.message}, Please refresh the page.`, false); // Added refresh suggestion
             }
         }
     }
@@ -265,7 +292,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             const result = JSON.parse(text);
             
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action === 'checkExistingRecord') {
+            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord') {
                 loginMessage.classList.remove('loading'); 
             }
             return result;
@@ -378,7 +405,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadMaisonHistoryData(); // 刷新数据
             }
         } else {
-            showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message, false);
+            showMessage(maaisonSubmitMessage, 'Data submission failed: ' + result.message, false);
         }
     });
     
@@ -492,13 +519,14 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success && result.data) {
                 // Define English table headers and corresponding internal keys
                 const headersEn = [
+                    { key: 'RecordId', label: 'Record ID' }, // <-- 新增这一行，用于隐藏
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
                     { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, 
                     { key: 'FullLicenseCount', label: 'Full Licenses' },             
-                    { key: 'CalculatedCost', label: 'Calculated Cost' },
+                    { key: 'CalculatedCost', label: 'Calculated Cost (€)' }, // 增加货币符号
                     { key: 'Timestamp', label: 'Submission Time' },
-                    { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：显示审批状态
+                    { key: 'ApprovalStatus', label: 'Approval Status' }
                 ];
                 // Maison 用户可以删除自己的记录
                 renderTable(maisonHistoryTableContainer, result.data, headersEn, { includeMaisonDeleteButton: true }); 
@@ -515,14 +543,15 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success && result.data) {
                 // Define English table headers and corresponding internal keys
                 const headersEn = [
+                    { key: 'RecordId', label: 'Record ID' }, // <-- 新增这一行，用于隐藏
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
                     { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, 
                     { key: 'FullLicenseCount', label: 'Full Licenses' },             
-                    { key: 'CalculatedCost', label: 'Calculated Cost' },
+                    { key: 'CalculatedCost', label: 'Calculated Cost (€)' }, // 增加货币符号
                     { key: 'SubmittedBy', label: 'Submitted By' },
                     { key: 'Timestamp', label: 'Submission Time' },
-                    { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：显示审批状态
+                    { key: 'ApprovalStatus', label: 'Approval Status' }
                 ];
                 // Admin 审批界面，包含审批按钮
                 renderTable(adminDataTableContainer, result.data, headersEn, { includeAdminApprovalButtons: true }); 
@@ -535,3 +564,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- On first load, show the login page ---
     showPage(loginPage);
 });
+
