@@ -39,6 +39,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailBroadcastMessage = document.getElementById('emailBroadcastMessage');
     const recipientCountDisplay = document.getElementById('recipientCountDisplay');
     
+    // NEW: All Submissions Overview Elements
+    const maisonAllSubmissionsTableContainer = document.getElementById('maisonAllSubmissionsTableContainer');
+    const adminAllSubmissionsTableContainer = document.getElementById('adminAllSubmissionsTableContainer');
+    // END NEW
     let allUsers = []; // Store all users data
     let filteredUsers = []; // Store filtered users for display
     let currentRecipientEmails = []; // Store current recipient emails
@@ -178,101 +182,66 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
-
-    // --- 删除记录的事件处理函数 ---
-    async function handleDeleteRecord(event) {
-        const recordIdToDelete = event.target.dataset.recordId;
-        if (!recordIdToDelete) {
-            alert('Error: Record ID not found for deletion.');
+    // NEW: 将数据渲染成只读的 HTML 表格 (不包含任何动作按钮，ApprovalStatus 显示为 Status)
+    function renderOverviewTable(containerElement, data, options = {}) {
+        if (!data || data.length === 0) {
+            containerElement.innerHTML = '<p class="no-users-text">No data available at the moment.</p>'; // Updated text and class
             return;
         }
 
-        if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
-            const result = await callAppsScript('deleteSfscData', { recordId: recordIdToDelete });
-            if (result.success) {
-                showMessage(maisonSubmitMessage, 'Record deleted successfully!', true);
-                if (currentUser.role === 'maison') {
-                    loadMaisonHistoryData(); // 刷新数据
-                } else if (currentUser.role === 'admin') {
-                    // Admin 视图不显示删除按钮，但如果 Admin 也删除了，也要刷新
-                    loadAdminOverviewData(); 
+        // 定义要显示的英文表头和对应的内部键，与 SFSC_Data 表保持一致
+        // 注意：这里没有RecordId，因为它是内部标识，且ApprovalStatus在UI上显示为Status
+        const headersToShow = [
+            { key: 'MaisonName', label: 'Maison Name' },
+            { key: 'Quarter', label: 'Quarter' },
+            { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
+            { key: 'FullLicenseCount', label: 'Full Licenses' },
+            { key: 'CalculatedCost', label: 'Calculated Cost (€)' }, // Added (€) for clarity
+            { key: 'SubmittedBy', label: 'Submitted By' },
+            { key: 'Timestamp', label: 'Submission Time' },
+            { key: 'ApprovalStatus', label: 'Status' } // Changed label from 'Approval Status' to 'Status'
+        ];
+
+        let tableHTML = '<table><thead><tr>';
+        headersToShow.forEach(header => {
+            tableHTML += `<th>${header.label}</th>`;
+        });
+        tableHTML += '</tr></thead><tbody>';
+
+        data.forEach(row => {
+            tableHTML += '<tr>';
+            headersToShow.forEach(header => {
+                let cellValue = row[header.key];
+                if (header.key === 'Timestamp' && cellValue) {
+                    try {
+                        const date = new Date(cellValue);
+                        if (!isNaN(date)) {
+                            cellValue = date.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+                        }
+                    } catch (e) {
+                        // Keep original value
+                    }
+                } else if (header.key === 'ApprovalStatus' && cellValue) {
+                    // 为 ApprovalStatus 添加状态徽章
+                    let statusClass = '';
+                    switch (cellValue) {
+                        case 'Pending': statusClass = 'status-pending'; break;
+                        case 'Approved': statusClass = 'status-approved'; break;
+                        case 'Rejected': statusClass = 'status-rejected'; break;
+                        // NEW: Handle other potential status (e.g., Cancelled) if introduced later
+                        default: statusClass = 'status-pending'; break;
+                    }
+                    cellValue = `<span class="status-badge ${statusClass}">${cellValue}</span>`;
                 }
-            } else {
-                showMessage(maisonSubmitMessage, 'Failed to delete record: ' + result.message, false);
-            }
-        }
-    }
-
-    // --- Admin 审批操作的事件处理函数 ---
-    async function handleApprovalAction(event, newStatus) {
-        const recordIdToUpdate = event.target.dataset.recordId;
-        if (!recordIdToUpdate) {
-            alert('Error: Record ID not found for approval action.');
-            return;
-        }
-
-        if (confirm(`Are you sure you want to set this record's status to "${newStatus}"?`)) {
-            const result = await callAppsScript('updateApprovalStatus', { recordId: recordIdToUpdate, newStatus: newStatus });
-            if (result.success) {
-                showMessage(loginMessage, `Record ${recordIdToUpdate} status updated to ${newStatus}.`, true);
-                loadAdminOverviewData(); // 刷新 Admin 概览数据
-                // 也要刷新Maison的历史数据，以便Maison用户看到状态变化
-                // 仅当当前用户是 Maison 角色时才刷新，Admin 审批后 Maison 刷新自己的视图
-                if (currentUser.role === 'maison') {
-                    loadMaisonHistoryData(); 
-                }
-            } else {
-                showMessage(loginMessage, `Failed to update record status: ${result.message}`, false);
-            }
-        }
-    }
-
-
-    // --- 填充季度选择器 ---
-    async function populateQuarterSelect() {
-        const numberOfFutureQuarters = 4; // Current quarter + 4 future quarters = 5 total options
-        const result = await callAppsScript('getQuarterList', { numberOfFutureQuarters: numberOfFutureQuarters });
-        if (result.success && result.data) {
-            quarterSelect.innerHTML = ''; // Clear existing options
-            result.data.forEach(quarter => {
-                const option = document.createElement('option');
-                option.value = quarter;
-                option.textContent = quarter;
-                quarterSelect.appendChild(option);
+                tableHTML += `<td>${cellValue !== undefined ? cellValue : ''}</td>`;
             });
-        } else {
-            console.error('Failed to load quarter list:', result.message);
-            maisonSubmitMessage.textContent = 'Failed to load quarter options. Please refresh.';
-            maisonSubmitMessage.classList.add('error');
-        }
+            tableHTML += '</tr>';
+        });
+
+        tableHTML += '</tbody></table>';
+        containerElement.innerHTML = tableHTML;
     }
-
-    // --- 填充月份选择器 (用于计算工具) ---
-    function populateCalcMonthsSelect() {
-        calcMonthsSelect.innerHTML = '';
-        for (let i = 1; i <= 12; i++) {
-            const option = document.createElement('option');
-            option.value = i;
-            option.textContent = i;
-            calcMonthsSelect.appendChild(option);
-        }
-        calcMonthsSelect.value = 12; // 默认选择 12 个月
-    }
-
-    // --- 成本计算函数 (用于计算工具) ---
-    function calculateCostForTool(clientelingCount, fullCount, months) {
-        // 注意：这里使用 configPrices 中的值，这些值在登录时从后端获取
-        const cUnitPrice = parseFloat(configPrices.ClientelingUnitPrice) || 16; 
-        const fUnitPrice = parseFloat(configPrices.FullUnitPrice) || 52;   
-        const fixed = parseFloat(configPrices.FixedCost) || 0;             
-
-        return (
-            (clientelingCount * cUnitPrice * months) +
-            (fullCount * fUnitPrice * months) +
-            fixed
-        );
-    }
-
+    // END NEW: renderOverviewTable
     // --- Core function to call Apps Script backend ---
     async function callAppsScript(action, payload = {}) {
         try {
@@ -422,7 +391,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadMaisonHistoryData(); // 刷新数据
             }
         } else {
-            showMessage(maaisonSubmitMessage, 'Data submission failed: ' + result.message, false);
+            showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message, false);
         }
     });
     
@@ -502,8 +471,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(loginMessage, 'Export failed: No data or an error occurred.', false);
         }
     });
-
-
     // --- Page Display Logic ---
 
     function showMainPage() {
@@ -517,17 +484,23 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentUser.role === 'maison') {
             maisonView.classList.remove('hidden');
             populateQuarterSelect(); // Call function to populate quarter selector
-            populateCalcMonthsSelect(); // 填充成本计算工具的月份选择器
+            populateCalcMonthsSelect(); // 填充成本计算工具的  份选择器
             // 初始化成本计算工具的输入框，与提交框同步
             calcClientelingLicenseCountInput.value = clientelingLicenseCountInput.value;
             calcFullLicenseCountInput.value = fullLicenseCountInput.value;
             calculatedCostDisplay.textContent = 'Estimated Cost: 0.00 €'; // 重置显示
             loadMaisonHistoryData(); 
             initEmailManagement(); // NEW: Initialize email management section
+
+            // NEW: Load all submissions overview for Maison user
+            loadAllSubmissionsOverview(maisonAllSubmissionsTableContainer); // Call new function here
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
             loadAdminOverviewData();
             initEmailBroadcast(); // Initialize email broadcast functionality
+
+            // NEW: Load all submissions overview for Admin user
+            loadAllSubmissionsOverview(adminAllSubmissionsTableContainer); // Call new function here
         }
     }
 
@@ -543,6 +516,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' }, 
                     { key: 'FullLicenseCount', label: 'Full Licenses' },             
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
+                    { key: 'SubmittedBy', label: 'Submitted By' },
                     { key: 'Timestamp', label: 'Submission Time' },
                     { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：显示审批状态
                 ];
@@ -577,7 +551,18 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+    // NEW: Load and render all SFSC data for the overview table (no actions)
+    async function loadAllSubmissionsOverview(containerElement) {
+        containerElement.innerHTML = '<p class="loading-text">Loading all submissions...</p>';
+        const result = await callAppsScript('getAllSfscData'); // Reusing existing backend call
 
+        if (result.success && result.data) {
+            renderOverviewTable(containerElement, result.data);
+        } else {
+            containerElement.innerHTML = '<p class="error-text">Failed to load all submissions overview: ' + result.message + '</p>';
+        }
+    }
+    // END NEW: loadAllSubmissionsOverview
     // --- NEW: Email Management Logic ---
 
     // Function to update the email management UI based on current user's email
@@ -727,21 +712,13 @@ document.addEventListener('DOMContentLoaded', () => {
             `;
         });
         html += '</div>';
-        userListContainer.innerHTML = html;
+        userListContainer.innerHTML = html; 
 
-        // ... (renderUserList 函数中生成 HTML 的代码，直到 userListContainer.innerHTML = html; 这一行) ...
-
-    userListContainer.innerHTML = html; 
-
-    // --- BEGIN MODIFICATION (renderUserList 内部的事件绑定，确认即可) ---
-    // Add change listeners to all checkboxes (re-bind every time list is rendered)
-    // 这段代码是确保用户列表（包括筛选后）中的复选框可以被点击的！
-    userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', updateRecipientCount);
-    });
-    // --- END MODIFICATION ---
-}
-
+        // Add change listeners to all checkboxes (re-bind every time list is rendered)
+        userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateRecipientCount);
+        });
+    }
 
     // Handle select all
     function handleSelectAll() {
@@ -791,10 +768,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Update recipient count display
     function updateRecipientCount() {
-        updateRecipientEmails();
-        const count = currentRecipientEmails.length;
-        if (count > 0) {
-            recipientCountDisplay.textContent = `Selected: ${count} recipient(s)`;
+        // This function is called by checkbox change, so no need to call updateRecipientEmails() again directly here
+        const selectedCount = userListContainer.querySelectorAll('.user-checkbox:checked').length;
+        currentRecipientEmails = Array.from(userListContainer.querySelectorAll('.user-checkbox:checked'))
+            .map(cb => cb.dataset.email)
+            .filter(email => email && email.trim() !== '');
+
+        if (selectedCount > 0) {
+            recipientCountDisplay.textContent = `Selected: ${selectedCount} recipient(s)`;
             recipientCountDisplay.classList.remove('hidden');
             recipientCountDisplay.style.color = '#00796b';
         } else {
@@ -806,7 +787,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle open Outlook button click
     function handleOpenOutlook() {
-        updateRecipientEmails();
+        updateRecipientEmails(); // Ensure currentRecipientEmails is up-to-date
         
         if (currentRecipientEmails.length === 0) {
             showMessage(emailBroadcastMessage, 'No recipients selected. Please select at least one user with email address.', false);
@@ -845,7 +826,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle copy emails button click
     function handleCopyEmails() {
-        updateRecipientEmails();
+        updateRecipientEmails(); // Ensure currentRecipientEmails is up-to-date
         
         if (currentRecipientEmails.length === 0) {
             showMessage(emailBroadcastMessage, 'No recipients to copy. Please select at least one user with email address.', false);
