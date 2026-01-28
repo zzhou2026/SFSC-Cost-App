@@ -43,6 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const maisonAllSubmissionsTableContainer = document.getElementById('maisonAllSubmissionsTableContainer');
     const adminAllSubmissionsTableContainer = document.getElementById('adminAllSubmissionsTableContainer');
     // END NEW
+
     let allUsers = []; // Store all users data
     let filteredUsers = []; // Store filtered users for display
     let currentRecipientEmails = []; // Store current recipient emails
@@ -70,7 +71,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let currentUser = null; 
     let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 }; 
-
     // --- Helper Functions ---
     function showPage(pageElement) {
         document.querySelectorAll('.page').forEach(p => {
@@ -102,7 +102,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
-
     // 将数据渲染成 HTML 表格 (包含删除按钮或审批按钮)
     function renderTable(containerElement, data, headersToShowMapping, options = {}) {
         if (!data || data.length === 0) {
@@ -182,6 +181,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         }
     }
+
     // NEW: 将数据渲染成只读的 HTML 表格 (不包含任何动作按钮，ApprovalStatus 显示为 Status)
     function renderOverviewTable(containerElement, data, options = {}) {
         if (!data || data.length === 0) {
@@ -242,6 +242,103 @@ document.addEventListener('DOMContentLoaded', () => {
         containerElement.innerHTML = tableHTML;
     }
     // END NEW: renderOverviewTable
+    // --- 删除记录的事件处理函数 ---
+    async function handleDeleteRecord(event) {
+        const recordIdToDelete = event.target.dataset.recordId;
+        if (!recordIdToDelete) {
+            alert('Error: Record ID not found for deletion.');
+            return;
+        }
+
+        if (confirm('Are you sure you want to delete this record? This action cannot be undone.')) {
+            const result = await callAppsScript('deleteSfscData', { recordId: recordIdToDelete });
+            if (result.success) {
+                showMessage(maisonSubmitMessage, 'Record deleted successfully!', true);
+                if (currentUser.role === 'maison') {
+                    loadMaisonHistoryData(); // 刷新数据
+                    loadAllSubmissionsOverview(maisonAllSubmissionsTableContainer); // 刷新总览
+                } else if (currentUser.role === 'admin') {
+                    // Admin 视图不显示删除按钮，但如果 Admin 也删除了，也要刷新
+                    loadAdminOverviewData(); 
+                    loadAllSubmissionsOverview(adminAllSubmissionsTableContainer); // 刷新总览
+                }
+            } else {
+                showMessage(maisonSubmitMessage, 'Failed to delete record: ' + result.message, false);
+            }
+        }
+    }
+
+    // --- Admin 审批操作的事件处理函数 ---
+    async function handleApprovalAction(event, newStatus) {
+        const recordIdToUpdate = event.target.dataset.recordId;
+        if (!recordIdToUpdate) {
+            alert('Error: Record ID not found for approval action.');
+            return;
+        }
+
+        if (confirm(`Are you sure you want to set this record's status to "${newStatus}"?`)) {
+            const result = await callAppsScript('updateApprovalStatus', { recordId: recordIdToUpdate, newStatus: newStatus });
+            if (result.success) {
+                showMessage(loginMessage, `Record ${recordIdToUpdate} status updated to ${newStatus}.`, true);
+                loadAdminOverviewData(); // 刷新 Admin 概览数据
+                loadAllSubmissionsOverview(adminAllSubmissionsTableContainer); // 刷新 Admin 总览数据
+                // 也要刷新Maison的历史数据，以便Maison用户看到状态变化
+                // 仅当当前用户是 Maison 角色时才刷新，Admin 审批后 Maison 刷新自己的视图
+                // (注意：这里应由maison用户下次登录时自己刷新)
+                // if (currentUser.role === 'maison') { // 此处在Admin页面，不会是maison用户
+                //     loadMaisonHistoryData(); 
+                //     loadAllSubmissionsOverview(maisonAllSubmissionsTableContainer);
+                // }
+            } else {
+                showMessage(loginMessage, `Failed to update record status: ${result.message}`, false);
+            }
+        }
+    }
+
+    // --- 填充季度选择器 ---
+    async function populateQuarterSelect() {
+        const numberOfFutureQuarters = 4; // Current quarter + 4 future quarters = 5 total options
+        const result = await callAppsScript('getQuarterList', { numberOfFutureQuarters: numberOfFutureQuarters });
+        if (result.success && result.data) {
+            quarterSelect.innerHTML = ''; // Clear existing options
+            result.data.forEach(quarter => {
+                const option = document.createElement('option');
+                option.value = quarter;
+                option.textContent = quarter;
+                quarterSelect.appendChild(option);
+            });
+        } else {
+            console.error('Failed to load quarter list:', result.message);
+            maisonSubmitMessage.textContent = 'Failed to load quarter options. Please refresh.';
+            maisonSubmitMessage.classList.add('error');
+        }
+    }
+
+    // --- 填充月份选择器 (用于计算工具) ---
+    function populateCalcMonthsSelect() {
+        calcMonthsSelect.innerHTML = '';
+        for (let i = 1; i <= 12; i++) {
+            const option = document.createElement('option');
+            option.value = i;
+            option.textContent = i;
+            calcMonthsSelect.appendChild(option);
+        }
+        calcMonthsSelect.value = 12; // 默认选择 12 个月
+    }
+
+    // --- 成本计算函数 (用于计算工具) ---
+    function calculateCostForTool(clientelingCount, fullCount, months) {
+        // 注意：这里使用 configPrices 中的值，这些值在登录时从后端获取
+        const cUnitPrice = parseFloat(configPrices.ClientelingUnitPrice) || 16; 
+        const fUnitPrice = parseFloat(configPrices.FullUnitPrice) || 52;   
+        const fixed = parseFloat(configPrices.FixedCost) || 0;             
+
+        return (
+            (clientelingCount * cUnitPrice * months) +
+            (fullCount * fUnitPrice * months) +
+            fixed
+        );
+    }
     // --- Core function to call Apps Script backend ---
     async function callAppsScript(action, payload = {}) {
         try {
@@ -339,7 +436,6 @@ document.addEventListener('DOMContentLoaded', () => {
         clearMessage(emailMessage); 
         showPage(loginPage);
     });
-
     // Submit SFSC Data button click event (Maison View)
     submitSfscDataButton.addEventListener('click', async () => {
         if (!currentUser || currentUser.role !== 'maison') {
@@ -389,6 +485,7 @@ document.addEventListener('DOMContentLoaded', () => {
             fullLicenseCountInput.value = '0';       // Clear input fields
             if (currentUser.role === 'maison') {
                 loadMaisonHistoryData(); // 刷新数据
+                loadAllSubmissionsOverview(maisonAllSubmissionsTableContainer); // NEW: 刷新总览数据
             }
         } else {
             showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message, false);
@@ -484,7 +581,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (currentUser.role === 'maison') {
             maisonView.classList.remove('hidden');
             populateQuarterSelect(); // Call function to populate quarter selector
-            populateCalcMonthsSelect(); // 填充成本计算工具的  份选择器
+            populateCalcMonthsSelect(); // 填充成本计算工具的月份选择器
             // 初始化成本计算工具的输入框，与提交框同步
             calcClientelingLicenseCountInput.value = clientelingLicenseCountInput.value;
             calcFullLicenseCountInput.value = fullLicenseCountInput.value;
@@ -551,6 +648,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
+
     // NEW: Load and render all SFSC data for the overview table (no actions)
     async function loadAllSubmissionsOverview(containerElement) {
         containerElement.innerHTML = '<p class="loading-text">Loading all submissions...</p>';
@@ -563,24 +661,8 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     // END NEW: loadAllSubmissionsOverview
-    // --- NEW: Email Management Logic ---
 
-    // Function to update the email management UI based on current user's email
-    async function initEmailManagement() {
-        if (!currentUser || currentUser.role !== 'maison') {
-            emailManagementSection.classList.add('hidden'); // Hide if not maison user
-            return;
-        }
-        emailManagementSection.classList.remove('hidden'); // Show for maison user
-        clearMessage(emailMessage);
-
-        const result = await callAppsScript('getUserEmail', { username: currentUser.username });
-        if (result.success && result.email) {
-            registeredEmailValueSpan.textContent = result.email;
-            emailDisplay.classList.remove('hidden'); // Show registered email
-            emailForm.classList.add('hidden'); // Hide form
-            editEmailButton.classList.remove('hidden'); // Show edit button
-            submitEmailButton.textContent = 'Register Email'; // Reset button text
+button.textContent = 'Register Email'; // Reset button text
             cancelEditEmailButton.classList.add('hidden'); // Hide cancel button
             userEmailInput.value = result.email; // Pre-fill input
         } else {
@@ -763,7 +845,7 @@ document.addEventListener('DOMContentLoaded', () => {
         currentRecipientEmails = Array.from(selectedCheckboxes)
             .map(cb => cb.dataset.email)
             .filter(email => email && email.trim() !== '');
-        updateRecipientCount();
+        // updateRecipientCount(); // Removed to avoid double counting and confusion
     }
 
     // Update recipient count display
@@ -868,3 +950,4 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- On first load, show the login page ---
     showPage(loginPage);
 });
+
