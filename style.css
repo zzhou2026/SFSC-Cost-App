@@ -16,7 +16,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     width: 90%;
-    max-width: 800px; /* Limit max width of the App */
+    max-width: 1000px; /* Limit max width of the App */
     text-align: center;
 }
 
@@ -144,25 +144,50 @@ table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 15px;
-    table-layout: fixed; /* 修正：使用固定表格布局 */
+    table-layout: fixed; /* 使用固定布局，确保列宽一致 */
+}
+
+/* 设置列宽度：前7列（1-6列和8列）为70px，第7列（Submission Time）和第9列（Approval Action）平分剩余宽度 */
+table th, table td {
+    width: 70px; /* 默认宽度70px */
+}
+
+/* 第7列（Submission Time）和第9列（Approval Action）平分剩余宽度 */
+table th:nth-child(7), table td:nth-child(7) { /* Submission Time 列 */
+    width: calc((100% - 490px) / 2); /* 剩余宽度的一半 (100% - 7×70px) / 2 */
+}
+
+table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
+    width: calc((100% - 490px) / 2); /* 剩余宽度的一半 (100% - 7×70px) / 2 */
+    vertical-align: middle; /* 确保按钮列垂直居中 */
 }
 
 table th, table td {
     border: 1px solid #ddd;
     padding: 10px;
     text-align: left;
-    white-space: nowrap; /* Prevent content from wrapping */
+    vertical-align: middle; /* 垂直居中对齐 */
+}
+
+table td {
+    white-space: nowrap; /* 表格内容不换行 */
     overflow: hidden; /* 隐藏溢出内容 */
     text-overflow: ellipsis; /* 溢出时显示省略号 */
+    font-size: 0.8em; /* 缩小表格内容字体大小，确保内容能完整显示 */
 }
 
 table th {
     background-color: #e0f2f7;
     color: #004d40;
     font-weight: bold;
+    font-size: 0.75em; /* 缩小表头字体大小，确保文字能完整显示 */
     position: sticky; /* Sticky header */
     top: -10px; /* Slight adjustment for visual effect */
     z-index: 1; /* Ensure header is above content when scrolling */
+    white-space: normal; /* 表头允许换行 */
+    word-wrap: break-word; /* 允许在单词内换行 */
+    overflow-wrap: break-word; /* 现代浏览器的换行属性 */
+    line-height: 1.3; /* 稍微减小行高，让文字更紧凑 */
 }
 
 table tr:nth-child(even) {
@@ -316,7 +341,10 @@ label {
     cursor: pointer;
     font-size: 0.85em;
     margin-right: 5px;
+    margin-top: -3px; /* 往上移3px */
     transition: background-color 0.2s;
+    vertical-align: middle; /* 按钮垂直居中 */
+    display: inline-block; /* 确保margin-top生效 */
 }
 .approve-button-table:hover {
     background-color: #218838;
@@ -330,7 +358,10 @@ label {
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.85em;
+    margin-top: -3px; /* 往上移3px */
     transition: background-color 0.2s;
+    vertical-align: middle; /* 按钮垂直居中 */
+    display: inline-block; /* 确保margin-top生效 */
 }
 .reject-button-table:hover {
     background-color: #e0a800;
@@ -352,14 +383,9 @@ label {
 .status-approved { background-color: #28a745; } /* Green */
 .status-rejected { background-color: #dc3545; } /* Red */
 
-/* 新增样式：确保 Approval Status 和 Approval Action 列的宽度 */
-table th:nth-child(8), table td:nth-child(8) { /* Approval Status 列 */
-    width: 120px; 
-    min-width: 120px;
-}
+/* 确保 Approval Action 列垂直居中 */
 table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
-    width: 180px; 
-    min-width: 180px;
+    vertical-align: middle; /* 确保按钮列垂直居中 */
 }
 
 /* --- Email Management Section Styles --- */
@@ -494,4 +520,271 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     max-width: 90px; /* 进一步限制最大宽度 */
     padding: 4px 8px; /* 进一步减少内边距 */
     font-size: 0.75em; /* 进一步减小字体大小 */
+}
+
+/* --- Email Broadcast Section Styles (Admin) --- */
+.email-broadcast-section {
+    background-color: #f0f8ff; /* Light azure background */
+    border: 1px solid #b3e0ff;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    text-align: left;
+}
+
+.email-broadcast-section h3 {
+    color: #0056b3; /* Darker blue for heading */
+    margin-top: 0;
+    border-bottom: 1px solid #cceeff;
+    padding-bottom: 10px;
+    text-align: center;
+}
+
+.email-broadcast-section p {
+    color: #555;
+    font-size: 0.9em;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.email-broadcast-section .form-control {
+    background-color: #e6f7ff; /* Lighter background for inputs */
+    border-color: #99d6ff;
+}
+
+.email-textarea {
+    resize: vertical; /* Allow vertical resizing only */
+    min-height: 120px;
+    font-family: inherit;
+}
+
+.checkbox-container {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 10px 0;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.maison-checkbox-item {
+    display: flex;
+    align-items: center;
+    margin: 8px 0;
+    padding: 5px;
+}
+
+.maison-checkbox {
+    margin-right: 8px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+}
+
+.maison-checkbox-label {
+    cursor: pointer;
+    font-weight: normal;
+    color: #333;
+    margin: 0;
+    user-select: none;
+}
+
+.maison-checkbox-label:hover {
+    color: #00796b;
+}
+
+.email-action-buttons {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.email-broadcast-button {
+    background-color: #007bff; /* Primary blue for broadcast button */
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1em;
+    flex: 1;
+    min-width: 150px;
+    transition: background-color 0.3s ease;
+}
+
+.email-broadcast-button:hover {
+    background-color: #0056b3;
+}
+
+.email-broadcast-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+.email-broadcast-button-secondary {
+    background-color: #6c757d; /* Gray for secondary button */
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1.1em;
+    flex: 1;
+    min-width: 150px;
+    transition: background-color 0.3s ease;
+}
+
+.email-broadcast-button-secondary:hover {
+    background-color: #5a6268;
+}
+
+#emailBroadcastMessage {
+    margin-top: 15px;
+    text-align: center;
+    min-height: 20px;
+}
+
+.recipient-count {
+    margin-top: 10px;
+    font-size: 0.9em;
+    color: #555;
+    text-align: center;
+    font-style: italic;
+}
+
+/* User Selection Styles */
+.user-selection-header {
+    margin-bottom: 15px;
+}
+
+.user-selection-header > label {
+    display: block;
+    margin-bottom: 10px;
+    font-weight: bold;
+    color: #00796b;
+}
+
+.selection-controls {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.selection-button {
+    background-color: #6c757d;
+    color: white;
+    padding: 6px 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em;
+    transition: background-color 0.3s ease;
+}
+
+.selection-button:hover {
+    background-color: #5a6268;
+}
+
+.user-search-input {
+    flex: 1;
+    min-width: 200px;
+    padding: 6px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.user-list-container {
+    background-color: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px;
+    margin: 10px 0;
+    max-height: 400px;
+    overflow-y: auto;
+    min-height: 100px;
+}
+
+.user-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.user-checkbox-item {
+    display: flex;
+    align-items: center;
+    padding: 10px;
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.user-checkbox-item:hover {
+    background-color: #f5f5f5;
+}
+
+.user-checkbox {
+    margin-right: 12px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.user-checkbox:disabled {
+    cursor: not-allowed;
+    opacity: 0.5;
+}
+
+.user-checkbox-label {
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+    user-select: none;
+}
+
+.user-checkbox-label:hover {
+    color: #00796b;
+}
+
+.user-name {
+    font-weight: bold;
+    color: #333;
+    font-size: 0.95em;
+}
+
+.user-email {
+    color: #666;
+    font-size: 0.85em;
+    font-style: italic;
+}
+
+.user-maison {
+    color: #00796b;
+    font-size: 0.8em;
+    background-color: #e0f2f7;
+    padding: 2px 6px;
+    border-radius: 3px;
+    display: inline-block;
+    width: fit-content;
+}
+
+.loading-text, .error-text, .no-users-text {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-style: italic;
+}
+
+.error-text {
+    color: #d32f2f;
 }
