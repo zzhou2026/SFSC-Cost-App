@@ -152,17 +152,15 @@ table th, table td {
     width: 70px; /* 默认宽度70px */
 }
 
-/* 第7列（Submission Time）平分剩余宽度 */
-/* NEW: Removed specific width for 9th column (Approval Action) as it's not present in the new overview table */
+/* 第7列（Submission Time）和第9列（Approval Action）平分剩余宽度 */
 table th:nth-child(7), table td:nth-child(7) { /* Submission Time 列 */
-    width: calc((100% - 420px) / 2); /* 剩余宽度的一半 (100% - 6×70px) / 2, assuming 8 columns in total now */
-}
-/* NEW: General adjustment for the last column in tables without action buttons */
-table th:last-child:not(:nth-child(9)), table td:last-child:not(:nth-child(9)) {
-    width: auto; /* 让最后一列自适应宽度 */
-    vertical-align: middle;
+    width: calc((100% - 490px) / 2); /* 剩余宽度的一半 (100% - 7×70px) / 2 */
 }
 
+table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
+    width: calc((100% - 490px) / 2); /* 剩余宽度的一半 (100% - 7×70px) / 2 */
+    vertical-align: middle; /* 确保按钮列垂直居中 */
+}
 
 table th, table td {
     border: 1px solid #ddd;
