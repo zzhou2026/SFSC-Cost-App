@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // --- 【非常重要！】请在这里替换成你的 Apps Script Web App URL ---
-    const APP_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID_HERE/exec'; // <-- 请务必替换为您的最新 URL
+    const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIVoYBQtqkFB52frxB8e81899ISf_pDwJ_Fj3f9blb7mI2c3QhT4pHoz3sQuG1l6EDVQ/exec'; 
     // ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     // Reminder: Replace the URL above with your own!
 
@@ -276,14 +276,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Core function to call Apps Script backend ---
     async function callAppsScript(action, payload = {}) {
         try {
-            // --- BEGIN MODIFICATION: callAppsScript 内部第一个 if 条件 ---
-            // 显示加载提示，但只针对需要用户感知的操作
-            // getConfig, checkExistingRecord, getUserEmail 和 getAllUsers 是后台请求，不显示 loading
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') { 
-                 loginMessage.textContent = 'Requesting...'; 
-                 loginMessage.classList.add('loading'); 
-            }
-            // --- END MODIFICATION: callAppsScript 内部第一个 if 条件 ---
+                   // --- BEGIN MODIFICATION 1/2: callAppsScript 内部第一个 if 条件 ---
+        // 显示加载提示，但只针对需要用户感知的操作
+        // getConfig, checkExistingRecord, getUserEmail 和 getAllUsers 是后台请求，不显示 loading
+        if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') { 
+             loginMessage.textContent = 'Requesting...'; 
+             loginMessage.classList.add('loading'); 
+        }
+        // --- END MODIFICATION 1/2 ---
+
             
             // 确保payload中的数值是实际的数字，而不是可能为空的字符串
             if (action === 'submitSfscData') {
@@ -301,14 +302,15 @@ document.addEventListener('DOMContentLoaded', () => {
             });
 
             const text = await response.text();
-            const result = JSON.parse(text);
-            
-            // --- BEGIN MODIFICATION: callAppsScript 内部第二个 if 条件 ---
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') {
-                loginMessage.classList.remove('loading'); 
-            }
-            // --- END MODIFICATION: callAppsScript 内部第二个 if 条件 ---
-            return result;
+                   const result = JSON.parse(text);
+        
+        // --- BEGIN MODIFICATION 2/2: callAppsScript 内部第二个 if 条件 ---
+        if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') {
+            loginMessage.classList.remove('loading'); 
+        }
+        // --- END MODIFICATION 2/2 ---
+        return result;
+
 
         } catch (error) {
             console.error('Error calling Apps Script:', error);
@@ -420,7 +422,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadMaisonHistoryData(); // 刷新数据
             }
         } else {
-            showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message, false);
+            showMessage(maaisonSubmitMessage, 'Data submission failed: ' + result.message, false);
         }
     });
     
@@ -607,3 +609,281 @@ document.addEventListener('DOMContentLoaded', () => {
             userEmailInput.value = ''; // Clear input
         }
     }
+
+    // Event listener for Submit/Register Email Button
+    submitEmailButton.addEventListener('click', async () => {
+        if (!currentUser || currentUser.role !== 'maison') {
+            showMessage(emailMessage, 'Please log in as a Maison user to manage email.', false);
+            return;
+        }
+
+        const email = userEmailInput.value.trim();
+        if (!email) {
+            showMessage(emailMessage, 'Email address cannot be empty.', false);
+            return;
+        }
+        if (!isValidEmail(email)) {
+            showMessage(emailMessage, 'Please enter a valid email address.', false);
+            return;
+        }
+
+        clearMessage(emailMessage);
+        showMessage(emailMessage, 'Saving email...', true); // Temporary loading message
+
+        const result = await callAppsScript('updateUserEmail', { username: currentUser.username, email: email });
+
+        if (result.success) {
+            showMessage(emailMessage, 'Email saved successfully!', true);
+            // Refresh UI to show the registered email
+            initEmailManagement(); 
+        } else {
+            showMessage(emailMessage, 'Failed to save email: ' + result.message, false);
+        }
+    });
+
+    // Event listener for Edit Email Button
+    editEmailButton.addEventListener('click', () => {
+        emailDisplay.classList.add('hidden'); // Hide display
+        editEmailButton.classList.add('hidden'); // Hide edit button
+
+        emailForm.classList.remove('hidden'); // Show form
+        userEmailInput.value = registeredEmailValueSpan.textContent; // Pre-fill with current email
+        submitEmailButton.textContent = 'Save Changes'; // Change button text
+        cancelEditEmailButton.classList.remove('hidden'); // Show cancel button
+        clearMessage(emailMessage);
+    });
+
+    // Event listener for Cancel Edit Email Button
+    cancelEditEmailButton.addEventListener('click', () => {
+        // Revert to initial state (display registered email, hide form)
+        initEmailManagement();
+        clearMessage(emailMessage);
+    });
+
+    // --- Email Broadcast Functions (Admin) - User Selection ---
+
+    // Initialize email broadcast section
+    async function initEmailBroadcast() {
+        if (!currentUser || currentUser.role !== 'admin') {
+            emailBroadcastSection.classList.add('hidden');
+            return;
+        }
+        emailBroadcastSection.classList.remove('hidden');
+        
+        // Load all users
+        await loadAllUsers();
+        
+        // Set up event listeners
+        selectAllButton.addEventListener('click', handleSelectAll);
+        deselectAllButton.addEventListener('click', handleDeselectAll);
+        userSearchInput.addEventListener('input', handleUserSearch);
+        openOutlookButton.addEventListener('click', handleOpenOutlook);
+        copyEmailsButton.addEventListener('click', handleCopyEmails);
+        
+        // Update recipient count when checkboxes change
+        updateRecipientCount();
+    }
+
+    // Load all users from backend
+    async function loadAllUsers() {
+        userListContainer.innerHTML = '<p class="loading-text">Loading users...</p>';
+        
+        const result = await callAppsScript('getAllUsers');
+        if (result.success && result.data) {
+            allUsers = result.data.filter(user => user.email && user.email.trim() !== '');
+            filteredUsers = [...allUsers];
+            renderUserList();
+            updateRecipientCount();
+        } else {
+            userListContainer.innerHTML = '<p class="error-text">Failed to load users: ' + (result.message || 'Unknown error') + '</p>';
+        }
+    }
+
+    // Render user list with checkboxes
+    function renderUserList() {
+        if (filteredUsers.length === 0) {
+            userListContainer.innerHTML = '<p class="no-users-text">No users found.</p>';
+            return;
+        }
+
+        let html = '<div class="user-list">';
+        filteredUsers.forEach((user, index) => {
+            const userId = `user-${index}-${user.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            html += `
+                <div class="user-checkbox-item">
+                    <input type="checkbox" 
+                           id="${userId}" 
+                           class="user-checkbox" 
+                           data-email="${user.email || ''}"
+                           data-username="${user.username || ''}"
+                           data-maison="${user.maisonName || ''}"
+                           ${user.email ? '' : 'disabled'}>
+                    <label for="${userId}" class="user-checkbox-label">
+                        <span class="user-name">${user.username || 'N/A'}</span>
+                        <span class="user-email">${user.email || 'No email'}</span>
+                        ${user.maisonName ? `<span class="user-maison">${user.maisonName}</span>` : ''}
+                    </label>
+                </div>
+            `;
+        });
+        html += '</div>';
+        userListContainer.innerHTML = html;
+
+        // ... (renderUserList 函数中生成 HTML 的代码，直到 userListContainer.innerHTML = html; 这一行) ...
+
+    userListContainer.innerHTML = html; 
+
+    // --- BEGIN MODIFICATION (renderUserList 内部的事件绑定，确认即可) ---
+    // Add change listeners to all checkboxes (re-bind every time list is rendered)
+    // 这段代码是确保用户列表（包括筛选后）中的复选框可以被点击的！
+    userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateRecipientCount);
+    });
+    // --- END MODIFICATION ---
+}
+
+
+    // Handle select all
+    function handleSelectAll() {
+        userListContainer.querySelectorAll('.user-checkbox:not(:disabled)').forEach(checkbox => {
+            checkbox.checked = true;
+        });
+        updateRecipientCount();
+    }
+
+    // Handle deselect all
+    function handleDeselectAll() {
+        userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateRecipientCount();
+    }
+
+    // Handle user search
+    function handleUserSearch() {
+        const searchTerm = userSearchInput.value.toLowerCase().trim();
+        
+        if (searchTerm === '') {
+            filteredUsers = [...allUsers];
+        } else {
+            filteredUsers = allUsers.filter(user => {
+                const username = (user.username || '').toLowerCase();
+                const email = (user.email || '').toLowerCase();
+                const maison = (user.maisonName || '').toLowerCase();
+                return username.includes(searchTerm) || 
+                       email.includes(searchTerm) || 
+                       maison.includes(searchTerm);
+            });
+        }
+        
+        renderUserList();
+        updateRecipientCount();
+    }
+
+    // Update recipient emails based on selected users
+    function updateRecipientEmails() {
+        const selectedCheckboxes = userListContainer.querySelectorAll('.user-checkbox:checked');
+        currentRecipientEmails = Array.from(selectedCheckboxes)
+            .map(cb => cb.dataset.email)
+            .filter(email => email && email.trim() !== '');
+        updateRecipientCount();
+    }
+
+    // Update recipient count display
+    function updateRecipientCount() {
+        updateRecipientEmails();
+        const count = currentRecipientEmails.length;
+        if (count > 0) {
+            recipientCountDisplay.textContent = `Selected: ${count} recipient(s)`;
+            recipientCountDisplay.classList.remove('hidden');
+            recipientCountDisplay.style.color = '#00796b';
+        } else {
+            recipientCountDisplay.textContent = 'No recipients selected. Please select at least one user.';
+            recipientCountDisplay.classList.remove('hidden');
+            recipientCountDisplay.style.color = '#999';
+        }
+    }
+
+    // Handle open Outlook button click
+    function handleOpenOutlook() {
+        updateRecipientEmails();
+        
+        if (currentRecipientEmails.length === 0) {
+            showMessage(emailBroadcastMessage, 'No recipients selected. Please select at least one user with email address.', false);
+            return;
+        }
+
+        const subject = emailSubjectInput.value.trim();
+        const body = emailContentInput.value.trim();
+
+        // Create mailto link
+        // Multiple recipients: use comma-separated list
+        const to = currentRecipientEmails.join(',');
+        
+        // Encode subject and body for URL
+        const encodedSubject = encodeURIComponent(subject);
+        const encodedBody = encodeURIComponent(body);
+
+        // Create mailto URL
+        let mailtoUrl = `mailto:${to}`;
+        const params = [];
+        if (subject) {
+            params.push(`subject=${encodedSubject}`);
+        }
+        if (body) {
+            params.push(`body=${encodedBody}`);
+        }
+        if (params.length > 0) {
+            mailtoUrl += '?' + params.join('&');
+        }
+
+        // Open mailto link (will open default email client, e.g., Outlook)
+        window.location.href = mailtoUrl;
+        
+        showMessage(emailBroadcastMessage, `Opening Outlook with ${currentRecipientEmails.length} recipient(s)... If it doesn't open, please check your default email client settings.`, true);
+    }
+
+    // Handle copy emails button click
+    function handleCopyEmails() {
+        updateRecipientEmails();
+        
+        if (currentRecipientEmails.length === 0) {
+            showMessage(emailBroadcastMessage, 'No recipients to copy. Please select at least one user with email address.', false);
+            return;
+        }
+
+        try {
+            // Copy email list to clipboard
+            const emailList = currentRecipientEmails.join('; '); // Use semicolon for Outlook
+            navigator.clipboard.writeText(emailList).then(() => {
+                showMessage(emailBroadcastMessage, `Copied ${currentRecipientEmails.length} email(s) to clipboard!`, true);
+            }).catch(() => {
+                // Fallback for older browsers
+                fallbackCopyToClipboard(emailList);
+            });
+        } catch (err) {
+            // Fallback for older browsers
+            fallbackCopyToClipboard(currentRecipientEmails.join('; '));
+        }
+    }
+
+    // Fallback copy to clipboard function
+    function fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        try {
+            document.execCommand('copy');
+            showMessage(emailBroadcastMessage, `Copied ${currentRecipientEmails.length} email(s) to clipboard!`, true);
+        } catch (e) {
+            showMessage(emailBroadcastMessage, 'Failed to copy emails. Please select and copy manually.', false);
+        }
+        document.body.removeChild(textArea);
+    }
+
+    // --- On first load, show the login page ---
+    showPage(loginPage);
+});
