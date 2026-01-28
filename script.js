@@ -1,4 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
+    // 请替换为您的 Apps Script Web App URL
     const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIVoYBQtqkFB52frxB8e81899ISf_pDwJ_Fj3f9blb7mI2c3QhT4pHoz3sQuG1l6EDVQ/exec';
 
     const $ = id => document.getElementById(id);
@@ -31,9 +32,9 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch { return ts; }
     };
 
-    // ===== API 调用 =====
+    // ===== API 调    =====
     const api = async (act, data = {}) => {
-        const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers'];
+        const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers', 'getAllSfscHistory', 'getMaisonSfscHistory']; // NEW: 添加历史记录API
         const loading = !silent.includes(act);
 
         try {
@@ -57,6 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ===== 表格配置（优化：共享基础 headers）=====
+    // SFSC_Data 表的配置
     const baseHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
         { key: 'Quarter', label: 'Quarter' },
@@ -67,24 +69,65 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const configs = {
         maison: {
-            action: 'getMaisonSfscData',
+            action: 'getMaisonSfscData', // 获取 Maison 当前数据
             headers: [...baseHeaders, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
             actionColumn: 'delete'
         },
         admin: {
-            action: 'getAllSfscData',
+            action: 'getAllSfscData', // 获取所有 Maison 当前数据
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
             actionColumn: 'approve'
+        },
+        // NEW: SFSC_History 表的配置 (如果未来需要显示)
+        maisonHistory: {
+            action: 'getMaisonSfscHistory', // 获取 Maison 历史记录
+            headers: [
+                { key: 'MaisonName', label: 'Maison Name' },
+                { key: 'Quarter', label: 'Quarter' },
+                { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
+                { key: 'FullLicenseCount', label: 'Full Licenses' },
+                { key: 'CalculatedCost', label: 'Calculated Cost' },
+                { key: 'SubmittedBy', label: 'Submitted By' },
+                { key: 'Timestamp', label: 'Submission Timestamp' },
+                { key: 'ApprovalStatus', label: 'Approval Status' },
+                { key: 'Action', label: 'Action Type' }, // NEW
+                { key: 'ActionTimestamp', label: 'Action Time' }, // NEW
+                { key: 'ActionBy', label: 'Action By' } // NEW
+            ],
+            actionColumn: null // 历史记录通常不需要操作列
+        },
+        adminHistory: {
+            action: 'getAllSfscHistory', // 获取所有历史记录
+            headers: [
+                { key: 'MaisonName', label: 'Maison Name' },
+                { key: 'Quarter', label: 'Quarter' },
+                { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
+                { key: 'FullLicenseCount', label: 'Full Licenses' },
+                { key: 'CalculatedCost', label: 'Calculated Cost' },
+                { key: 'SubmittedBy', label: 'Submitted By' },
+                { key: 'Timestamp', label: 'Submission Timestamp' },
+                { key: 'ApprovalStatus', label: 'Approval Status' },
+                { key: 'Action', label: 'Action Type' }, // NEW
+                { key: 'ActionTimestamp', label: 'Action Time' }, // NEW
+                { key: 'ActionBy', label: 'Action By' } // NEW
+            ],
+            actionColumn: null
         }
     };
 
     // ===== 表格渲染 =====
     const loadTable = async (type, container, params = {}) => {
         const cfg = configs[type];
+        if (!cfg) {
+            console.error('Invalid table configuration type:', type);
+            container.innerHTML = '<p class="error-text">Invalid table configuration.</p>';
+            return;
+        }
+
         const res = await api(cfg.action, params);
 
         if (!res.success || !res.data || !res.data.length) {
-            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No data available.' : 'Failed: ' + (res.message || 'Unknown error')}</p>`;
+            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No data available.' : 'Failed to load data: ' + (res.message || 'Unknown error')}</p>`;
             return;
         }
 
@@ -95,7 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
         res.data.forEach(row => {
             html += '<tr>' + cfg.headers.map(h => {
                 let v = row[h.key];
-                if (h.key === 'Timestamp') v = fmt(v);
+                if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v); // NEW: 格式化 ActionTimestamp
                 if (h.key === 'ApprovalStatus') {
                     const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
                     v = `<span class="status-badge ${sc}">${v}</span>`;
@@ -118,13 +161,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (e.target.classList.contains('delete-button-table')) {
             if (!confirm('Delete this record?')) return;
-            const res = await api('deleteSfscData', { recordId: id });
+            // NEW: 传递 actionBy 参数
+            const res = await api('deleteSfscData', { recordId: id, actionBy: currentUser.username });
             msg($('maisonSubmitMessage'), res.success ? 'Deleted!' : 'Delete failed: ' + res.message, res.success);
             if (res.success) loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName });
         } else if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
             const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
             if (!confirm(`Set to ${st}?`)) return;
-            const res = await api('updateApprovalStatus', { recordId: id, newStatus: st });
+            // NEW: 传递 actionBy 参数
+            const res = await api('updateApprovalStatus', { recordId: id, newStatus: st, actionBy: currentUser.username });
             msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
             if (res.success) loadTable('admin', $('adminDataTableContainer'));
         }
@@ -177,7 +222,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const f = filtered();
         if (!f.length) { $('userListContainer').innerHTML = '<p class="no-users-text">No users found.</p>'; return; }
         $('userListContainer').innerHTML = f.map((u, i) => {
-            const id = `user-${i}-${u.email.replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const id = `user-${i}-${(u.email || '').replace(/[^a-zA-Z0-9]/g, '_')}`; // Ensure valid ID
             return `<div class="user-checkbox-item"><input type="checkbox" id="${id}" class="user-checkbox" data-email="${u.email || ''}" ${u.email ? '' : 'disabled'}><label for="${id}" class="user-checkbox-label"><span class="user-name">${u.username || 'N/A'}</span><span class="user-email">${u.email || 'No email'}</span>${u.maisonName ? `<span class="user-maison">${u.maisonName}</span>` : ''}</label></div>`;
         }).join('');
     };
@@ -197,7 +242,7 @@ document.addEventListener('DOMContentLoaded', () => {
         $('userListContainer').innerHTML = '<p class="loading-text">Loading users...</p>';
         const res = await api('getAllUsers');
         if (res.success && res.data) { allUsers = res.data.filter(u => u.email && u.email.trim()); renderU(); updCnt(); }
-        else $('userListContainer').innerHTML = `<p class="error-text">Failed: ${res.message || 'Unknown'}</p>`;
+        else $('userListContainer').innerHTML = `<p class="error-text">Failed to load users: ${res.message || 'Unknown'}</p>`;
     };
 
     // ===== 事件监听器（优化：集中处理）=====
@@ -212,6 +257,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cfg = await api('getConfig');
             if (cfg.success && cfg.data) Object.assign(configPrices, { ClientelingUnitPrice: parseFloat(cfg.data.ClientelingUnitPrice) || 16, FullUnitPrice: parseFloat(cfg.data.FullUnitPrice) || 52, FixedCost: parseFloat(cfg.data.FixedCost) || 0 });
             setTimeout(() => {
+                showPage($('loginPage')); // Start on login page, then transition
                 showPage($('mainPage'));
                 $('welcomeMessage').textContent = `Welcome, ${currentUser.maisonName} (${currentUser.role})!`;
                 if (currentUser.role === 'maison') {
@@ -219,11 +265,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     popQ(); popM();
                     $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0';
                     $('calculatedCostDisplay').textContent = 'Estimated Cost: 0.00 €';
-                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName });
+                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); // This will now load current data
+                    // If you want to show actual historical data in a separate section, you'd call loadTable('maisonHistory', newContainer, { maisonName: currentUser.maisonName }); here
                     initEmail();
                 } else {
                     $('adminView').classList.remove('hidden'); $('maisonView').classList.add('hidden');
-                    loadTable('admin', $('adminDataTableContainer'));
+                    loadTable('admin', $('adminDataTableContainer')); // This will now load current data
+                    // If you want to show actual historical data in a separate section, you'd call loadTable('adminHistory', newContainer); here
                     initBcast();
                 }
             }, 500);
@@ -231,48 +279,76 @@ document.addEventListener('DOMContentLoaded', () => {
         logoutButton: () => {
             currentUser = null;
             $('username').value = $('password').value = '';
-            clr($('loginMessage')); clr($('maisonSubmitMessage')); clr($('emailMessage'));
+            clr($('loginMessage')); clr($('maisonSubmitMessage')); clr($('emailMessage')); clr($('calculatorErrorMessage')); clr($('emailBroadcastMessage'));
             showPage($('loginPage'));
         },
         submitSfscDataButton: async () => {
             if (!currentUser || currentUser.role !== 'maison') { msg($('maisonSubmitMessage'), 'Maison user only!', false); return; }
             const q = $('quarterSelect').value, c = parseInt($('clientelingLicenseCount').value, 10), f = parseInt($('fullLicenseCount').value, 10);
             if (!q || c < 0 || f < 0 || isNaN(c) || isNaN(f)) { msg($('maisonSubmitMessage'), 'Invalid inputs!', false); return; }
+            
+            // Check for existing record
             const chk = await api('checkExistingRecord', { maisonName: currentUser.maisonName, quarter: q });
             let id = null;
-            if (chk.success && chk.exists && !confirm(`Update for ${q}?`)) { msg($('maisonSubmitMessage'), 'Cancelled.', false); return; }
-            if (chk.success && chk.exists) id = chk.recordId;
-            const res = await api('submitSfscData', { maisonName: currentUser.maisonName, quarter: q, clientelingLicenseCount: c, fullLicenseCount: f, submittedBy: currentUser.username, recordIdToUpdate: id });
-            if (res.success) { msg($('maisonSubmitMessage'), `${id ? 'Updated' : 'Submitted'}! Cost: ${res.calculatedCost} €`, true); $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0'; loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); }
-            else msg($('maisonSubmitMessage'), 'Failed: ' + res.message, false);
+            if (chk.success && chk.exists) {
+                if (!confirm(`An existing record for ${q} will be updated. Do you want to proceed?`)) {
+                    msg($('maisonSubmitMessage'), 'Submission cancelled.', false);
+                    return;
+                }
+                id = chk.recordId;
+            }
+
+            const res = await api('submitSfscData', { 
+                maisonName: currentUser.maisonName, 
+                quarter: q, 
+                clientelingLicenseCount: c, 
+                fullLicenseCount: f, 
+                submittedBy: currentUser.username, 
+                recordIdToUpdate: id 
+            });
+
+            if (res.success) { 
+                msg($('maisonSubmitMessage'), `${id ? 'Updated' : 'Submitted'}! Cost: ${res.calculatedCost} €`, true); 
+                $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0'; 
+                loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); 
+            } else {
+                msg($('maisonSubmitMessage'), 'Failed to submit/update: ' + res.message, false);
+            }
         },
         seeCostButton: () => {
             clr($('calculatorErrorMessage'));
             const c = parseInt($('calcClientelingLicenseCount').value, 10) || 0, f = parseInt($('calcFullLicenseCount').value, 10) || 0, m = parseInt($('calcMonthsSelect').value, 10) || 12;
-            if (c < 0 || f < 0 || m < 1 || m > 12) { msg($('calculatorErrorMessage'), 'Invalid!', false); $('calculatedCostDisplay').textContent = 'Estimated Cost: NaN €'; return; }
+            if (c < 0 || f < 0 || m < 1 || m > 12) { msg($('calculatorErrorMessage'), 'Invalid input for licenses or months!', false); $('calculatedCostDisplay').textContent = 'Estimated Cost: NaN €'; return; }
             $('calculatedCostDisplay').textContent = `Estimated Cost: ${calc(c, f, m).toFixed(2)} €`;
             $('calculatedCostDisplay').classList.remove('error'); $('calculatedCostDisplay').classList.add('success');
         },
         exportDataButton: async () => {
             if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-            const res = await api('getAllSfscData');
-            if (!res.success || !res.data || !res.data.length) { msg($('loginMessage'), 'Export failed.', false); return; }
-            const h = configs.admin.headers;
+            const res = await api('getAllSfscData'); // Assuming export current data, not history
+            if (!res.success || !res.data || !res.data.length) { msg($('loginMessage'), 'Export failed: No data available.', false); return; }
+            const h = configs.admin.headers; // Use admin headers for SFSC_Data
             let csv = h.map(x => x.label).join(',') + '\n';
-            res.data.forEach(r => { csv += h.map(x => { let v = r[x.key]; if (x.key === 'Timestamp') v = fmt(v); return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v; }).join(',') + '\n'; });
+            res.data.forEach(r => { 
+                csv += h.map(x => { 
+                    let v = r[x.key]; 
+                    if (x.key === 'Timestamp') v = fmt(v); 
+                    // Handle values that might contain commas or quotes for CSV
+                    return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v; 
+                }).join(',') + '\n'; 
+            });
             const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' }), l = document.createElement('a');
             l.href = URL.createObjectURL(b); l.download = `SFSC_Data_Export_${new Date().toLocaleDateString('en-US')}.csv`;
             document.body.appendChild(l); l.click(); document.body.removeChild(l);
-            msg($('loginMessage'), 'Exported!', true);
+            msg($('loginMessage'), 'Data exported successfully!', true);
         },
         submitEmailButton: async () => {
             if (!currentUser || currentUser.role !== 'maison') { msg($('emailMessage'), 'Maison only.', false); return; }
             const e = $('userEmailInput').value.trim();
-            if (!e) { msg($('emailMessage'), 'Empty email.', false); return; }
-            if (!valid(e)) { msg($('emailMessage'), 'Invalid email.', false); return; }
-            msg($('emailMessage'), 'Saving...', true);
+            if (!e) { msg($('emailMessage'), 'Email address cannot be empty!', false); return; }
+            if (!valid(e)) { msg($('emailMessage'), 'Invalid email format!', false); return; }
+            msg($('emailMessage'), 'Saving email...', true);
             const res = await api('updateUserEmail', { username: currentUser.username, email: e });
-            msg($('emailMessage'), res.success ? 'Saved!' : 'Failed: ' + res.message, res.success);
+            msg($('emailMessage'), res.success ? 'Email saved successfully!' : 'Failed to save email: ' + res.message, res.success);
             if (res.success) initEmail();
         },
         editEmailButton: () => {
@@ -282,11 +358,17 @@ document.addEventListener('DOMContentLoaded', () => {
             clr($('emailMessage'));
         },
         cancelEditEmailButton: () => { initEmail(); clr($('emailMessage')); },
-        selectAllButton: () => { $('userListContainer').querySelectorAll('.user-checkbox:not(:disabled)').forEach(c => c.checked = true); updCnt(); },
-        deselectAllButton: () => { $('userListContainer').querySelectorAll('.user-checkbox').forEach(c => c.checked = false); updCnt(); },
+        selectAllButton: () => { 
+            $('userListContainer').querySelectorAll('.user-checkbox:not(:disabled)').forEach(c => c.checked = true); 
+            updCnt(); 
+        },
+        deselectAllButton: () => { 
+            $('userListContainer').querySelectorAll('.user-checkbox').forEach(c => c.checked = false); 
+            updCnt(); 
+        },
         openOutlookButton: () => {
             const em = selected();
-            if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients.', false); return; }
+            if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to send email.', false); return; }
             const s = encodeURIComponent($('emailSubjectInput').value.trim()), b = encodeURIComponent($('emailContentInput').value.trim());
             const p = [s && `subject=${s}`, b && `body=${b}`].filter(Boolean);
             window.location.href = `mailto:${em.join(',')}${p.length ? '?' + p.join('&') : ''}`;
@@ -294,22 +376,46 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         copyEmailsButton: () => {
             const em = selected();
-            if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients.', false); return; }
+            if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to copy emails.', false); return; }
             const list = em.join('; ');
-            navigator.clipboard.writeText(list).then(() => msg($('emailBroadcastMessage'), `Copied ${em.length} email(s)!`, true)).catch(() => {
+            navigator.clipboard.writeText(list).then(() => msg($('emailBroadcastMessage'), `Copied ${em.length} email(s) to clipboard!`, true)).catch(() => {
+                // Fallback for older browsers or if clipboard API is not allowed
                 const t = document.createElement('textarea'); t.value = list; t.style.position = 'fixed'; t.style.left = '-9999px';
                 document.body.appendChild(t); t.select();
-                try { document.execCommand('copy'); msg($('emailBroadcastMessage'), `Copied ${em.length} email(s)!`, true); }
-                catch { msg($('emailBroadcastMessage'), 'Copy failed.', false); }
+                try { 
+                    document.execCommand('copy'); 
+                    msg($('emailBroadcastMessage'), `Copied ${em.length} email(s) to clipboard (fallback)!`, true); 
+                } catch (err) { 
+                    msg($('emailBroadcastMessage'), 'Copy failed. Please manually copy the emails.', false); 
+                    console.error('Fallback copy failed:', err);
+                }
                 document.body.removeChild(t);
             });
         }
     };
 
     // 统一绑定事件
-    Object.keys(handlers).forEach(id => $(id).addEventListener('click', handlers[id]));
+    Object.keys(handlers).forEach(id => {
+        const element = $(id);
+        if (element) { // Check if element exists before adding listener
+            element.addEventListener('click', handlers[id]);
+        } else {
+            console.warn(`Element with ID "${id}" not found. Skipping event listener.`);
+        }
+    });
     
-    $('userSearchInput').addEventListener('input', () => { searchTerm = $('userSearchInput').value.trim(); renderU(); updCnt(); });
+    // Ensure search input exists before adding listener
+    const userSearchInput = $('userSearchInput');
+    if (userSearchInput) {
+        userSearchInput.addEventListener('input', () => { 
+            searchTerm = $('userSearchInput').value.trim(); 
+            renderU(); 
+            updCnt(); 
+        });
+    } else {
+        console.warn('Element with ID "userSearchInput" not found. Skipping event listener.');
+    }
+
 
     showPage($('loginPage'));
 });
