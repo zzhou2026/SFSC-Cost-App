@@ -276,12 +276,12 @@ document.addEventListener('DOMContentLoaded', () => {
     // --- Core function to call Apps Script backend ---
     async function callAppsScript(action, payload = {}) {
         try {
-            // 显示加载提示，但只针对需要用户感知的操作
-            // getConfig 和 checkExistingRecord 是后台请求，不显示 loading
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail') { 
-                 loginMessage.textContent = 'Requesting...'; 
-                 loginMessage.classList.add('loading'); 
-            }
+               // 显示加载提示，但只针对需要用户感知的操作
+        // getConfig, checkExistingRecord, getUserEmail 和 getAllUsers 是后台请求，不显示 loading
+        if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') { 
+             loginMessage.textContent = 'Requesting...'; 
+             loginMessage.classList.add('loading'); 
+        }
             
             // 确保payload中的数值是实际的数字，而不是可能为空的字符串
             if (action === 'submitSfscData') {
@@ -301,9 +301,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const text = await response.text();
             const result = JSON.parse(text);
             
-            if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail') {
-                loginMessage.classList.remove('loading'); 
-            }
+             // --- BEGIN MODIFICATION 2/2: callAppsScript 内部第二个 if 条件 ---
+        if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') {
+            loginMessage.classList.remove('loading'); 
+        }
+        // --- END MODIFICATION 2/2 ---
             return result;
 
         } catch (error) {
@@ -724,10 +726,14 @@ document.addEventListener('DOMContentLoaded', () => {
         userListContainer.innerHTML = html;
 
         // Add change listeners to all checkboxes
-        userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', updateRecipientCount);
-        });
-    }
+         // --- BEGIN MODIFICATION (renderUserList 内部的事件绑定，确认即可) ---
+    // Add change listeners to all checkboxes (re-bind every time list is rendered)
+    // 这段代码是确保用户列表（包括筛选后）中的复选框可以被点击的！
+    userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
+        checkbox.addEventListener('change', updateRecipientCount);
+    });
+    // --- END MODIFICATION ---
+}
 
     // Handle select all
     function handleSelectAll() {
