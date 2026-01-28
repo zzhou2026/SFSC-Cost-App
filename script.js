@@ -140,7 +140,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
 
             if (cfg.actionColumn === 'delete') html += `<td><button class="delete-button-table" data-id="${row.RecordId}">Delete</button></td>`;
-            else if (cfg.actionColumn === 'approve') html += `<td><button class="approve-button-table" data-id="${row.RecordId}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}">Reject</button></td>`;
+            else if (cfg.actionColumn === 'approve') {
+                const submittedBy = row.SubmittedBy || '';
+                const maisonName = row.MaisonName || '';
+                const quarter = row.Quarter || '';
+                html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}">Reject</button></td>`;
+            }
             html += '</tr>';
         });
 
@@ -164,12 +169,24 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
             const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
             if (!confirm(`Set to ${st}?`)) return;
+            
+            // Get applicant information from button data attributes
+            const submittedBy = e.target.dataset.submittedBy || '';
+            const maisonName = e.target.dataset.maisonName || '';
+            const quarter = e.target.dataset.quarter || '';
+            
             // NEW: 传递 actionBy 参数
             const res = await api('updateApprovalStatus', { recordId: id, newStatus: st, actionBy: currentUser.username });
             msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
+            
             if (res.success) {
                 loadTable('admin', $('adminDataTableContainer'));
                 loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: 重新加载历史日志
+                
+                // Send notification email to applicant
+                if (submittedBy) {
+                    sendApprovalNotification(submittedBy, st, maisonName, quarter);
+                }
             }
         }
     });
@@ -206,6 +223,44 @@ document.addEventListener('DOMContentLoaded', () => {
         clr($('emailMessage'));
         const res = await api('getUserEmail', { username: currentUser.username });
         setEmailUI(res.success && res.email, res.email || '');
+    };
+
+    // ===== Approval Notification Email =====
+    const sendApprovalNotification = async (submittedBy, status, maisonName, quarter) => {
+        try {
+            // Get applicant's email
+            const emailRes = await api('getUserEmail', { username: submittedBy });
+            if (!emailRes.success || !emailRes.email) {
+                console.log(`No email found for user: ${submittedBy}`);
+                return; // Silently fail if no email registered
+            }
+            
+            const applicantEmail = emailRes.email;
+            const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
+            const subject = encodeURIComponent(`SFSC License Application ${statusText} - ${quarter}`);
+            const body = encodeURIComponent(
+                `Dear ${submittedBy},\n\n` +
+                `Your SFSC license application for ${quarter} (Maison: ${maisonName}) has been ${statusText.toLowerCase()}.\n\n` +
+                `Status: ${statusText}\n` +
+                `Quarter: ${quarter}\n` +
+                `Maison: ${maisonName}\n\n` +
+                `Best regards,\n` +
+                `${currentUser.username}`
+            );
+            
+            // Open mailto link to send notification
+            const mailtoLink = `mailto:${applicantEmail}?subject=${subject}&body=${body}`;
+            const tempLink = document.createElement('a');
+            tempLink.href = mailtoLink;
+            tempLink.style.display = 'none';
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+            
+            console.log(`Notification email opened for ${applicantEmail}`);
+        } catch (error) {
+            console.error('Error sending approval notification:', error);
+        }
     };
 
     // ===== Email Broadcast =====
@@ -371,7 +426,16 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to send email.', false); return; }
             const s = encodeURIComponent($('emailSubjectInput').value.trim()), b = encodeURIComponent($('emailContentInput').value.trim());
             const p = [s && `subject=${s}`, b && `body=${b}`].filter(Boolean);
-            window.location.href = `mailto:${em.join(',')}${p.length ? '?' + p.join('&') : ''}`;
+            const mailtoLink = `mailto:${em.join(',')}${p.length ? '?' + p.join('&') : ''}`;
+            
+            // Use a temporary anchor element to trigger mailto: link (more reliable than window.location.href)
+            const tempLink = document.createElement('a');
+            tempLink.href = mailtoLink;
+            tempLink.style.display = 'none';
+            document.body.appendChild(tempLink);
+            tempLink.click();
+            document.body.removeChild(tempLink);
+            
             msg($('emailBroadcastMessage'), `Opening Outlook with ${em.length} recipient(s)...`, true);
         },
         copyEmailsButton: () => {
