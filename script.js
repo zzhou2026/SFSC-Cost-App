@@ -5,15 +5,19 @@ document.addEventListener('DOMContentLoaded', () => {
     // Reminder: Replace the URL above with your own!
 
     // --- DOM Elements ---
+    // Login Page
     const loginPage = document.getElementById('loginPage');
-    const mainPage = document.getElementById('mainPage');
     const usernameInput = document.getElementById('username');
     const passwordInput = document.getElementById('password');
     const loginButton = document.getElementById('loginButton');
     const loginMessage = document.getElementById('loginMessage');
+
+    // Main Page (Common)
+    const mainPage = document.getElementById('mainPage');
     const welcomeMessage = document.getElementById('welcomeMessage');
     const logoutButton = document.getElementById('logoutButton');
 
+    // Maison View
     const maisonView = document.getElementById('maisonView');
     const quarterSelect = document.getElementById('quarterSelect');
     const clientelingLicenseCountInput = document.getElementById('clientelingLicenseCount');
@@ -22,9 +26,29 @@ document.addEventListener('DOMContentLoaded', () => {
     const maisonSubmitMessage = document.getElementById('maisonSubmitMessage');
     const maisonHistoryTableContainer = document.getElementById('maisonHistoryTableContainer');
 
+    // Admin View
     const adminView = document.getElementById('adminView');
     const adminDataTableContainer = document.getElementById('adminDataTableContainer');
     const exportDataButton = document.getElementById('exportDataButton');
+
+    // Email Management Elements
+    const emailManagementSection = document.getElementById('emailManagementSection');
+    const emailDisplay = document.getElementById('emailDisplay');
+    const registeredEmailValueSpan = document.getElementById('registeredEmailValue');
+    const emailForm = document.getElementById('emailForm');
+    const userEmailInput = document.getElementById('userEmailInput');
+    const submitEmailButton = document.getElementById('submitEmailButton');
+    const editEmailButton = document.getElementById('editEmailButton');
+    const cancelEditEmailButton = document.getElementById('cancelEditEmailButton');
+    const emailMessage = document.getElementById('emailMessage');
+
+    // Cost Calculator Tool Elements
+    const calcClientelingLicenseCountInput = document.getElementById('calcClientelingLicenseCount');
+    const calcFullLicenseCountInput = document.getElementById('calcFullLicenseCount');
+    const calcMonthsSelect = document.getElementById('calcMonthsSelect');
+    const seeCostButton = document.getElementById('seeCostButton');
+    const calculatedCostDisplay = document.getElementById('calculatedCostDisplay');
+    const calculatorErrorMessage = document.getElementById('calculatorErrorMessage');
 
     // Email Broadcast Elements (Admin)
     const emailBroadcastSection = document.getElementById('emailBroadcastSection');
@@ -39,35 +63,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const emailBroadcastMessage = document.getElementById('emailBroadcastMessage');
     const recipientCountDisplay = document.getElementById('recipientCountDisplay');
     
-    let allUsers = []; // Store all users data
-    let filteredUsers = []; // Store filtered users for display
-    let currentRecipientEmails = []; // Store current recipient emails
-
-    // NEW: Email Management Elements
-    const emailManagementSection = document.getElementById('emailManagementSection');
-    const emailDisplay = document.getElementById('emailDisplay');
-    const registeredEmailValueSpan = document.getElementById('registeredEmailValue');
-    const emailForm = document.getElementById('emailForm');
-    const userEmailInput = document.getElementById('userEmailInput');
-    const submitEmailButton = document.getElementById('submitEmailButton');
-    const editEmailButton = document.getElementById('editEmailButton');
-    const cancelEditEmailButton = document.getElementById('cancelEditEmailButton');
-    const emailMessage = document.getElementById('emailMessage');
-
-
-    // --- Cost Calculator Tool Elements ---
-    const calcClientelingLicenseCountInput = document.getElementById('calcClientelingLicenseCount');
-    const calcFullLicenseCountInput = document.getElementById('calcFullLicenseCount');
-    const calcMonthsSelect = document.getElementById('calcMonthsSelect');
-    const seeCostButton = document.getElementById('seeCostButton');
-    const calculatedCostDisplay = document.getElementById('calculatedCostDisplay');
-    const calculatorErrorMessage = document.getElementById('calculatorErrorMessage');
-
-
+    // --- Global State Variables ---
     let currentUser = null; 
     let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 }; 
-
+    let allUsers = []; // Store all users data for email broadcast
+    let filteredUsers = []; // Store filtered users for display in email broadcast
+    let currentRecipientEmails = []; // Store current recipient emails for email broadcast
     // --- Helper Functions ---
+
+    // UI State Management
     function showPage(pageElement) {
         document.querySelectorAll('.page').forEach(p => {
             p.classList.add('hidden');
@@ -92,14 +96,15 @@ document.addEventListener('DOMContentLoaded', () => {
         element.className = 'message';
     }
 
-    // NEW: Email Validation Helper
+    // Email Validation Helper
     function isValidEmail(email) {
         // Simple regex for email validation
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return emailRegex.test(email);
     }
+    // --- Table Rendering and Action Handlers ---
 
-    // 将数据渲染成 HTML 表格 (包含删除按钮或审批按钮)
+    // Generic table renderer for historical data with optional action buttons
     function renderTable(containerElement, data, headersToShowMapping, options = {}) {
         if (!data || data.length === 0) {
             containerElement.innerHTML = '<p>No data available at the moment.</p>';
@@ -107,15 +112,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         let tableHTML = '<table><thead><tr>';
-        
         headersToShowMapping.forEach(header => {
             tableHTML += `<th>${header.label}</th>`;
         });
         if (options.includeMaisonDeleteButton) {
-            tableHTML += '<th>Action</th>'; // Maison 的删除操作列
+            tableHTML += '<th>Action</th>';
         }
         if (options.includeAdminApprovalButtons) {
-            tableHTML += '<th>Approval Action</th>'; // Admin 的审批操作列
+            tableHTML += '<th>Approval Action</th>';
         }
         tableHTML += '</tr></thead><tbody>';
 
@@ -129,11 +133,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         if (!isNaN(date)) {
                             cellValue = date.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
                         }
-                    } catch (e) {
-                        // Keep original value
-                    }
+                    } catch (e) { /* keep original value */ }
                 } else if (header.key === 'ApprovalStatus' && cellValue) {
-                    // 为 ApprovalStatus 添加状态徽章
                     let statusClass = '';
                     switch (cellValue) {
                         case 'Pending': statusClass = 'status-pending'; break;
@@ -146,11 +147,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 tableHTML += `<td>${cellValue !== undefined ? cellValue : ''}</td>`;
             });
             if (options.includeMaisonDeleteButton) {
-                // 每个删除按钮绑定 recordId
                 tableHTML += `<td><button class="delete-button-table" data-record-id="${row.RecordId}">Delete</button></td>`;
             }
             if (options.includeAdminApprovalButtons) {
-                // Admin 的审  按钮
                 tableHTML += `<td>
                                 <button class="approve-button-table" data-record-id="${row.RecordId}">Approve</button>
                                 <button class="reject-button-table" data-record-id="${row.RecordId}">Reject</button>
@@ -162,13 +161,12 @@ document.addEventListener('DOMContentLoaded', () => {
         tableHTML += '</tbody></table>';
         containerElement.innerHTML = tableHTML;
 
-        // 为删除按钮添加事件监听器
+        // Attach event listeners after rendering
         if (options.includeMaisonDeleteButton) {
             containerElement.querySelectorAll('.delete-button-table').forEach(button => {
                 button.addEventListener('click', handleDeleteRecord);
             });
         }
-        // 为审批按钮添加事件监听器
         if (options.includeAdminApprovalButtons) {
             containerElement.querySelectorAll('.approve-button-table').forEach(button => {
                 button.addEventListener('click', (event) => handleApprovalAction(event, 'Approved'));
@@ -179,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 删除记录的事件处理函数 ---
+    // Handler for deleting a record
     async function handleDeleteRecord(event) {
         const recordIdToDelete = event.target.dataset.recordId;
         if (!recordIdToDelete) {
@@ -192,10 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (result.success) {
                 showMessage(maisonSubmitMessage, 'Record deleted successfully!', true);
                 if (currentUser.role === 'maison') {
-                    loadMaisonHistoryData(); // 刷新数据
+                    loadMaisonHistoryData();
                 } else if (currentUser.role === 'admin') {
-                    // Admin 视图不显示删除按钮，但如果 Admin 也删除了，也要刷新
-                    loadAdminOverviewData(); 
+                    loadAdminOverviewData();
                 }
             } else {
                 showMessage(maisonSubmitMessage, 'Failed to delete record: ' + result.message, false);
@@ -203,7 +200,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- Admin 审批操作的事件处理函数 ---
+    // Handler for admin approval actions
     async function handleApprovalAction(event, newStatus) {
         const recordIdToUpdate = event.target.dataset.recordId;
         if (!recordIdToUpdate) {
@@ -215,25 +212,21 @@ document.addEventListener('DOMContentLoaded', () => {
             const result = await callAppsScript('updateApprovalStatus', { recordId: recordIdToUpdate, newStatus: newStatus });
             if (result.success) {
                 showMessage(loginMessage, `Record ${recordIdToUpdate} status updated to ${newStatus}.`, true);
-                loadAdminOverviewData(); // 刷新 Admin 概览数据
-                // 也要刷新Maison的历史数据，以便Maison用户看到状态变化
-                // 仅当当前用户是 Maison 角色时才刷新，Admin 审批后 Maison 刷新自己的视图
-                if (currentUser.role === 'maison') {
-                    loadMaisonHistoryData(); 
-                }
+                loadAdminOverviewData();
+                // If maison user is logged in elsewhere, their view will reflect this on refresh
             } else {
                 showMessage(loginMessage, `Failed to update record status: ${result.message}`, false);
             }
         }
     }
+    // --- Data Population and Calculation Helpers ---
 
-
-    // --- 填充季度选择器 ---
+    // Populates the quarter selection dropdown
     async function populateQuarterSelect() {
-        const numberOfFutureQuarters = 4; // Current quarter + 4 future quarters = 5 total options
+        const numberOfFutureQuarters = 4;
         const result = await callAppsScript('getQuarterList', { numberOfFutureQuarters: numberOfFutureQuarters });
         if (result.success && result.data) {
-            quarterSelect.innerHTML = ''; // Clear existing options
+            quarterSelect.innerHTML = '';
             result.data.forEach(quarter => {
                 const option = document.createElement('option');
                 option.value = quarter;
@@ -247,7 +240,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // --- 填充月份选择器 (用于计算工具) ---
+    // Populates the months selection dropdown for the cost calculator
     function populateCalcMonthsSelect() {
         calcMonthsSelect.innerHTML = '';
         for (let i = 1; i <= 12; i++) {
@@ -256,12 +249,11 @@ document.addEventListener('DOMContentLoaded', () => {
             option.textContent = i;
             calcMonthsSelect.appendChild(option);
         }
-        calcMonthsSelect.value = 12; // 默认选择 12 个月
+        calcMonthsSelect.value = 12;
     }
 
-    // --- 成本计算函数 (用于计算工具) ---
+    // Calculates the estimated cost based on licenses and months
     function calculateCostForTool(clientelingCount, fullCount, months) {
-        // 注意：这里使用 configPrices 中的值，这些值在登录时从后端获取
         const cUnitPrice = parseFloat(configPrices.ClientelingUnitPrice) || 16; 
         const fUnitPrice = parseFloat(configPrices.FullUnitPrice) || 52;   
         const fixed = parseFloat(configPrices.FixedCost) || 0;             
@@ -272,21 +264,17 @@ document.addEventListener('DOMContentLoaded', () => {
             fixed
         );
     }
-
     // --- Core function to call Apps Script backend ---
     async function callAppsScript(action, payload = {}) {
         try {
-                   // --- BEGIN MODIFICATION 1/2: callAppsScript 内部第一个 if 条件 ---
-        // 显示加载提示，但只针对需要用户感知的操作
-        // getConfig, checkExistingRecord, getUserEmail 和 getAllUsers 是后台请求，不显示 loading
-        if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') { 
-             loginMessage.textContent = 'Requesting...'; 
-             loginMessage.classList.add('loading'); 
-        }
-        // --- END MODIFICATION 1/2 ---
-
+            // Display loading message for user-perceivable actions
+            const showLoading = !['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers'].includes(action);
+            if (showLoading) { 
+                loginMessage.textContent = 'Requesting...'; 
+                loginMessage.classList.add('loading'); 
+            }
             
-            // 确保payload中的数值是实际的数字，而不是可能为空的字符串
+            // Ensure numeric payloads are correctly parsed
             if (action === 'submitSfscData') {
                 payload.clientelingLicenseCount = parseInt(payload.clientelingLicenseCount, 10) || 0;
                 payload.fullLicenseCount = parseInt(payload.fullLicenseCount, 10) || 0;
@@ -301,20 +289,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 body: JSON.stringify({ action, ...payload }), 
             });
 
-            const text = await response.text();
-                   const result = JSON.parse(text);
+            const result = await response.json(); // Directly parse as JSON
         
-        // --- BEGIN MODIFICATION 2/2: callAppsScript 内部第二个 if 条件 ---
-        if (action !== 'getQuarterList' && action !== 'getConfig' && action !== 'checkExistingRecord' && action !== 'getUserEmail' && action !== 'getAllUsers') {
-            loginMessage.classList.remove('loading'); 
-        }
-        // --- END MODIFICATION 2/2 ---
-        return result;
-
+            if (showLoading) {
+                loginMessage.classList.remove('loading'); 
+            }
+            return result;
 
         } catch (error) {
             console.error('Error calling Apps Script:', error);
-            // 更详细的网络错误提示
             return { success: false, message: 'Network error or backend API call failed: ' + error.message };
         }
     }
@@ -337,18 +320,17 @@ document.addEventListener('DOMContentLoaded', () => {
         if (result.success) {
             showMessage(loginMessage, 'Login successful!', true);
             currentUser = { username: username, role: result.role, maisonName: result.maisonName };
-            // 登录成功后，获取配置信息，并保存到 configPrices 变量
+            
+            // Fetch configuration prices after successful login
             const configResult = await callAppsScript('getConfig');
             if (configResult.success && configResult.data) {
-                // 解析从后端获取的配置值，并确保它们是数字
                 configPrices.ClientelingUnitPrice = parseFloat(configResult.data.ClientelingUnitPrice) || 16;
                 configPrices.FullUnitPrice = parseFloat(configResult.data.FullUnitPrice) || 52;
                 configPrices.FixedCost = parseFloat(configResult.data.FixedCost) || 0;
             } else {
                 console.error('Failed to load config prices:', configResult.message);
                 showMessage(loginMessage, 'Failed to load configuration prices. Using default prices.', false);
-                // 即使加载失败，也要使用默认值
-                configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 };
+                configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 }; // Fallback to defaults
             }
 
             setTimeout(() => {
@@ -358,7 +340,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(loginMessage, 'Login failed: ' + result.message);
         }
     });
-
     // Logout button click event
     logoutButton.addEventListener('click', () => {
         currentUser = null;
@@ -366,7 +347,6 @@ document.addEventListener('DOMContentLoaded', () => {
         passwordInput.value = '';
         clearMessage(loginMessage);
         clearMessage(maisonSubmitMessage);
-        // NEW: Clear email messages on logout
         clearMessage(emailMessage); 
         showPage(loginPage);
     });
@@ -374,7 +354,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // Submit SFSC Data button click event (Maison View)
     submitSfscDataButton.addEventListener('click', async () => {
         if (!currentUser || currentUser.role !== 'maison') {
-            showMessage(maisonSubmitMessage, 'Please log in as a Maison user!', false); // Changed to false for consistent styling
+            showMessage(maisonSubmitMessage, 'Please log in as a Maison user!', false);
             return;
         }
 
@@ -389,20 +369,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         clearMessage(maisonSubmitMessage);
 
-        let recordIdToUpdate = null; // 初始化为 null
-        // 检查是否存在现有记录
+        let recordIdToUpdate = null;
         const checkResult = await callAppsScript('checkExistingRecord', { 
             maisonName: currentUser.maisonName, 
             quarter: quarter 
         });
 
         if (checkResult.success && checkResult.exists) {
-            // 如果存在，弹窗询问是否更新
             if (!confirm(`You have already submitted data for ${quarter}. Do you want to UPDATE the existing record?`)) {
                 showMessage(maisonSubmitMessage, 'Submission cancelled.', false);
-                return; // 用户取消，中断提交
+                return;
             }
-            recordIdToUpdate = checkResult.recordId; // 获取到旧记录的 RecordId
+            recordIdToUpdate = checkResult.recordId;
         }
 
         const result = await callAppsScript('submitSfscData', {
@@ -411,38 +389,38 @@ document.addEventListener('DOMContentLoaded', () => {
             clientelingLicenseCount: clientelingLicenseCount, 
             fullLicenseCount: fullLicenseCount,               
             submittedBy: currentUser.username,
-            recordIdToUpdate: recordIdToUpdate // 将 RecordIdToUpdate 传递给后端
+            recordIdToUpdate: recordIdToUpdate
         });
 
         if (result.success) {
             showMessage(maisonSubmitMessage, `${recordIdToUpdate ? 'Data updated' : 'Data submitted'} successfully! Calculated Cost: ${result.calculatedCost} €`, true);
-            clientelingLicenseCountInput.value = '0'; // Clear input fields
-            fullLicenseCountInput.value = '0';       // Clear input fields
+            clientelingLicenseCountInput.value = '0';
+            fullLicenseCountInput.value = '0';
             if (currentUser.role === 'maison') {
-                loadMaisonHistoryData(); // 刷新数据
+                loadMaisonHistoryData();
             }
         } else {
-            showMessage(maaisonSubmitMessage, 'Data submission failed: ' + result.message, false);
+            showMessage(maisonSubmitMessage, 'Data submission failed: ' + result.message, false);
         }
     });
     
-    // --- 成本计算工具的事件监听 ---
+    // Cost Calculator Tool button click event
     seeCostButton.addEventListener('click', () => {
-        clearMessage(calculatorErrorMessage); // 清除之前的错误信息
+        clearMessage(calculatorErrorMessage);
         const clientelingCount = parseInt(calcClientelingLicenseCountInput.value, 10) || 0;
         const fullCount = parseInt(calcFullLicenseCountInput.value, 10) || 0;
         const months = parseInt(calcMonthsSelect.value, 10) || 12;
 
         if (clientelingCount < 0 || fullCount < 0 || months < 1 || months > 12 || isNaN(clientelingCount) || isNaN(fullCount) || isNaN(months)) {
-            showMessage(calculatorErrorMessage, 'Please enter valid positive license counts and months (1-12)!', false); // Added false
-            calculatedCostDisplay.textContent = 'Estimated Cost: NaN €'; // 显示错误时将成本显示为 NaN
+            showMessage(calculatorErrorMessage, 'Please enter valid positive license counts and months (1-12)!', false);
+            calculatedCostDisplay.textContent = 'Estimated Cost: NaN €';
             return;
         }
 
         const estimatedCost = calculateCostForTool(clientelingCount, fullCount, months);
         calculatedCostDisplay.textContent = `Estimated Cost: ${estimatedCost.toFixed(2)} €`;
-        calculatedCostDisplay.classList.remove('error'); // 确保不是错误样式
-        calculatedCostDisplay.classList.add('success'); // 显示为成功样式
+        calculatedCostDisplay.classList.remove('error');
+        calculatedCostDisplay.classList.add('success');
     });
 
     // Export Data button click event (Admin View)
@@ -455,7 +433,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const result = await callAppsScript('getAllSfscData');
 
         if (result.success && result.data && result.data.length > 0) {
-            // CSV 导出时，不包含 RecordId，因为 RecordId 是内部标识
             const headersToExport = [
                 { key: 'MaisonName', label: 'Maison Name' },
                 { key: 'Quarter', label: 'Quarter' },
@@ -464,14 +441,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 { key: 'CalculatedCost', label: 'Calculated Cost (€)' },
                 { key: 'SubmittedBy', label: 'Submitted By' },
                 { key: 'Timestamp', label: 'Submission Time' },
-                { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：导出时包含审批状态
+                { key: 'ApprovalStatus', label: 'Approval Status' }
             ];
             
-            let csv = headersToExport.map(h => h.label).join(',') + '\n'; // CSV 表头
+            let csv = headersToExport.map(h => h.label).join(',') + '\n';
             result.data.forEach(row => {
                 const values = headersToExport.map(header => {
                     let value = row[header.key];
-                    // 处理可能的特殊字符和日期格式
                     if (header.key === 'Timestamp' && value) {
                         try {
                             const date = new Date(value);
@@ -481,7 +457,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         } catch (e) { /* keep original value */ }
                     }
                     if (typeof value === 'string') {
-                        value = `"${value.replace(/"/g, '""')}"`; // 转义双引号
+                        value = `"${value.replace(/"/g, '""')}"`;
                     }
                     return value;
                 });
@@ -502,10 +478,9 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage(loginMessage, 'Export failed: No data or an error occurred.', false);
         }
     });
-
-
     // --- Page Display Logic ---
 
+    // Controls which main page view is shown based on user role
     function showMainPage() {
         showPage(mainPage);
         welcomeMessage.textContent = `Welcome, ${currentUser.maisonName} (${currentUser.role})!`;
@@ -513,30 +488,27 @@ document.addEventListener('DOMContentLoaded', () => {
         maisonView.classList.add('hidden');
         adminView.classList.add('hidden');
 
-        // Maison user login, populate quarter selector
         if (currentUser.role === 'maison') {
             maisonView.classList.remove('hidden');
-            populateQuarterSelect(); // Call function to populate quarter selector
-            populateCalcMonthsSelect(); // 填充成本计算工具的月份选择器
-            // 初始化成本计算工具的输入框，与提交框同步
-            calcClientelingLicenseCountInput.value = clientelingLicenseCountInput.value;
-            calcFullLicenseCountInput.value = fullLicenseCountInput.value;
-            calculatedCostDisplay.textContent = 'Estimated Cost: 0.00 €'; // 重置显示
-            loadMaisonHistoryData(); 
-            initEmailManagement(); // NEW: Initialize email management section
+            populateQuarterSelect();
+            populateCalcMonthsSelect();
+            calcClientelingLicenseCountInput.value = '0'; // Reset input fields
+            fullLicenseCountInput.value = '0';
+            calculatedCostDisplay.textContent = 'Estimated Cost: 0.00 €';
+            loadMaisonHistoryData();
+            initEmailManagement();
         } else if (currentUser.role === 'admin') {
             adminView.classList.remove('hidden');
             loadAdminOverviewData();
-            initEmailBroadcast(); // Initialize email broadcast functionality
+            initEmailBroadcast();
         }
     }
 
-    // Load Maison historical data
+    // Loads and renders historical data for the logged-in Maison user
     async function loadMaisonHistoryData() {
         if (currentUser && currentUser.role === 'maison') {
             const result = await callAppsScript('getMaisonSfscData', { maisonName: currentUser.maisonName });
             if (result.success && result.data) {
-                // Define English table headers and corresponding internal keys
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
@@ -544,9 +516,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'FullLicenseCount', label: 'Full Licenses' },             
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'Timestamp', label: 'Submission Time' },
-                    { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：显示审批状态
+                    { key: 'ApprovalStatus', label: 'Approval Status' }
                 ];
-                // Maison 用户可以删除自己的记录
                 renderTable(maisonHistoryTableContainer, result.data, headersEn, { includeMaisonDeleteButton: true }); 
             } else {
                 maisonHistoryTableContainer.innerHTML = '<p>Failed to load historical data: ' + result.message + '</p>';
@@ -554,12 +525,11 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Load Admin overview data
+    // Loads and renders all SFSC data for the Admin overview
     async function loadAdminOverviewData() {
         if (currentUser && currentUser.role === 'admin') {
             const result = await callAppsScript('getAllSfscData');
             if (result.success && result.data) {
-                // Define English table headers and corresponding internal keys
                 const headersEn = [
                     { key: 'MaisonName', label: 'Maison Name' },
                     { key: 'Quarter', label: 'Quarter' },
@@ -568,45 +538,42 @@ document.addEventListener('DOMContentLoaded', () => {
                     { key: 'CalculatedCost', label: 'Calculated Cost' },
                     { key: 'SubmittedBy', label: 'Submitted By' },
                     { key: 'Timestamp', label: 'Submission Time' },
-                    { key: 'ApprovalStatus', label: 'Approval Status' } // 新增：显示审批状态
+                    { key: 'ApprovalStatus', label: 'Approval Status' }
                 ];
-                // Admin 审批界面，包含审批按钮
                 renderTable(adminDataTableContainer, result.data, headersEn, { includeAdminApprovalButtons: true }); 
             } else {
                 adminDataTableContainer.innerHTML = '<p>Failed to load all data: ' + result.message + '</p>';
             }
         }
     }
+    // --- Email Management Logic (for Maison users) ---
 
-    // --- NEW: Email Management Logic ---
-
-    // Function to update the email management UI based on current user's email
+    // Initializes the email management section UI
     async function initEmailManagement() {
         if (!currentUser || currentUser.role !== 'maison') {
-            emailManagementSection.classList.add('hidden'); // Hide if not maison user
+            emailManagementSection.classList.add('hidden');
             return;
         }
-        emailManagementSection.classList.remove('hidden'); // Show for maison user
+        emailManagementSection.classList.remove('hidden');
         clearMessage(emailMessage);
 
         const result = await callAppsScript('getUserEmail', { username: currentUser.username });
         if (result.success && result.email) {
             registeredEmailValueSpan.textContent = result.email;
-            emailDisplay.classList.remove('hidden'); // Show registered email
-            emailForm.classList.add('hidden'); // Hide form
-            editEmailButton.classList.remove('hidden'); // Show edit button
-            submitEmailButton.textContent = 'Register Email'; // Reset button text
-            cancelEditEmailButton.classList.add('hidden'); // Hide cancel button
-            userEmailInput.value = result.email; // Pre-fill input
+            emailDisplay.classList.remove('hidden');
+            emailForm.classList.add('hidden');
+            editEmailButton.classList.remove('hidden');
+            submitEmailButton.textContent = 'Register Email';
+            cancelEditEmailButton.classList.add('hidden');
+            userEmailInput.value = result.email;
         } else {
-            // No email registered or error fetching
             registeredEmailValueSpan.textContent = '';
-            emailDisplay.classList.add('hidden'); // Hide registered email display
-            emailForm.classList.remove('hidden'); // Show form
-            editEmailButton.classList.add('hidden'); // Hide edit button
-            submitEmailButton.textContent = 'Register Email'; // Ensure text is "Register"
-            cancelEditEmailButton.classList.add('hidden'); // Hide cancel button
-            userEmailInput.value = ''; // Clear input
+            emailDisplay.classList.add('hidden');
+            emailForm.classList.remove('hidden');
+            editEmailButton.classList.add('hidden');
+            submitEmailButton.textContent = 'Register Email';
+            cancelEditEmailButton.classList.add('hidden');
+            userEmailInput.value = '';
         }
     }
 
@@ -628,14 +595,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         clearMessage(emailMessage);
-        showMessage(emailMessage, 'Saving email...', true); // Temporary loading message
+        showMessage(emailMessage, 'Saving email...', true);
 
         const result = await callAppsScript('updateUserEmail', { username: currentUser.username, email: email });
 
         if (result.success) {
             showMessage(emailMessage, 'Email saved successfully!', true);
-            // Refresh UI to show the registered email
-            initEmailManagement(); 
+            initEmailManagement(); // Refresh UI
         } else {
             showMessage(emailMessage, 'Failed to save email: ' + result.message, false);
         }
@@ -643,26 +609,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Event listener for Edit Email Button
     editEmailButton.addEventListener('click', () => {
-        emailDisplay.classList.add('hidden'); // Hide display
-        editEmailButton.classList.add('hidden'); // Hide edit button
+        emailDisplay.classList.add('hidden');
+        editEmailButton.classList.add('hidden');
 
-        emailForm.classList.remove('hidden'); // Show form
-        userEmailInput.value = registeredEmailValueSpan.textContent; // Pre-fill with current email
-        submitEmailButton.textContent = 'Save Changes'; // Change button text
-        cancelEditEmailButton.classList.remove('hidden'); // Show cancel button
+        emailForm.classList.remove('hidden');
+        userEmailInput.value = registeredEmailValueSpan.textContent;
+        submitEmailButton.textContent = 'Save Changes';
+        cancelEditEmailButton.classList.remove('hidden');
         clearMessage(emailMessage);
     });
 
     // Event listener for Cancel Edit Email Button
     cancelEditEmailButton.addEventListener('click', () => {
-        // Revert to initial state (display registered email, hide form)
-        initEmailManagement();
+        initEmailManagement(); // Revert to initial state
         clearMessage(emailMessage);
     });
 
-    // --- Email Broadcast Functions (Admin) - User Selection ---
+    // --- Email Broadcast Functions (Admin) ---
 
-    // Initialize email broadcast section
+    // Initializes the email broadcast section
     async function initEmailBroadcast() {
         if (!currentUser || currentUser.role !== 'admin') {
             emailBroadcastSection.classList.add('hidden');
@@ -670,24 +635,20 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         emailBroadcastSection.classList.remove('hidden');
         
-        // Load all users
         await loadAllUsers();
         
-        // Set up event listeners
         selectAllButton.addEventListener('click', handleSelectAll);
         deselectAllButton.addEventListener('click', handleDeselectAll);
         userSearchInput.addEventListener('input', handleUserSearch);
         openOutlookButton.addEventListener('click', handleOpenOutlook);
         copyEmailsButton.addEventListener('click', handleCopyEmails);
         
-        // Update recipient count when checkboxes change
-        updateRecipientCount();
+        updateRecipientCount(); // Initial count update
     }
 
-    // Load all users from backend
+    // Loads all users from the backend for selection
     async function loadAllUsers() {
         userListContainer.innerHTML = '<p class="loading-text">Loading users...</p>';
-        
         const result = await callAppsScript('getAllUsers');
         if (result.success && result.data) {
             allUsers = result.data.filter(user => user.email && user.email.trim() !== '');
@@ -699,7 +660,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Render user list with checkboxes
+    // Renders the list of users with checkboxes for email broadcast
     function renderUserList() {
         if (filteredUsers.length === 0) {
             userListContainer.innerHTML = '<p class="no-users-text">No users found.</p>';
@@ -729,21 +690,12 @@ document.addEventListener('DOMContentLoaded', () => {
         html += '</div>';
         userListContainer.innerHTML = html;
 
-        // ... (renderUserList 函数中生成 HTML 的代码，直到 userListContainer.innerHTML = html; 这一行) ...
+        userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
+            checkbox.addEventListener('change', updateRecipientCount);
+        });
+    }
 
-    userListContainer.innerHTML = html; 
-
-    // --- BEGIN MODIFICATION (renderUserList 内部的事件绑定，确认即可) ---
-    // Add change listeners to all checkboxes (re-bind every time list is rendered)
-    // 这段代码是确保用户列表（包括筛选后）中的复选框可以被点击的！
-    userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
-        checkbox.addEventListener('change', updateRecipientCount);
-    });
-    // --- END MODIFICATION ---
-}
-
-
-    // Handle select all
+    // Selects all non-disabled checkboxes in the user list
     function handleSelectAll() {
         userListContainer.querySelectorAll('.user-checkbox:not(:disabled)').forEach(checkbox => {
             checkbox.checked = true;
@@ -751,7 +703,7 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRecipientCount();
     }
 
-    // Handle deselect all
+    // Deselects all checkboxes in the user list
     function handleDeselectAll() {
         userListContainer.querySelectorAll('.user-checkbox').forEach(checkbox => {
             checkbox.checked = false;
@@ -759,10 +711,9 @@ document.addEventListener('DOMContentLoaded', () => {
         updateRecipientCount();
     }
 
-    // Handle user search
+    // Filters the user list based on search input
     function handleUserSearch() {
         const searchTerm = userSearchInput.value.toLowerCase().trim();
-        
         if (searchTerm === '') {
             filteredUsers = [...allUsers];
         } else {
@@ -775,23 +726,21 @@ document.addEventListener('DOMContentLoaded', () => {
                        maison.includes(searchTerm);
             });
         }
-        
         renderUserList();
         updateRecipientCount();
     }
 
-    // Update recipient emails based on selected users
+    // Updates the list of current recipient emails based on selected checkboxes
     function updateRecipientEmails() {
         const selectedCheckboxes = userListContainer.querySelectorAll('.user-checkbox:checked');
         currentRecipientEmails = Array.from(selectedCheckboxes)
             .map(cb => cb.dataset.email)
             .filter(email => email && email.trim() !== '');
-        updateRecipientCount();
     }
 
-    // Update recipient count display
+    // Updates the recipient count display
     function updateRecipientCount() {
-        updateRecipientEmails();
+        updateRecipientEmails(); // Ensure currentRecipientEmails is up-to-date
         const count = currentRecipientEmails.length;
         if (count > 0) {
             recipientCountDisplay.textContent = `Selected: ${count} recipient(s)`;
@@ -804,9 +753,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    // Handle open Outlook button click
+    // Handles opening Outlook with selected recipients and pre-filled subject/body
     function handleOpenOutlook() {
-        updateRecipientEmails();
+        updateRecipientEmails(); // Ensure currentRecipientEmails is up-to-date
         
         if (currentRecipientEmails.length === 0) {
             showMessage(emailBroadcastMessage, 'No recipients selected. Please select at least one user with email address.', false);
@@ -816,15 +765,11 @@ document.addEventListener('DOMContentLoaded', () => {
         const subject = emailSubjectInput.value.trim();
         const body = emailContentInput.value.trim();
 
-        // Create mailto link
-        // Multiple recipients: use comma-separated list
         const to = currentRecipientEmails.join(',');
         
-        // Encode subject and body for URL
         const encodedSubject = encodeURIComponent(subject);
         const encodedBody = encodeURIComponent(body);
 
-        // Create mailto URL
         let mailtoUrl = `mailto:${to}`;
         const params = [];
         if (subject) {
@@ -837,15 +782,14 @@ document.addEventListener('DOMContentLoaded', () => {
             mailtoUrl += '?' + params.join('&');
         }
 
-        // Open mailto link (will open default email client, e.g., Outlook)
         window.location.href = mailtoUrl;
         
         showMessage(emailBroadcastMessage, `Opening Outlook with ${currentRecipientEmails.length} recipient(s)... If it doesn't open, please check your default email client settings.`, true);
     }
 
-    // Handle copy emails button click
+    // Handles copying selected recipient emails to clipboard
     function handleCopyEmails() {
-        updateRecipientEmails();
+        updateRecipientEmails(); // Ensure currentRecipientEmails is up-to-date
         
         if (currentRecipientEmails.length === 0) {
             showMessage(emailBroadcastMessage, 'No recipients to copy. Please select at least one user with email address.', false);
@@ -853,21 +797,18 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         try {
-            // Copy email list to clipboard
-            const emailList = currentRecipientEmails.join('; '); // Use semicolon for Outlook
+            const emailList = currentRecipientEmails.join('; ');
             navigator.clipboard.writeText(emailList).then(() => {
                 showMessage(emailBroadcastMessage, `Copied ${currentRecipientEmails.length} email(s) to clipboard!`, true);
             }).catch(() => {
-                // Fallback for older browsers
                 fallbackCopyToClipboard(emailList);
             });
         } catch (err) {
-            // Fallback for older browsers
             fallbackCopyToClipboard(currentRecipientEmails.join('; '));
         }
     }
 
-    // Fallback copy to clipboard function
+    // Fallback function for copying text to clipboard (for older browsers)
     function fallbackCopyToClipboard(text) {
         const textArea = document.createElement('textarea');
         textArea.value = text;
