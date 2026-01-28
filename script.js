@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch { return ts; }
     };
 
-    // ===== API 调    =====
+    // ===== API 调用 =====
     const api = async (act, data = {}) => {
         const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers', 'getAllSfscHistory', 'getMaisonSfscHistory']; // NEW: 添加历史记录API
         const loading = !silent.includes(act);
@@ -67,6 +67,22 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'CalculatedCost', label: 'Calculated Cost' }
     ];
 
+    // NEW: 历史记录表格的基础头部
+    const baseHistoryHeaders = [
+        { key: 'MaisonName', label: 'Maison Name' },
+        { key: 'Quarter', label: 'Quarter' },
+        { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
+        { key: 'FullLicenseCount', label: 'Full Licenses' },
+        { key: 'CalculatedCost', label: 'Calculated Cost' },
+        { key: 'SubmittedBy', label: 'Submitted By' },
+        { key: 'Timestamp', label: 'Submission Time' }, // 这是 SFSC_Data 中的 Timestamp
+        { key: 'ApprovalStatus', label: 'Approval Status' },
+        { key: 'Action', label: 'Action Type' }, // NEW
+        { key: 'ActionTimestamp', label: 'Action Time' }, // NEW
+        { key: 'ActionBy', label: 'Action By' } // NEW
+    ];
+
+
     const configs = {
         maison: {
             action: 'getMaisonSfscData', // 获取 Maison 当前数据
@@ -78,39 +94,15 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
             actionColumn: 'approve'
         },
-        // NEW: SFSC_History 表的配置 (如果未来需要显示)
-        maisonHistory: {
-            action: 'getMaisonSfscHistory', // 获取 Maison 历史记录
-            headers: [
-                { key: 'MaisonName', label: 'Maison Name' },
-                { key: 'Quarter', label: 'Quarter' },
-                { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
-                { key: 'FullLicenseCount', label: 'Full Licenses' },
-                { key: 'CalculatedCost', label: 'Calculated Cost' },
-                { key: 'SubmittedBy', label: 'Submitted By' },
-                { key: 'Timestamp', label: 'Submission Timestamp' },
-                { key: 'ApprovalStatus', label: 'Approval Status' },
-                { key: 'Action', label: 'Action Type' }, // NEW
-                { key: 'ActionTimestamp', label: 'Action Time' }, // NEW
-                { key: 'ActionBy', label: 'Action By' } // NEW
-            ],
+        // NEW: SFSC_History 表的配置
+        maisonActionsLog: { // 针对 Maison 用户的历史操作日志
+            action: 'getMaisonSfscHistory',
+            headers: [...baseHistoryHeaders],
             actionColumn: null // 历史记录通常不需要操作列
         },
-        adminHistory: {
-            action: 'getAllSfscHistory', // 获取所有历史记录
-            headers: [
-                { key: 'MaisonName', label: 'Maison Name' },
-                { key: 'Quarter', label: 'Quarter' },
-                { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
-                { key: 'FullLicenseCount', label: 'Full Licenses' },
-                { key: 'CalculatedCost', label: 'Calculated Cost' },
-                { key: 'SubmittedBy', label: 'Submitted By' },
-                { key: 'Timestamp', label: 'Submission Timestamp' },
-                { key: 'ApprovalStatus', label: 'Approval Status' },
-                { key: 'Action', label: 'Action Type' }, // NEW
-                { key: 'ActionTimestamp', label: 'Action Time' }, // NEW
-                { key: 'ActionBy', label: 'Action By' } // NEW
-            ],
+        adminActionsLog: { // 针对 Admin 用户的历史操作日志
+            action: 'getAllSfscHistory',
+            headers: [...baseHistoryHeaders],
             actionColumn: null
         }
     };
@@ -138,7 +130,8 @@ document.addEventListener('DOMContentLoaded', () => {
         res.data.forEach(row => {
             html += '<tr>' + cfg.headers.map(h => {
                 let v = row[h.key];
-                if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v); // NEW: 格式化 ActionTimestamp
+                // NEW: 格式化 Timestamp 和 ActionTimestamp
+                if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v); 
                 if (h.key === 'ApprovalStatus') {
                     const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
                     v = `<span class="status-badge ${sc}">${v}</span>`;
@@ -164,14 +157,20 @@ document.addEventListener('DOMContentLoaded', () => {
             // NEW: 传递 actionBy 参数
             const res = await api('deleteSfscData', { recordId: id, actionBy: currentUser.username });
             msg($('maisonSubmitMessage'), res.success ? 'Deleted!' : 'Delete failed: ' + res.message, res.success);
-            if (res.success) loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName });
+            if (res.success) {
+                loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName });
+                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: 重新加载历史日志
+            }
         } else if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
             const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
             if (!confirm(`Set to ${st}?`)) return;
             // NEW: 传递 actionBy 参数
             const res = await api('updateApprovalStatus', { recordId: id, newStatus: st, actionBy: currentUser.username });
             msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
-            if (res.success) loadTable('admin', $('adminDataTableContainer'));
+            if (res.success) {
+                loadTable('admin', $('adminDataTableContainer'));
+                loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: 重新加载历史日志
+            }
         }
     });
 
@@ -265,13 +264,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     popQ(); popM();
                     $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0';
                     $('calculatedCostDisplay').textContent = 'Estimated Cost: 0.00 €';
-                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); // This will now load current data
-                    // If you want to show actual historical data in a separate section, you'd call loadTable('maisonHistory', newContainer, { maisonName: currentUser.maisonName }); here
+                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); // Load current data
+                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: Load historical actions log
                     initEmail();
                 } else {
                     $('adminView').classList.remove('hidden'); $('maisonView').classList.add('hidden');
-                    loadTable('admin', $('adminDataTableContainer')); // This will now load current data
-                    // If you want to show actual historical data in a separate section, you'd call loadTable('adminHistory', newContainer); here
+                    loadTable('admin', $('adminDataTableContainer')); // Load current data
+                    loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: Load all historical actions log
                     initBcast();
                 }
             }, 500);
@@ -311,6 +310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg($('maisonSubmitMessage'), `${id ? 'Updated' : 'Submitted'}! Cost: ${res.calculatedCost} €`, true); 
                 $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0'; 
                 loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); 
+                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: 重新加载历史日志
             } else {
                 msg($('maisonSubmitMessage'), 'Failed to submit/update: ' + res.message, false);
             }
