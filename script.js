@@ -183,15 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const submittedBy = row.SubmittedBy || '';
                 const maisonName = row.MaisonName || '';
                 const quarter = row.Quarter || '';
-<<<<<<< HEAD
                 const clientelingLicenses = row.ClientelingLicenseCount || '0';
                 const fullLicenses = row.FullLicenseCount || '0';
                 const calculatedCost = row.CalculatedCost || '0';
                 const timestamp = row.Timestamp || '';
                 html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Reject</button></td>`;
-=======
-                html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}">Reject</button></td>`;
->>>>>>> origin/main
             }
             html += '</tr>';
         });
@@ -221,13 +217,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const submittedBy = e.target.dataset.submittedBy || '';
             const maisonName = e.target.dataset.maisonName || '';
             const quarter = e.target.dataset.quarter || '';
-<<<<<<< HEAD
             const clientelingLicenses = e.target.dataset.clienteling || '0';
             const fullLicenses = e.target.dataset.full || '0';
             const calculatedCost = e.target.dataset.cost || '0';
             const timestamp = e.target.dataset.timestamp || '';
-=======
->>>>>>> origin/main
             
             // NEW: 传递 actionBy 参数
             const res = await api('updateApprovalStatus', { recordId: id, newStatus: st, actionBy: currentUser.username });
@@ -239,11 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Send notification email to applicant
                 if (submittedBy) {
-<<<<<<< HEAD
                     sendApprovalNotification(submittedBy, st, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp);
-=======
-                    sendApprovalNotification(submittedBy, st, maisonName, quarter);
->>>>>>> origin/main
                 }
             }
         }
@@ -284,11 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ===== Approval Notification Email =====
-<<<<<<< HEAD
     const sendApprovalNotification = async (submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp) => {
-=======
-    const sendApprovalNotification = async (submittedBy, status, maisonName, quarter) => {
->>>>>>> origin/main
         try {
             // Get applicant's email
             const emailRes = await api('getUserEmail', { username: submittedBy });
@@ -299,26 +284,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const applicantEmail = emailRes.email;
             const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
-<<<<<<< HEAD
             const formattedTimestamp = timestamp ? fmt(timestamp) : timestamp;
-=======
->>>>>>> origin/main
             const subject = encodeURIComponent(`SFSC License Application ${statusText} - ${quarter}`);
             const body = encodeURIComponent(
                 `Dear ${submittedBy},\n\n` +
                 `Your SFSC license application for ${quarter} (Maison: ${maisonName}) has been ${statusText.toLowerCase()}.\n\n` +
                 `Status: ${statusText}\n` +
                 `Quarter: ${quarter}\n` +
-<<<<<<< HEAD
                 `Maison: ${maisonName}\n` +
                 `Clienteling Licenses: ${clientelingLicenses}\n` +
                 `Full Licenses: ${fullLicenses}\n` +
                 `Calculated Cost: ${calculatedCost} €\n` +
                 `Submitted By: ${submittedBy}\n` +
                 `Submission Time: ${formattedTimestamp}\n\n` +
-=======
-                `Maison: ${maisonName}\n\n` +
->>>>>>> origin/main
                 `Best regards,\n` +
                 `${currentUser.username}`
             );
