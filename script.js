@@ -12,8 +12,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== 工具函数 =====
     const showPage = page => {
-        document.querySelectorAll('.page').forEach(p => p.classList.add('hidden'));
+        document.querySelectorAll('.page').forEach(p => {
+            p.classList.add('hidden');
+            p.classList.remove('active');
+        });
         page.classList.remove('hidden');
+        page.classList.add('active');
     };
 
     const showMessage = (el, msg, isSuccess = false) => {
