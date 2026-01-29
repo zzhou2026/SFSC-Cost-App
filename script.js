@@ -287,7 +287,7 @@ document.addEventListener('DOMContentLoaded', () => {
             `Submitted By: ${submittedBy || ''}\n` +
             `Submission Time: ${formattedTimestamp}\n` +
             `Approval Status: ${statusText}\n\n` +
-            `BT (admin)`
+            `Best regards,\nBT-admin`
         );
     };
 
