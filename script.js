@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'Quarter', label: 'Quarter' },
         { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
         { key: 'FullLicenseCount', label: 'Full Licenses' },
-        { key: 'CalculatedCost', label: 'Calculated Cost' },
+        { key: 'CalculatedCost', label: 'Calculated Cost(\u20AC)' },
         { key: 'SubmittedBy', label: 'Submitted By' },
         { key: 'Timestamp', label: 'Submission Time' }, // 这是 SFSC_Data 中的 Timestamp
         { key: 'ApprovalStatus', label: 'Approval Status' },
