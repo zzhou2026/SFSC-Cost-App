@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 };
     let allUsers = [];
     let searchTerm = '';
+    let adminTableData = []; // 存储Admin表格的原始数据，用于筛选
 
     // ===== 工具函数 =====
     const showPage = page => {
@@ -34,7 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== API 调用 =====
     const api = async (act, data = {}) => {
-        const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers', 'getAllSfscHistory', 'getMaisonSfscHistory']; // NEW: 添加历史记录API
+        const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers', 'getAllSfscHistory', 'getMaisonSfscHistory'];
         const loading = !silent.includes(act);
 
         try {
@@ -57,8 +58,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // ===== 表格配置（优化：共享基础 headers）=====
-    // SFSC_Data 表的配置
+    // ===== 表格配置 =====
     const baseHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
         { key: 'Quarter', label: 'Quarter' },
@@ -67,7 +67,6 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'CalculatedCost', label: 'Calculated Cost' }
     ];
 
-    // NEW: 历史记录表格的基础头部
     const baseHistoryHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
         { key: 'Quarter', label: 'Quarter' },
@@ -75,48 +74,130 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'FullLicenseCount', label: 'Full Licenses' },
         { key: 'CalculatedCost', label: 'Calculated Cost' },
         { key: 'SubmittedBy', label: 'Submitted By' },
-        { key: 'Timestamp', label: 'Submission Time' }, // 这是 SFSC_Data 中的 Timestamp
+        { key: 'Timestamp', label: 'Submission Time' },
         { key: 'ApprovalStatus', label: 'Approval Status' },
-        { key: 'Action', label: 'Action Type' }, // NEW
-        { key: 'ActionTimestamp', label: 'Action Time' }, // NEW
-        { key: 'ActionBy', label: 'Action By' } // NEW
+        { key: 'Action', label: 'Action Type' },
+        { key: 'ActionTimestamp', label: 'Action Time' },
+        { key: 'ActionBy', label: 'Action By' }
     ];
-
 
     const configs = {
         maison: {
-            action: 'getMaisonSfscData', // 获取 Maison 当前数据
+            action: 'getMaisonSfscData',
             headers: [...baseHeaders, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
-            actionColumn: null // Removed Action column for My Current Data table
+            actionColumn: null
         },
         admin: {
-            action: 'getAllSfscData', // 获取所有 Maison 当前数据
+            action: 'getAllSfscData',
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
-            actionColumn: 'approve'
+            actionColumn: 'approve',
+            filterable: true, // 标记此表格支持筛选
+            filterColumns: ['MaisonName', 'Quarter', 'SubmittedBy', 'ApprovalStatus'] // 可筛选的列
         },
-        // NEW: SFSC_History 表的配置
-        maisonActionsLog: { // 针对 Maison 用户的历史操作日志
+        maisonActionsLog: {
             action: 'getMaisonSfscHistory',
-            // Move "Action Type" to the end and replace it with a derived "Status" column
             headers: [
                 ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
                 { key: 'Current', label: 'Status' }
             ],
-            renderStatusBadge: false, // My Historical Actions: show plain text status
+            renderStatusBadge: false,
             computeCurrentFlag: true,
-            actionColumn: null // 历史记录通常不需要操作列
+            actionColumn: null
         },
-        adminActionsLog: { // 针对 Admin 用户的历史操作日志
+        adminActionsLog: {
             action: 'getAllSfscHistory',
-            // Keep Admin history consistent: show derived "Status" column at the end
             headers: [
                 ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
                 { key: 'Current', label: 'Status' }
             ],
-            renderStatusBadge: false,  //
+            renderStatusBadge: false,
             computeCurrentFlag: true,
             actionColumn: null
         }
+    };
+
+    // ===== 筛选功能 =====
+    const getUniqueValues = (data, key) => {
+        const values = [...new Set(data.map(row => row[key] || '').filter(v => v))];
+        return values.sort();
+    };
+
+    const applyFilters = (type, container) => {
+        if (type !== 'admin' || !adminTableData.length) return;
+        
+        const filters = {};
+        configs.admin.filterColumns.forEach(col => {
+            const select = container.querySelector(`select[data-filter="${col}"]`);
+            if (select && select.value) {
+                filters[col] = select.value;
+            }
+        });
+
+        let filteredData = adminTableData;
+        Object.keys(filters).forEach(key => {
+            filteredData = filteredData.filter(row => (row[key] || '') === filters[key]);
+        });
+
+        renderAdminTable(container, filteredData);
+    };
+
+    const renderAdminTable = (container, data) => {
+        const cfg = configs.admin;
+        let html = '<table><thead><tr>' + cfg.headers.map(h => `<th>${h.label}</th>`).join('');
+        if (cfg.actionColumn) html += `<th>Approval Action</th>`;
+        html += '</tr>';
+
+        // 添加筛选行
+        html += '<tr class="filter-row">';
+        cfg.headers.forEach(h => {
+            if (cfg.filterColumns.includes(h.key)) {
+                const uniqueValues = getUniqueValues(adminTableData, h.key);
+                html += `<th><select data-filter="${h.key}" class="filter-select">
+                    <option value="">All</option>
+                    ${uniqueValues.map(v => `<option value="${v}">${v}</option>`).join('')}
+                </select></th>`;
+            } else {
+                html += '<th></th>';
+            }
+        });
+        if (cfg.actionColumn) html += '<th></th>';
+        html += '</tr></thead><tbody>';
+
+        if (!data.length) {
+            const colSpan = cfg.headers.length + (cfg.actionColumn ? 1 : 0);
+            html += `<tr><td colspan="${colSpan}" style="text-align: center; padding: 20px;">No data matches the filter criteria.</td></tr>`;
+        } else {
+            data.forEach(row => {
+                html += '<tr>' + cfg.headers.map(h => {
+                    let v = row[h.key];
+                    if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v);
+                    if (h.key === 'ApprovalStatus') {
+                        const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
+                        v = `<span class="status-badge ${sc}">${v}</span>`;
+                    }
+                    return `<td>${v ?? ''}</td>`;
+                }).join('');
+
+                if (cfg.actionColumn === 'approve') {
+                    const submittedBy = row.SubmittedBy || '';
+                    const maisonName = row.MaisonName || '';
+                    const quarter = row.Quarter || '';
+                    const clientelingLicenses = row.ClientelingLicenseCount || '0';
+                    const fullLicenses = row.FullLicenseCount || '0';
+                    const calculatedCost = row.CalculatedCost || '0';
+                    const timestamp = row.Timestamp || '';
+                    html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Reject</button></td>`;
+                }
+                html += '</tr>';
+            });
+        }
+
+        container.innerHTML = html + '</tbody></table>';
+
+        // 为筛选下拉框添加事件监听
+        container.querySelectorAll('.filter-select').forEach(select => {
+            select.addEventListener('change', () => applyFilters('admin', container));
+        });
     };
 
     // ===== 表格渲染 =====
@@ -132,15 +213,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (!res.success || !res.data || !res.data.length) {
             container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No data available.' : 'Failed to load data: ' + (res.message || 'Unknown error')}</p>`;
+            if (type === 'admin') adminTableData = [];
             return;
         }
 
+        // 如果是admin表格，使用特殊渲染函数
+        if (type === 'admin' && cfg.filterable) {
+            adminTableData = res.data;
+            renderAdminTable(container, adminTableData);
+            return;
+        }
+
+        // 其他表格的常规渲染
         let html = '<table><thead><tr>' + cfg.headers.map(h => `<th>${h.label}</th>`).join('');
         if (cfg.actionColumn) html += `<th>${cfg.actionColumn === 'delete' ? 'Action' : 'Approval Action'}</th>`;
         html += '</tr></thead><tbody>';
 
-        // Derive "Status" (active/deprecated) for history tables:
-        // Latest record (by Timestamp) within same MaisonName + Quarter + SubmittedBy => "active"
         if (cfg.computeCurrentFlag) {
             const latestByKey = new Map();
             const toMs = (v) => {
@@ -165,11 +253,9 @@ document.addEventListener('DOMContentLoaded', () => {
         res.data.forEach(row => {
             html += '<tr>' + cfg.headers.map(h => {
                 let v = row[h.key];
-                // NEW: 格式化 Timestamp 和 ActionTimestamp
                 if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v); 
                 if (h.key === 'ApprovalStatus') {
                     if (cfg.renderStatusBadge === false) {
-                        // Keep plain text for this table
                         v = v ?? '';
                     } else {
                         const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
@@ -180,16 +266,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }).join('');
 
             if (cfg.actionColumn === 'delete') html += `<td><button class="delete-button-table" data-id="${row.RecordId}">Delete</button></td>`;
-            else if (cfg.actionColumn === 'approve') {
-                const submittedBy = row.SubmittedBy || '';
-                const maisonName = row.MaisonName || '';
-                const quarter = row.Quarter || '';
-                const clientelingLicenses = row.ClientelingLicenseCount || '0';
-                const fullLicenses = row.FullLicenseCount || '0';
-                const calculatedCost = row.CalculatedCost || '0';
-                const timestamp = row.Timestamp || '';
-                html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Reject</button></td>`;
-            }
             html += '</tr>';
         });
 
@@ -203,18 +279,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (e.target.classList.contains('delete-button-table')) {
             if (!confirm('Delete this record?')) return;
-            // NEW: 传递 actionBy 参数
             const res = await api('deleteSfscData', { recordId: id, actionBy: currentUser.username });
             msg($('maisonSubmitMessage'), res.success ? 'Deleted!' : 'Delete failed: ' + res.message, res.success);
             if (res.success) {
                 loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName });
-                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: 重新加载历史日志
+                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName });
             }
         } else if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
             const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
             if (!confirm(`Set to ${st}?`)) return;
             
-            // Get applicant information from button data attributes
             const submittedBy = e.target.dataset.submittedBy || '';
             const maisonName = e.target.dataset.maisonName || '';
             const quarter = e.target.dataset.quarter || '';
@@ -223,15 +297,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const calculatedCost = e.target.dataset.cost || '0';
             const timestamp = e.target.dataset.timestamp || '';
             
-            // NEW: 传递 actionBy 参数
             const res = await api('updateApprovalStatus', { recordId: id, newStatus: st, actionBy: currentUser.username });
             msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
             
             if (res.success) {
                 loadTable('admin', $('adminDataTableContainer'));
-                loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: 重新加载历史日志
+                loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
                 
-                // Send notification email to applicant
                 if (submittedBy) {
                     sendApprovalNotification(submittedBy, st, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp);
                 }
@@ -273,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setEmailUI(res.success && res.email, res.email || '');
     };
 
-    // ===== Approval Notification Email (prepare in Email Broadcast; admin clicks "Open in Outlook" to send) =====
+    // ===== Approval Notification Email =====
     const buildNotificationBody = (submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp) => {
         const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
         const formattedTimestamp = timestamp ? fmt(timestamp) : (timestamp || '');
@@ -304,17 +376,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const subject = `SFSC License Application ${statusText} - ${quarter}`;
             const body = buildNotificationBody(submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp);
 
-            // Pre-fill Email Broadcast section
             $('emailSubjectInput').value = subject;
             $('emailContentInput').value = body;
 
-            // Ensure user list is loaded and select only the applicant
             if (!allUsers || !allUsers.length) {
                 const res = await api('getAllUsers');
                 if (res.success && res.data) allUsers = res.data.filter(u => u.email && u.email.trim());
             }
             
-            // **修改点1：通过username查找用户，而不是email**
             const hasApplicant = allUsers && allUsers.some(u => (u.username || '').trim() === submittedBy);
             if (!hasApplicant && allUsers) {
                 allUsers = [...allUsers, { username: submittedBy, email: applicantEmail, maisonName: '' }];
@@ -324,7 +393,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 if ($('userSearchInput')) $('userSearchInput').value = '';
                 renderU();
                 
-                // **修改点2：通过username匹配checkbox，而不是email**
                 $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
                     cb.checked = (cb.dataset.username || '').trim() === submittedBy; 
                 });
@@ -348,12 +416,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selected = () => Array.from($('userListContainer').querySelectorAll('.user-checkbox:checked')).map(cb => cb.dataset.email).filter(e => e && valid(e));
 
-    // **修改点3：在渲染用户列表时，给checkbox添加data-username属性**
     const renderU = () => {
         const f = filtered();
         if (!f.length) { $('userListContainer').innerHTML = '<p class="no-users-text">No users found.</p>'; return; }
         $('userListContainer').innerHTML = f.map((u, i) => {
-            const id = `user-${i}-${(u.email || '').replace(/[^a-zA-Z0-9]/g, '_')}`; // Ensure valid ID
+            const id = `user-${i}-${(u.email || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
             return `<div class="user-checkbox-item"><input type="checkbox" id="${id}" class="user-checkbox" data-email="${u.email || ''}" data-username="${u.username || ''}" ${u.email ? '' : 'disabled'}><label for="${id}" class="user-checkbox-label"><span class="user-name">${u.username || 'N/A'}</span><span class="user-email">${u.email || 'No email'}</span>${u.maisonName ? `<span class="user-maison">${u.maisonName}</span>` : ''}</label></div>`;
         }).join('');
     };
@@ -376,7 +443,7 @@ document.addEventListener('DOMContentLoaded', () => {
         else $('userListContainer').innerHTML = `<p class="error-text">Failed to load users: ${res.message || 'Unknown'}</p>`;
     };
 
-    // ===== 事件监听器（优化：集中处理）=====
+    // ===== 事件监听器 =====
     const handlers = {
         loginButton: async () => {
             const u = $('username').value.trim(), p = $('password').value.trim();
@@ -388,7 +455,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const cfg = await api('getConfig');
             if (cfg.success && cfg.data) Object.assign(configPrices, { ClientelingUnitPrice: parseFloat(cfg.data.ClientelingUnitPrice) || 16, FullUnitPrice: parseFloat(cfg.data.FullUnitPrice) || 52, FixedCost: parseFloat(cfg.data.FixedCost) || 0 });
             setTimeout(() => {
-                showPage($('loginPage')); // Start on login page, then transition
+                showPage($('loginPage'));
                 showPage($('mainPage'));
                 $('welcomeMessage').textContent = `Welcome, ${currentUser.maisonName} (${currentUser.role})!`;
                 if (currentUser.role === 'maison') {
@@ -396,13 +463,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     popQ(); popM();
                     $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0';
                     $('calculatedCostDisplay').textContent = 'Estimated Cost: 0.00 €';
-                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); // Load current data
-                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: Load historical actions log
+                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName });
+                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName });
                     initEmail();
                 } else {
                     $('adminView').classList.remove('hidden'); $('maisonView').classList.add('hidden');
-                    loadTable('admin', $('adminDataTableContainer')); // Load current data
-                    loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: Load all historical actions log
+                    loadTable('admin', $('adminDataTableContainer'));
+                    loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
                     initBcast();
                 }
             }, 500);
@@ -418,7 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const q = $('quarterSelect').value, c = parseInt($('clientelingLicenseCount').value, 10), f = parseInt($('fullLicenseCount').value, 10);
             if (!q || c < 0 || f < 0 || isNaN(c) || isNaN(f)) { msg($('maisonSubmitMessage'), 'Invalid inputs!', false); return; }
             
-            // Check for existing record
             const chk = await api('checkExistingRecord', { maisonName: currentUser.maisonName, quarter: q });
             let id = null;
             if (chk.success && chk.exists) {
@@ -442,7 +508,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg($('maisonSubmitMessage'), `${id ? 'Updated' : 'Submitted'}! Cost: ${res.calculatedCost} €`, true); 
                 $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0'; 
                 loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); 
-                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: 重新加载历史日志
+                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName });
             } else {
                 msg($('maisonSubmitMessage'), 'Failed to submit/update: ' + res.message, false);
             }
@@ -456,15 +522,14 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         exportDataButton: async () => {
             if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-            const res = await api('getAllSfscData'); // Assuming export current data, not history
+            const res = await api('getAllSfscData');
             if (!res.success || !res.data || !res.data.length) { msg($('loginMessage'), 'Export failed: No data available.', false); return; }
-            const h = configs.admin.headers; // Use admin headers for SFSC_Data
+            const h = configs.admin.headers;
             let csv = h.map(x => x.label).join(',') + '\n';
             res.data.forEach(r => { 
                 csv += h.map(x => { 
                     let v = r[x.key]; 
                     if (x.key === 'Timestamp') v = fmt(v); 
-                    // Handle values that might contain commas or quotes for CSV
                     return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v; 
                 }).join(',') + '\n'; 
             });
@@ -474,38 +539,35 @@ document.addEventListener('DOMContentLoaded', () => {
             msg($('loginMessage'), 'Data exported successfully!', true);
         },
         
-         // ← 新增：导出历史数据
-    exportHistoryButton: async () => {
-        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-        const res = await api('getAllSfscHistory');  // 调用历史数据API
-        if (!res.success || !res.data || !res.data.length) { 
-            msg($('loginMessage'), 'Export failed: No history data available.', false); 
-            return; 
-        }
-        
-        const h = configs.adminActionsLog.headers;  // 使用历史表格的headers
-        let csv = h.map(x => x.label).join(',') + '\n';
-        
-        res.data.forEach(r => { 
-            csv += h.map(x => { 
-                let v = r[x.key]; 
-                // 格式化时间戳
-                if (x.key === 'Timestamp' || x.key === 'ActionTimestamp') v = fmt(v);
-                // 处理包含逗号或引号的值
-                return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
-            }).join(',') + '\n'; 
-        });
-        
-        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const l = document.createElement('a');
-        l.href = URL.createObjectURL(b); 
-        l.download = `SFSC_History_Export_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
-        document.body.appendChild(l); 
-        l.click(); 
-        document.body.removeChild(l);
-        
-        msg($('loginMessage'), 'History data exported successfully!', true);
-    },
+        exportHistoryButton: async () => {
+            if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+            const res = await api('getAllSfscHistory');
+            if (!res.success || !res.data || !res.data.length) { 
+                msg($('loginMessage'), 'Export failed: No history data available.', false); 
+                return; 
+            }
+            
+            const h = configs.adminActionsLog.headers;
+            let csv = h.map(x => x.label).join(',') + '\n';
+            
+            res.data.forEach(r => { 
+                csv += h.map(x => { 
+                    let v = r[x.key]; 
+                    if (x.key === 'Timestamp' || x.key === 'ActionTimestamp') v = fmt(v);
+                    return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
+                }).join(',') + '\n'; 
+            });
+            
+            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const l = document.createElement('a');
+            l.href = URL.createObjectURL(b); 
+            l.download = `SFSC_History_Export_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+            document.body.appendChild(l); 
+            l.click(); 
+            document.body.removeChild(l);
+            
+            msg($('loginMessage'), 'History data exported successfully!', true);
+        },
 
         submitEmailButton: async () => {
             if (!currentUser || currentUser.role !== 'maison') { msg($('emailMessage'), 'Maison only.', false); return; }
@@ -539,7 +601,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const p = [s && `subject=${s}`, b && `body=${b}`].filter(Boolean);
             const mailtoLink = `mailto:${em.join(',')}${p.length ? '?' + p.join('&') : ''}`;
             
-            // Use a temporary anchor element to trigger mailto: link (more reliable than window.location.href)
             const tempLink = document.createElement('a');
             tempLink.href = mailtoLink;
             tempLink.style.display = 'none';
@@ -554,7 +615,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to copy emails.', false); return; }
             const list = em.join('; ');
             navigator.clipboard.writeText(list).then(() => msg($('emailBroadcastMessage'), `Copied ${em.length} email(s) to clipboard!`, true)).catch(() => {
-                // Fallback for older browsers or if clipboard API is not allowed
                 const t = document.createElement('textarea'); t.value = list; t.style.position = 'fixed'; t.style.left = '-9999px';
                 document.body.appendChild(t); t.select();
                 try { 
@@ -572,14 +632,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // 统一绑定事件
     Object.keys(handlers).forEach(id => {
         const element = $(id);
-        if (element) { // Check if element exists before adding listener
+        if (element) {
             element.addEventListener('click', handlers[id]);
         } else {
             console.warn(`Element with ID "${id}" not found. Skipping event listener.`);
         }
     });
     
-    // Ensure search input exists before adding listener
     const userSearchInput = $('userSearchInput');
     if (userSearchInput) {
         userSearchInput.addEventListener('input', () => { 
@@ -590,7 +649,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
         console.warn('Element with ID "userSearchInput" not found. Skipping event listener.');
     }
-
 
     showPage($('loginPage'));
 });

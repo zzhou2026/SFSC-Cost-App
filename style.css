@@ -869,3 +869,32 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
 .error-text {
     color: #d32f2f;
 }
+/* 筛选行样式 */
+.filter-row {
+    background-color: #f0f0f0;
+}
+
+.filter-row th {
+    padding: 8px 4px;
+}
+
+.filter-select {
+    width: 100%;
+    padding: 6px 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 13px;
+    background-color: white;
+    cursor: pointer;
+    box-sizing: border-box;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: #00796b;
+    box-shadow: 0 0 0 2px rgba(0, 121, 107, 0.1);
+}
+
+.filter-select option {
+    padding: 4px;
+}
