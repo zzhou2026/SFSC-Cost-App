@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
         maison: {
             action: 'getMaisonSfscData', // 获取 Maison 当前数据
             headers: [...baseHeaders, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
-            actionColumn: 'delete'
+            actionColumn: null // Removed Action column for My Current Data table
         },
         admin: {
             action: 'getAllSfscData', // 获取所有 Maison 当前数据
@@ -97,12 +97,23 @@ document.addEventListener('DOMContentLoaded', () => {
         // NEW: SFSC_History 表的配置
         maisonActionsLog: { // 针对 Maison 用户的历史操作日志
             action: 'getMaisonSfscHistory',
-            headers: [...baseHistoryHeaders],
+            // Move "Action Type" to the end and replace it with a derived "Current" column
+            headers: [
+                ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
+                { key: 'Current', label: 'Current' }
+            ],
+            renderStatusBadge: false, // My Historical Actions: show plain text status
+            computeCurrentFlag: true,
             actionColumn: null // 历史记录通常不需要操作列
         },
         adminActionsLog: { // 针对 Admin 用户的历史操作日志
             action: 'getAllSfscHistory',
-            headers: [...baseHistoryHeaders],
+            // Keep Admin history consistent: show derived "Current" column at the end
+            headers: [
+                ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
+                { key: 'Current', label: 'Current' }
+            ],
+            computeCurrentFlag: true,
             actionColumn: null
         }
     };
@@ -127,14 +138,42 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cfg.actionColumn) html += `<th>${cfg.actionColumn === 'delete' ? 'Action' : 'Approval Action'}</th>`;
         html += '</tr></thead><tbody>';
 
+        // Derive "Current" vs "deprecated" for history tables:
+        // Latest record (by Timestamp) within same MaisonName + Quarter + SubmittedBy => "current"
+        if (cfg.computeCurrentFlag) {
+            const latestByKey = new Map();
+            const toMs = (v) => {
+                const t = new Date(v).getTime();
+                return Number.isFinite(t) ? t : -Infinity;
+            };
+
+            res.data.forEach(r => {
+                const key = `${r.MaisonName ?? ''}||${r.Quarter ?? ''}||${r.SubmittedBy ?? ''}`;
+                const ts = toMs(r.Timestamp);
+                const prev = latestByKey.get(key);
+                if (prev === undefined || ts > prev) latestByKey.set(key, ts);
+            });
+
+            res.data.forEach(r => {
+                const key = `${r.MaisonName ?? ''}||${r.Quarter ?? ''}||${r.SubmittedBy ?? ''}`;
+                const ts = toMs(r.Timestamp);
+                r.Current = (latestByKey.get(key) === ts) ? 'current' : 'deprecated';
+            });
+        }
+
         res.data.forEach(row => {
             html += '<tr>' + cfg.headers.map(h => {
                 let v = row[h.key];
                 // NEW: 格式化 Timestamp 和 ActionTimestamp
                 if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v); 
                 if (h.key === 'ApprovalStatus') {
-                    const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
-                    v = `<span class="status-badge ${sc}">${v}</span>`;
+                    if (cfg.renderStatusBadge === false) {
+                        // Keep plain text for this table
+                        v = v ?? '';
+                    } else {
+                        const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
+                        v = `<span class="status-badge ${sc}">${v}</span>`;
+                    }
                 }
                 return `<td>${v ?? ''}</td>`;
             }).join('');
@@ -144,7 +183,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const submittedBy = row.SubmittedBy || '';
                 const maisonName = row.MaisonName || '';
                 const quarter = row.Quarter || '';
-                html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}">Reject</button></td>`;
+                const clientelingLicenses = row.ClientelingLicenseCount || '0';
+                const fullLicenses = row.FullLicenseCount || '0';
+                const calculatedCost = row.CalculatedCost || '0';
+                const timestamp = row.Timestamp || '';
+                html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Reject</button></td>`;
             }
             html += '</tr>';
         });
@@ -174,6 +217,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const submittedBy = e.target.dataset.submittedBy || '';
             const maisonName = e.target.dataset.maisonName || '';
             const quarter = e.target.dataset.quarter || '';
+            const clientelingLicenses = e.target.dataset.clienteling || '0';
+            const fullLicenses = e.target.dataset.full || '0';
+            const calculatedCost = e.target.dataset.cost || '0';
+            const timestamp = e.target.dataset.timestamp || '';
             
             // NEW: 传递 actionBy 参数
             const res = await api('updateApprovalStatus', { recordId: id, newStatus: st, actionBy: currentUser.username });
@@ -185,7 +232,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 // Send notification email to applicant
                 if (submittedBy) {
-                    sendApprovalNotification(submittedBy, st, maisonName, quarter);
+                    sendApprovalNotification(submittedBy, st, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp);
                 }
             }
         }
@@ -226,7 +273,7 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ===== Approval Notification Email =====
-    const sendApprovalNotification = async (submittedBy, status, maisonName, quarter) => {
+    const sendApprovalNotification = async (submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp) => {
         try {
             // Get applicant's email
             const emailRes = await api('getUserEmail', { username: submittedBy });
@@ -237,13 +284,19 @@ document.addEventListener('DOMContentLoaded', () => {
             
             const applicantEmail = emailRes.email;
             const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
+            const formattedTimestamp = timestamp ? fmt(timestamp) : timestamp;
             const subject = encodeURIComponent(`SFSC License Application ${statusText} - ${quarter}`);
             const body = encodeURIComponent(
                 `Dear ${submittedBy},\n\n` +
                 `Your SFSC license application for ${quarter} (Maison: ${maisonName}) has been ${statusText.toLowerCase()}.\n\n` +
                 `Status: ${statusText}\n` +
                 `Quarter: ${quarter}\n` +
-                `Maison: ${maisonName}\n\n` +
+                `Maison: ${maisonName}\n` +
+                `Clienteling Licenses: ${clientelingLicenses}\n` +
+                `Full Licenses: ${fullLicenses}\n` +
+                `Calculated Cost: ${calculatedCost} €\n` +
+                `Submitted By: ${submittedBy}\n` +
+                `Submission Time: ${formattedTimestamp}\n\n` +
                 `Best regards,\n` +
                 `${currentUser.username}`
             );
