@@ -313,7 +313,9 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await api('getAllUsers');
                 if (res.success && res.data) allUsers = res.data.filter(u => u.email && u.email.trim());
             }
-            const hasApplicant = allUsers && allUsers.some(u => (u.email || '').trim() === applicantEmail);
+            
+            // **修改点1：通过username查找用户，而不是email**
+            const hasApplicant = allUsers && allUsers.some(u => (u.username || '').trim() === submittedBy);
             if (!hasApplicant && allUsers) {
                 allUsers = [...allUsers, { username: submittedBy, email: applicantEmail, maisonName: '' }];
             }
@@ -321,7 +323,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 searchTerm = '';
                 if ($('userSearchInput')) $('userSearchInput').value = '';
                 renderU();
-                $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { cb.checked = (cb.dataset.email || '').trim() === applicantEmail; });
+                
+                // **修改点2：通过username匹配checkbox，而不是email**
+                $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
+                    cb.checked = (cb.dataset.username || '').trim() === submittedBy; 
+                });
                 updCnt();
             }
 
@@ -342,12 +348,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const selected = () => Array.from($('userListContainer').querySelectorAll('.user-checkbox:checked')).map(cb => cb.dataset.email).filter(e => e && valid(e));
 
+    // **修改点3：在渲染用户列表时，给checkbox添加data-username属性**
     const renderU = () => {
         const f = filtered();
         if (!f.length) { $('userListContainer').innerHTML = '<p class="no-users-text">No users found.</p>'; return; }
         $('userListContainer').innerHTML = f.map((u, i) => {
             const id = `user-${i}-${(u.email || '').replace(/[^a-zA-Z0-9]/g, '_')}`; // Ensure valid ID
-            return `<div class="user-checkbox-item"><input type="checkbox" id="${id}" class="user-checkbox" data-email="${u.email || ''}" ${u.email ? '' : 'disabled'}><label for="${id}" class="user-checkbox-label"><span class="user-name">${u.username || 'N/A'}</span><span class="user-email">${u.email || 'No email'}</span>${u.maisonName ? `<span class="user-maison">${u.maisonName}</span>` : ''}</label></div>`;
+            return `<div class="user-checkbox-item"><input type="checkbox" id="${id}" class="user-checkbox" data-email="${u.email || ''}" data-username="${u.username || ''}" ${u.email ? '' : 'disabled'}><label for="${id}" class="user-checkbox-label"><span class="user-name">${u.username || 'N/A'}</span><span class="user-email">${u.email || 'No email'}</span>${u.maisonName ? `<span class="user-maison">${u.maisonName}</span>` : ''}</label></div>`;
         }).join('');
     };
 
