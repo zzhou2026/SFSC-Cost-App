@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'Quarter', label: 'Quarter' },
         { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
         { key: 'FullLicenseCount', label: 'Full Licenses' },
-        { key: 'CalculatedCost', label: 'Calculated Cost (€)'' }
+        { key: 'CalculatedCost', label: 'Calculated Cost (EUR)'' }
     ];
 
     // NEW: 历史记录表格的基础头部
