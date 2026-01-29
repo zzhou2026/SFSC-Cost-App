@@ -466,6 +466,40 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.appendChild(l); l.click(); document.body.removeChild(l);
             msg($('loginMessage'), 'Data exported successfully!', true);
         },
+        
+         // ← 新增：导出历史数据
+    exportHistoryButton: async () => {
+        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+        const res = await api('getAllSfscHistory');  // 调用历史数据API
+        if (!res.success || !res.data || !res.data.length) { 
+            msg($('loginMessage'), 'Export failed: No history data available.', false); 
+            return; 
+        }
+        
+        const h = configs.adminActionsLog.headers;  // 使用历史表格的headers
+        let csv = h.map(x => x.label).join(',') + '\n';
+        
+        res.data.forEach(r => { 
+            csv += h.map(x => { 
+                let v = r[x.key]; 
+                // 格式化时间戳
+                if (x.key === 'Timestamp' || x.key === 'ActionTimestamp') v = fmt(v);
+                // 处理包含逗号或引号的值
+                return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
+            }).join(',') + '\n'; 
+        });
+        
+        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const l = document.createElement('a');
+        l.href = URL.createObjectURL(b); 
+        l.download = `SFSC_History_Export_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+        document.body.appendChild(l); 
+        l.click(); 
+        document.body.removeChild(l);
+        
+        msg($('loginMessage'), 'History data exported successfully!', true);
+    },
+
         submitEmailButton: async () => {
             if (!currentUser || currentUser.role !== 'maison') { msg($('emailMessage'), 'Maison only.', false); return; }
             const e = $('userEmailInput').value.trim();
