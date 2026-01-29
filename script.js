@@ -97,10 +97,10 @@ document.addEventListener('DOMContentLoaded', () => {
         // NEW: SFSC_History 表的配置
         maisonActionsLog: { // 针对 Maison 用户的历史操作日志
             action: 'getMaisonSfscHistory',
-            // Move "Action Type" to the end and replace it with a derived "Current" column
+            // Move "Action Type" to the end and replace it with a derived "Status" column
             headers: [
                 ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
-                { key: 'Current', label: 'Current' }
+                { key: 'Current', label: 'Status' }
             ],
             renderStatusBadge: false, // My Historical Actions: show plain text status
             computeCurrentFlag: true,
@@ -108,10 +108,10 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         adminActionsLog: { // 针对 Admin 用户的历史操作日志
             action: 'getAllSfscHistory',
-            // Keep Admin history consistent: show derived "Current" column at the end
+            // Keep Admin history consistent: show derived "Status" column at the end
             headers: [
                 ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
-                { key: 'Current', label: 'Current' }
+                { key: 'Current', label: 'Status' }
             ],
             computeCurrentFlag: true,
             actionColumn: null
@@ -138,8 +138,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cfg.actionColumn) html += `<th>${cfg.actionColumn === 'delete' ? 'Action' : 'Approval Action'}</th>`;
         html += '</tr></thead><tbody>';
 
-        // Derive "Current" vs "deprecated" for history tables:
-        // Latest record (by Timestamp) within same MaisonName + Quarter + SubmittedBy => "current"
+        // Derive "Status" (active/deprecated) for history tables:
+        // Latest record (by Timestamp) within same MaisonName + Quarter + SubmittedBy => "active"
         if (cfg.computeCurrentFlag) {
             const latestByKey = new Map();
             const toMs = (v) => {
@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             res.data.forEach(r => {
                 const key = `${r.MaisonName ?? ''}||${r.Quarter ?? ''}||${r.SubmittedBy ?? ''}`;
                 const ts = toMs(r.Timestamp);
-                r.Current = (latestByKey.get(key) === ts) ? 'current' : 'deprecated';
+                r.Current = (latestByKey.get(key) === ts) ? 'active' : 'deprecated';
             });
         }
 
@@ -272,47 +272,63 @@ document.addEventListener('DOMContentLoaded', () => {
         setEmailUI(res.success && res.email, res.email || '');
     };
 
-    // ===== Approval Notification Email =====
+    // ===== Approval Notification Email (prepare in Email Broadcast; admin clicks "Open in Outlook" to send) =====
+    const buildNotificationBody = (submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp) => {
+        const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
+        const formattedTimestamp = timestamp ? fmt(timestamp) : (timestamp || '');
+        return (
+            `Dear ${submittedBy},\n\n` +
+            `Your SFSC license application has been ${statusText.toLowerCase()}.\n\n` +
+            `Maison Name: ${maisonName || ''}\n` +
+            `Quarter: ${quarter || ''}\n` +
+            `Clienteling Licenses: ${clientelingLicenses || '0'}\n` +
+            `Full Licenses: ${fullLicenses || '0'}\n` +
+            `Calculated Cost: ${calculatedCost || '0'} €\n` +
+            `Submitted By: ${submittedBy || ''}\n` +
+            `Submission Time: ${formattedTimestamp}\n` +
+            `Approval Status: ${statusText}\n\n` +
+            `BT (admin)`
+        );
+    };
+
     const sendApprovalNotification = async (submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp) => {
         try {
-            // Get applicant's email
             const emailRes = await api('getUserEmail', { username: submittedBy });
             if (!emailRes.success || !emailRes.email) {
-                console.log(`No email found for user: ${submittedBy}`);
-                return; // Silently fail if no email registered
+                msg($('emailBroadcastMessage'), `Applicant "${submittedBy}" has no registered email. Notification not prepared.`, false);
+                return;
             }
-            
-            const applicantEmail = emailRes.email;
+            const applicantEmail = emailRes.email.trim();
             const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
-            const formattedTimestamp = timestamp ? fmt(timestamp) : timestamp;
-            const subject = encodeURIComponent(`SFSC License Application ${statusText} - ${quarter}`);
-            const body = encodeURIComponent(
-                `Dear ${submittedBy},\n\n` +
-                `Your SFSC license application for ${quarter} (Maison: ${maisonName}) has been ${statusText.toLowerCase()}.\n\n` +
-                `Status: ${statusText}\n` +
-                `Quarter: ${quarter}\n` +
-                `Maison: ${maisonName}\n` +
-                `Clienteling Licenses: ${clientelingLicenses}\n` +
-                `Full Licenses: ${fullLicenses}\n` +
-                `Calculated Cost: ${calculatedCost} €\n` +
-                `Submitted By: ${submittedBy}\n` +
-                `Submission Time: ${formattedTimestamp}\n\n` +
-                `Best regards,\n` +
-                `${currentUser.username}`
-            );
-            
-            // Open mailto link to send notification
-            const mailtoLink = `mailto:${applicantEmail}?subject=${subject}&body=${body}`;
-            const tempLink = document.createElement('a');
-            tempLink.href = mailtoLink;
-            tempLink.style.display = 'none';
-            document.body.appendChild(tempLink);
-            tempLink.click();
-            document.body.removeChild(tempLink);
-            
-            console.log(`Notification email opened for ${applicantEmail}`);
+            const subject = `SFSC License Application ${statusText} - ${quarter}`;
+            const body = buildNotificationBody(submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp);
+
+            // Pre-fill Email Broadcast section
+            $('emailSubjectInput').value = subject;
+            $('emailContentInput').value = body;
+
+            // Ensure user list is loaded and select only the applicant
+            if (!allUsers || !allUsers.length) {
+                const res = await api('getAllUsers');
+                if (res.success && res.data) allUsers = res.data.filter(u => u.email && u.email.trim());
+            }
+            const hasApplicant = allUsers && allUsers.some(u => (u.email || '').trim() === applicantEmail);
+            if (!hasApplicant && allUsers) {
+                allUsers = [...allUsers, { username: submittedBy, email: applicantEmail, maisonName: '' }];
+            }
+            if (allUsers && allUsers.length) {
+                searchTerm = '';
+                if ($('userSearchInput')) $('userSearchInput').value = '';
+                renderU();
+                $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { cb.checked = (cb.dataset.email || '').trim() === applicantEmail; });
+                updCnt();
+            }
+
+            $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            msg($('emailBroadcastMessage'), 'Notification email prepared for applicant. Click "Open in Outlook" to open and send.', true);
         } catch (error) {
-            console.error('Error sending approval notification:', error);
+            console.error('Error preparing approval notification:', error);
+            msg($('emailBroadcastMessage'), 'Failed to prepare notification: ' + (error.message || 'Unknown error'), false);
         }
     };
 
