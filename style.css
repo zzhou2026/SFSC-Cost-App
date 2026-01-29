@@ -147,54 +147,17 @@ table {
     table-layout: fixed; /* 使用固定布局，确保列宽一致 */
 }
 
-/* 设置列宽度：默认70px */
+/* 设置列宽度：前7列（1-6列和8列）为70px，第7列（Submission Time）和第9列（Approval Action）平分剩余宽度 */
 table th, table td {
     width: 70px; /* 默认宽度70px */
 }
 
-/* 7列表格（Maison - My Current Data）：前5列平均分配更多空间 */
-/* 原来前5列总共350px（每列70px），现在增加到500px（每列100px），多出的150px来自删除的Action列 */
-table:not(:has(th:nth-child(8))) th:nth-child(1),
-table:not(:has(th:nth-child(8))) th:nth-child(2),
-table:not(:has(th:nth-child(8))) th:nth-child(3),
-table:not(:has(th:nth-child(8))) th:nth-child(4),
-table:not(:has(th:nth-child(8))) th:nth-child(5),
-table:not(:has(th:nth-child(8))) td:nth-child(1),
-table:not(:has(th:nth-child(8))) td:nth-child(2),
-table:not(:has(th:nth-child(8))) td:nth-child(3),
-table:not(:has(th:nth-child(8))) td:nth-child(4),
-table:not(:has(th:nth-child(8))) td:nth-child(5) {
-    width: 100px; /* 每列100px，总共500px（原来350px + 150px来自Action列） */
+/* 第7列（Submission Time）和第9列（Approval Action）平分剩余宽度 */
+table th:nth-child(7), table td:nth-child(7) { /* Submission Time 列 */
+    width: calc((100% - 490px) / 2); /* 剩余宽度的一半 (100% - 7×70px) / 2 */
 }
 
-/* Approval Status 列：固定宽度100px */
-/* 第8列（Admin表格的Approval Status）设置为100px */
-table th:nth-child(8), table td:nth-child(8) {
-    width: 100px;
-}
-
-/* 7列表格（Maison）：第7列是 Approval Status，设置为100px */
-/* 使用 :has() 选择器判断：如果没有第8列，则第7列是Approval Status */
-table:not(:has(th:nth-child(8))) th:nth-child(7),
-table:not(:has(th:nth-child(8))) td:nth-child(7) {
-    width: 100px;
-}
-
-/* Submission Time 列：使用剩余宽度 */
-/* Maison表格：第6列是 Submission Time */
-table th:nth-child(6), table td:nth-child(6) {
-    width: calc(100% - 500px - 100px); /* 总宽度减去前5列(500px)和Approval Status列(100px) */
-}
-
-/* Admin表格：第7列是 Submission Time */
-/* 使用 :has() 选择器判断：如果有第8列，则第7列是Submission Time */
-table:has(th:nth-child(8)) th:nth-child(7),
-table:has(th:nth-child(8)) td:nth-child(7) {
-    width: calc(100% - 420px - 100px - calc((100% - 490px) / 2)); /* 总宽度减去前6列(420px)、Approval Status列(100px)和Action列 */
-}
-
-/* 第9列：Approval Action 列 */
-table th:nth-child(9), table td:nth-child(9) {
+table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     width: calc((100% - 490px) / 2); /* 剩余宽度的一半 (100% - 7×70px) / 2 */
     vertical-align: middle; /* 确保按钮列垂直居中 */
 }
