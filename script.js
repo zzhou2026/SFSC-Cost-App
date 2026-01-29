@@ -157,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
             res.data.forEach(r => {
                 const key = `${r.MaisonName ?? ''}||${r.Quarter ?? ''}||${r.SubmittedBy ?? ''}`;
                 const ts = toMs(r.Timestamp);
-                r.Current = (latestByKey.get(key) === ts) ? 'active' : 'deprecated';
+                r.Current = (latestByKey.get(key) === ts) ? 'Active' : 'Deprecated';
             });
         }
 
