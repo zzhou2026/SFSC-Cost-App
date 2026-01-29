@@ -113,6 +113,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
                 { key: 'Current', label: 'Status' }
             ],
+            renderStatusBadge: false,  //
             computeCurrentFlag: true,
             actionColumn: null
         }
