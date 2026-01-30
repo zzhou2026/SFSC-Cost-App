@@ -282,9 +282,10 @@ table tr:hover {
 /* NEW: Forecast Table Styles */
 .forecast-table-container {
     max-height: 500px; /* Slightly taller for forecast table */
-    background-color: #f0f8ff; /* Light blue background to distinguish from other tables */
-    border: 2px solid #b3e0ff;
+    background-color: #f9f9f9; /* 和其他表格一样的背景色 */
+    border: 1px solid #eee; /* 和其他表格一样的边框 */
 }
+
 
 /* Forecast table: Fixed layout with specific column widths */
 #forecastTableContainer table {
@@ -355,7 +356,7 @@ table tr:hover {
 
 /* Forecast table header styling */
 #forecastTableContainer table th {
-    background-color: #b3e0ff;
+    background-color: #e0f2f7; /* 和其他表格一样的表头颜色 */
     color: #004d40;
     font-weight: bold;
     font-size: 0.75em;
@@ -364,10 +365,12 @@ table tr:hover {
     z-index: 1;
 }
 
+
 /* Forecast table row hover */
 #forecastTableContainer table tr:hover {
-    background-color: #e0f2ff;
+    background-color: #e0e0e0; /* 和其他表格一样的悬停颜色 */
 }
+
 
 /* Highlight Total columns */
 #forecastTableContainer table td:nth-child(11),
