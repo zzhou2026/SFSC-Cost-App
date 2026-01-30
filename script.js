@@ -215,17 +215,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const currentYear = new Date().getFullYear();
         const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
 
-        // Build table header
-        let html = '<table><thead><tr>';
-        html += '<th>Maison</th>';
-        html += '<th>License Type</th>';
-        quarters.forEach(q => {
-            html += `<th>${q} Qty</th>`;
-            html += `<th>${q} Cost</th>`;
-        });
-        html += '<th>Total Qty</th>';
-        html += '<th>Total Cost</th>';
-        html += '</tr></thead><tbody>';
+                // Build table header
+                let html = '<table><thead><tr>';
+                html += '<th>Maison</th>';
+                html += '<th>License Type</th>';
+                quarters.forEach(q => {
+                    html += `<th>${q}<br>Qty</th>`;
+                    html += `<th>${q}<br>Cost (€)</th>`;
+                });
+                html += '<th>Total<br>Qty</th>';
+                html += '<th>Total<br>Cost (€)</th>';
+                html += '</tr></thead><tbody>';
+        
+
 
         // Group data by Maison and LicenseType
         const grouped = {};
@@ -262,11 +264,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 totalCost += cost;
 
                 html += `<td>${qty}</td>`;
-                html += `<td>${cost.toFixed(2)} €</td>`;
+                html += `<td>${cost.toFixed(2)}</td>`;
             });
 
             html += `<td>${totalQty}</td>`;
-            html += `<td>${totalCost.toFixed(2)} €</td>`;
+            html += `<td>${totalCost.toFixed(2)}</td>`;
             html += '</tr>';
         });
 
