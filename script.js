@@ -289,12 +289,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== NEW: 月度跟踪表格渲染 =====
     const loadMonthlyTrackingTable = async (container, year) => {
         const res = await api('getMonthlyTrackingData', { year: year });
-        
-        // 临时调试：打印返回的数据
-        console.log('=== Monthly Tracking Data ===');
-        console.log('Year:', year);
-        console.log('Response:', res);
-        console.log('Data:', res.data);
 
 
         if (!res.success || !res.data || !res.data.length) {
