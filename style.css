@@ -826,14 +826,21 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     font-style: italic;
 }
 /* --- Monthly Tracking Section Styles (Admin) --- */
+/* Container for side-by-side layout */
+.monthly-tracking-forms-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
 .monthly-tracking-form-section {
     background-color: #f9f9f9;
     border: 1px solid #e0e0e0;
     border-radius: 8px;
     padding: 20px;
-    margin-top: 15px;
-    margin-bottom: 20px;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+    flex: 1; /* 平分空间 */
 }
 
 .monthly-tracking-form-section .form-control {
