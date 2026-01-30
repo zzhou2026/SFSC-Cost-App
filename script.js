@@ -286,6 +286,82 @@ document.addEventListener('DOMContentLoaded', () => {
     // ===== END NEW: 预测表格渲染 =====
 
 
+    // ===== NEW: 月度跟踪表格渲染 =====
+    const loadMonthlyTrackingTable = async (container, year) => {
+        const res = await api('getMonthlyTrackingData', { year: year });
+
+        if (!res.success || !res.data || !res.data.length) {
+            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No monthly tracking data available. Please set annual targets first.' : 'Failed to load monthly tracking data: ' + (res.message || 'Unknown error')}</p>`;
+            return;
+        }
+
+        // 构建表头
+        let html = '<table><thead><tr>';
+        html += '<th>Maison</th>';
+        html += '<th>License Type</th>';
+        
+        // 12个月份列
+        const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        months.forEach((m, idx) => {
+            html += `<th>${year}.${m}<br>${monthNames[idx]}</th>`;
+        });
+        
+        html += '<th>2026<br>Forecast</th>';
+        html += '<th>Variance</th>';
+        html += '</tr></thead><tbody>';
+
+        // 渲染数据行
+        res.data.forEach(row => {
+            html += '<tr>';
+            html += `<td>${row.MaisonName}</td>`;
+            html += `<td>${row.LicenseType}</td>`;
+
+            let latestActual = null;
+            let latestMonth = null;
+
+            // 显示12个月的实际数据
+            months.forEach(m => {
+                const actualQty = row.MonthlyActuals[m];
+                if (actualQty !== undefined && actualQty !== null) {
+                    html += `<td>${actualQty}</td>`;
+                    latestActual = actualQty;
+                    latestMonth = m;
+                } else {
+                    html += `<td>-</td>`;
+                }
+            });
+
+            // 年度预测
+            const annualTarget = row.AnnualTarget || 0;
+            html += `<td>${annualTarget}</td>`;
+
+            // 计算差值（最新月份实际 - 年度预测）
+            if (latestActual !== null) {
+                const variance = latestActual - annualTarget;
+                const variancePercent = annualTarget > 0 ? Math.abs(variance / annualTarget * 100) : 0;
+                
+                let varianceClass = 'variance-good';
+                if (variancePercent > 15) {
+                    varianceClass = 'variance-danger';
+                } else if (variancePercent > 5) {
+                    varianceClass = 'variance-warning';
+                }
+                
+                const varianceSign = variance >= 0 ? '+' : '';
+                html += `<td class="${varianceClass}">${varianceSign}${variance}</td>`;
+            } else {
+                html += `<td>-</td>`;
+            }
+
+            html += '</tr>';
+        });
+
+        container.innerHTML = html + '</tbody></table>';
+    };
+    // ===== END NEW: 月度跟踪表格渲染 =====
+
+
 
     // ===== 事件委托：表格按钮 =====
     document.addEventListener('click', async e => {
@@ -341,6 +417,38 @@ document.addEventListener('DOMContentLoaded', () => {
         $('calcMonthsSelect').innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
         $('calcMonthsSelect').value = 12;
     };
+    
+    // ===== NEW: 填充年份和 Maison 选择器（月度跟踪用）=====
+    const popYearSelectors = () => {
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear - 1, currentYear, currentYear + 1];
+        const yearOptions = years.map(y => `<option value="${y}">${y}</option>`).join('');
+        
+        if ($('targetYearSelect')) $('targetYearSelect').innerHTML = yearOptions;
+        if ($('actualYearSelect')) $('actualYearSelect').innerHTML = yearOptions;
+        
+        // 默认选中当前年份
+        if ($('targetYearSelect')) $('targetYearSelect').value = currentYear;
+        if ($('actualYearSelect')) $('actualYearSelect').value = currentYear;
+    };
+
+    const popMaisonSelectors = async () => {
+        const res = await api('getAllUsers');
+        if (!res.success || !res.data) return;
+        
+        // 提取唯一的 Maison 名称（排除 BT）
+        const maisons = [...new Set(res.data
+            .filter(u => u.maisonName && u.maisonName !== 'BT')
+            .map(u => u.maisonName))];
+        
+        const maisonOptions = maisons.map(m => `<option value="${m}">${m}</option>`).join('');
+        
+        if ($('targetMaisonSelect')) $('targetMaisonSelect').innerHTML = maisonOptions;
+        if ($('actualMaisonSelect')) $('actualMaisonSelect').innerHTML = maisonOptions;
+    };
+    // ===== END NEW =====
+
+
 
     // ===== 成本计算 =====
     const calc = (c, f, m) => ((c * (parseFloat(configPrices.ClientelingUnitPrice) || 16) + f * (parseFloat(configPrices.FullUnitPrice) || 52)) * m + (parseFloat(configPrices.FixedCost) || 0));
@@ -496,7 +604,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     loadForecastTable($('forecastTableContainer')); // NEW: Load forecast table
                     loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: Load all historical actions log
                     initBcast();
+                    // NEW: 初始化月度跟踪部分
+                    popYearSelectors();
+                    popMaisonSelectors();
+                    const currentYear = new Date().getFullYear();
+                    loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
                 }
+
 
             }, 500);
         },
@@ -665,6 +779,161 @@ document.addEventListener('DOMContentLoaded', () => {
 
         msg($('loginMessage'), 'Forecast data exported successfully!', true);
     },
+    submitTargetButton: async () => {
+        if (!currentUser || currentUser.role !== 'admin') { msg($('targetSubmitMessage'), 'Admin only!', false); return; }
+        
+        const year = parseInt($('targetYearSelect').value);
+        const maison = $('targetMaisonSelect').value;
+        const clientelingTarget = parseInt($('targetClientelingInput').value) || 0;
+        const fullTarget = parseInt($('targetFullInput').value) || 0;
+        
+        if (!maison) { msg($('targetSubmitMessage'), 'Please select a Maison!', false); return; }
+        
+        clr($('targetSubmitMessage'));
+        msg($('targetSubmitMessage'), 'Submitting targets...', true);
+        
+        // 提交 Clienteling 目标
+        if (clientelingTarget >= 0) {
+            const resC = await api('setAnnualTarget', {
+                maisonName: maison,
+                licenseType: 'Clienteling',
+                year: year,
+                annualTarget: clientelingTarget,
+                updatedBy: currentUser.username
+            });
+            if (!resC.success) {
+                msg($('targetSubmitMessage'), 'Failed to set Clienteling target: ' + resC.message, false);
+                return;
+            }
+        }
+        
+        // 提交 Full 目标
+        if (fullTarget >= 0) {
+            const resF = await api('setAnnualTarget', {
+                maisonName: maison,
+                licenseType: 'Full',
+                year: year,
+                annualTarget: fullTarget,
+                updatedBy: currentUser.username
+            });
+            if (!resF.success) {
+                msg($('targetSubmitMessage'), 'Failed to set Full target: ' + resF.message, false);
+                return;
+            }
+        }
+        
+        msg($('targetSubmitMessage'), 'Annual targets set successfully!', true);
+        $('targetClientelingInput').value = '0';
+        $('targetFullInput').value = '0';
+        
+        // 重新加载月度跟踪表格
+        loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
+    },
+    submitActualButton: async () => {
+        if (!currentUser || currentUser.role !== 'admin') { msg($('actualSubmitMessage'), 'Admin only!', false); return; }
+        
+        const year = parseInt($('actualYearSelect').value);
+        const month = $('actualMonthSelect').value;
+        const maison = $('actualMaisonSelect').value;
+        const clientelingActual = parseInt($('actualClientelingInput').value) || 0;
+        const fullActual = parseInt($('actualFullInput').value) || 0;
+        
+        if (!maison) { msg($('actualSubmitMessage'), 'Please select a Maison!', false); return; }
+        
+        clr($('actualSubmitMessage'));
+        msg($('actualSubmitMessage'), 'Submitting actual data...', true);
+        
+        // 提交 Clienteling 实际数据
+        if (clientelingActual >= 0) {
+            const resC = await api('submitMonthlyActual', {
+                maisonName: maison,
+                licenseType: 'Clienteling',
+                year: year,
+                month: month,
+                actualQuantity: clientelingActual,
+                updatedBy: currentUser.username
+            });
+            if (!resC.success) {
+                msg($('actualSubmitMessage'), 'Failed to submit Clienteling actual: ' + resC.message, false);
+                return;
+            }
+        }
+        
+        // 提交 Full 实际数据
+        if (fullActual >= 0) {
+            const resF = await api('submitMonthlyActual', {
+                maisonName: maison,
+                licenseType: 'Full',
+                year: year,
+                month: month,
+                actualQuantity: fullActual,
+                updatedBy: currentUser.username
+            });
+            if (!resF.success) {
+                msg($('actualSubmitMessage'), 'Failed to submit Full actual: ' + resF.message, false);
+                return;
+            }
+        }
+        
+        msg($('actualSubmitMessage'), 'Monthly actual data submitted successfully!', true);
+        $('actualClientelingInput').value = '0';
+        $('actualFullInput').value = '0';
+        
+        // 重新加载月度跟踪表格
+        loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
+    },
+    exportMonthlyTrackingButton: async () => {
+        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+        
+        const year = parseInt($('actualYearSelect').value) || new Date().getFullYear();
+        const res = await api('getMonthlyTrackingData', { year: year });
+        
+        if (!res.success || !res.data || !res.data.length) {
+            msg($('loginMessage'), 'Export failed: No monthly tracking data available.', false);
+            return;
+        }
+        
+        // 构建 CSV
+        const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+        let csv = 'Maison,License Type,';
+        months.forEach(m => { csv += `${year}.${m},`; });
+        csv += `${year} Forecast,Variance\n`;
+        
+        res.data.forEach(row => {
+            csv += `${row.MaisonName},${row.LicenseType},`;
+            
+            let latestActual = null;
+            months.forEach(m => {
+                const actualQty = row.MonthlyActuals[m];
+                csv += actualQty !== undefined && actualQty !== null ? `${actualQty},` : '-,';
+                if (actualQty !== undefined && actualQty !== null) {
+                    latestActual = actualQty;
+                }
+            });
+            
+            const annualTarget = row.AnnualTarget || 0;
+            csv += `${annualTarget},`;
+            
+            if (latestActual !== null) {
+                const variance = latestActual - annualTarget;
+                csv += `${variance >= 0 ? '+' : ''}${variance}`;
+            } else {
+                csv += '-';
+            }
+            csv += '\n';
+        });
+        
+        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const l = document.createElement('a');
+        l.href = URL.createObjectURL(b);
+        l.download = `Monthly_Tracking_${year}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+        document.body.appendChild(l);
+        l.click();
+        document.body.removeChild(l);
+        
+        msg($('loginMessage'), 'Monthly tracking data exported successfully!', true);
+    },
+
 
 
         submitEmailButton: async () => {

@@ -825,6 +825,103 @@ table th:nth-child(9), table td:nth-child(9) { /* Approval Action 列 */
     text-align: center;
     font-style: italic;
 }
+/* --- Monthly Tracking Section Styles (Admin) --- */
+.monthly-tracking-form-section {
+    background-color: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 20px;
+    margin-top: 15px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+}
+
+.monthly-tracking-form-section .form-control {
+    background-color: #ffffff;
+    border-color: #ccc;
+}
+
+.monthly-tracking-form-section button {
+    margin-top: 15px;
+}
+
+#targetSubmitMessage,
+#actualSubmitMessage {
+    margin-top: 10px;
+    min-height: 20px;
+}
+
+#exportMonthlyTrackingButton {
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+/* Monthly Tracking Table specific styles */
+#monthlyTrackingTableContainer table {
+    table-layout: auto;
+    min-width: 100%;
+}
+
+#monthlyTrackingTableContainer table th,
+#monthlyTrackingTableContainer table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 8px;
+    text-align: center;
+    font-size: 0.85em;
+}
+
+/* First two columns (Maison, License Type) */
+#monthlyTrackingTableContainer table th:nth-child(1),
+#monthlyTrackingTableContainer table td:nth-child(1) {
+    width: 100px;
+    text-align: left;
+}
+
+#monthlyTrackingTableContainer table th:nth-child(2),
+#monthlyTrackingTableContainer table td:nth-child(2) {
+    width: 110px;
+    text-align: left;
+}
+
+/* Monthly columns (01-12) - 12 columns */
+#monthlyTrackingTableContainer table th:nth-child(n+3):nth-child(-n+14),
+#monthlyTrackingTableContainer table td:nth-child(n+3):nth-child(-n+14) {
+    width: 70px;
+}
+
+/* Annual Target column */
+#monthlyTrackingTableContainer table th:nth-child(15),
+#monthlyTrackingTableContainer table td:nth-child(15) {
+    width: 90px;
+    background-color: #fffacd; /* Light yellow */
+    font-weight: bold;
+}
+
+/* Variance column */
+#monthlyTrackingTableContainer table th:nth-child(16),
+#monthlyTrackingTableContainer table td:nth-child(16) {
+    width: 80px;
+    font-weight: bold;
+}
+
+/* Variance color coding */
+.variance-good {
+    color: #28a745;
+    background-color: #d4edda;
+}
+
+.variance-warning {
+    color: #856404;
+    background-color: #fff3cd;
+}
+
+.variance-danger {
+    color: #721c24;
+    background-color: #f8d7da;
+}
+
 
 /* User Selection Styles */
 .user-selection-header {

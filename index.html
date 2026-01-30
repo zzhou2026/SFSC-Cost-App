@@ -153,6 +153,75 @@
                     <p id="recipientCountDisplay" class="recipient-count"></p>
                 </div>
                 
+                                <!-- NEW: Monthly Tracking Section -->
+                                <h3>Set Annual Target</h3>
+                                <div class="monthly-tracking-form-section">
+                                    <label for="targetYearSelect">Select Year:</label>
+                                    <select id="targetYearSelect" class="form-control">
+                                        <!-- 年份选项将通过 JavaScript 动态填充 -->
+                                    </select>
+                
+                                    <label for="targetMaisonSelect">Select Maison:</label>
+                                    <select id="targetMaisonSelect" class="form-control">
+                                        <!-- Maison 选项将通过 JavaScript 动态填充 -->
+                                    </select>
+                
+                                    <label for="targetClientelingInput">Clienteling Annual Target:</label>
+                                    <input type="number" id="targetClientelingInput" class="form-control" placeholder="Enter Clienteling annual target" min="0" value="0">
+                
+                                    <label for="targetFullInput">Full Annual Target:</label>
+                                    <input type="number" id="targetFullInput" class="form-control" placeholder="Enter Full annual target" min="0" value="0">
+                
+                                    <button id="submitTargetButton">Submit Target</button>
+                                    <p id="targetSubmitMessage" class="message"></p>
+                                </div>
+                
+                                <h3>Submit Monthly Actual</h3>
+                                <div class="monthly-tracking-form-section">
+                                    <label for="actualYearSelect">Select Year:</label>
+                                    <select id="actualYearSelect" class="form-control">
+                                        <!-- 年份选项将通过 JavaScript 动态填充 -->
+                                    </select>
+                
+                                    <label for="actualMonthSelect">Select Month:</label>
+                                    <select id="actualMonthSelect" class="form-control">
+                                        <option value="01">January</option>
+                                        <option value="02">February</option>
+                                        <option value="03">March</option>
+                                        <option value="04">April</option>
+                                        <option value="05">May</option>
+                                        <option value="06">June</option>
+                                        <option value="07">July</option>
+                                        <option value="08">August</option>
+                                        <option value="09">September</option>
+                                        <option value="10">October</option>
+                                        <option value="11">November</option>
+                                        <option value="12">December</option>
+                                    </select>
+                
+                                    <label for="actualMaisonSelect">Select Maison:</label>
+                                    <select id="actualMaisonSelect" class="form-control">
+                                        <!-- Maison 选项将通过 JavaScript 动态填充 -->
+                                    </select>
+                
+                                    <label for="actualClientelingInput">Clienteling Actual Quantity:</label>
+                                    <input type="number" id="actualClientelingInput" class="form-control" placeholder="Enter Clienteling actual quantity" min="0" value="0">
+                
+                                    <label for="actualFullInput">Full Actual Quantity:</label>
+                                    <input type="number" id="actualFullInput" class="form-control" placeholder="Enter Full actual quantity" min="0" value="0">
+                
+                                    <button id="submitActualButton">Submit Actual</button>
+                                    <p id="actualSubmitMessage" class="message"></p>
+                                </div>
+                
+                                <h3>Monthly Actual Tracking</h3>
+                                <div id="monthlyTrackingTableContainer" class="table-container">
+                                    <!-- Monthly tracking table will be displayed here -->
+                                </div>
+                                <button id="exportMonthlyTrackingButton">Export Monthly Tracking (CSV)</button>
+                                <!-- END NEW: Monthly Tracking Section -->
+                
+                
                 <!-- NEW: Admin Historical Actions Log -->
                 <h3>All Historical Actions Log</h3>
                 <div id="adminActionsLogTableContainer" class="table-container">
