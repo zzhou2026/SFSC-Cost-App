@@ -116,6 +116,14 @@ document.addEventListener('DOMContentLoaded', () => {
             computeCurrentFlag: true,
             actionColumn: null
         }
+        ,
+        // NEW: Forecast table configuration
+        forecast: {
+            action: 'getForecastData',
+            headers: null, // Will be dynamically generated
+            actionColumn: null
+        }
+
     };
 
     // ===== 表格渲染 =====
@@ -194,6 +202,79 @@ document.addEventListener('DOMContentLoaded', () => {
 
         container.innerHTML = html + '</tbody></table>';
     };
+    
+    // ===== NEW: 预测表格渲染 =====
+    const loadForecastTable = async (container) => {
+        const res = await api('getForecastData');
+
+        if (!res.success || !res.data || !res.data.length) {
+            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No forecast data available.' : 'Failed to load forecast data: ' + (res.message || 'Unknown error')}</p>`;
+            return;
+        }
+
+        const currentYear = new Date().getFullYear();
+        const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
+
+        // Build table header
+        let html = '<table><thead><tr>';
+        html += '<th>Maison</th>';
+        html += '<th>License Type</th>';
+        quarters.forEach(q => {
+            html += `<th>${q} Qty</th>`;
+            html += `<th>${q} Cost</th>`;
+        });
+        html += '<th>Total Qty</th>';
+        html += '<th>Total Cost</th>';
+        html += '</tr></thead><tbody>';
+
+        // Group data by Maison and LicenseType
+        const grouped = {};
+        res.data.forEach(row => {
+            const key = `${row.MaisonName}|${row.LicenseType}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    maisonName: row.MaisonName,
+                    licenseType: row.LicenseType,
+                    quarters: {}
+                };
+            }
+            grouped[key].quarters[row.Quarter] = {
+                quantity: row.TotalQuantity || 0,
+                cost: row.TotalCost || 0
+            };
+        });
+
+        // Render rows
+        Object.values(grouped).forEach(item => {
+            html += '<tr>';
+            html += `<td>${item.maisonName}</td>`;
+            html += `<td>${item.licenseType}</td>`;
+
+            let totalQty = 0;
+            let totalCost = 0;
+
+            quarters.forEach(q => {
+                const qData = item.quarters[q] || { quantity: 0, cost: 0 };
+                const qty = parseInt(qData.quantity) || 0;
+                const cost = parseFloat(qData.cost) || 0;
+
+                totalQty += qty;
+                totalCost += cost;
+
+                html += `<td>${qty}</td>`;
+                html += `<td>${cost.toFixed(2)} €</td>`;
+            });
+
+            html += `<td>${totalQty}</td>`;
+            html += `<td>${totalCost.toFixed(2)} €</td>`;
+            html += '</tr>';
+        });
+
+        container.innerHTML = html + '</tbody></table>';
+    };
+    // ===== END NEW: 预测表格渲染 =====
+
+
 
     // ===== 事件委托：表格按钮 =====
     document.addEventListener('click', async e => {
@@ -401,9 +482,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 } else {
                     $('adminView').classList.remove('hidden'); $('maisonView').classList.add('hidden');
                     loadTable('admin', $('adminDataTableContainer')); // Load current data
+                    loadForecastTable($('forecastTableContainer')); // NEW: Load forecast table
                     loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: Load all historical actions log
                     initBcast();
                 }
+
             }, 500);
         },
         logoutButton: () => {
@@ -505,6 +588,73 @@ document.addEventListener('DOMContentLoaded', () => {
         
         msg($('loginMessage'), 'History data exported successfully!', true);
     },
+    exportForecastButton: async () => {
+        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+        const res = await api('getForecastData');
+        if (!res.success || !res.data || !res.data.length) { 
+            msg($('loginMessage'), 'Export failed: No forecast data available.', false); 
+            return; 
+        }
+
+        const currentYear = new Date().getFullYear();
+        const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
+
+        // Build CSV header
+        let csv = 'Maison,License Type,';
+        quarters.forEach(q => {
+            csv += `${q} Qty,${q} Cost,`;
+        });
+        csv += 'Total Qty,Total Cost\n';
+
+        // Group data by Maison and LicenseType
+        const grouped = {};
+        res.data.forEach(row => {
+            const key = `${row.MaisonName}|${row.LicenseType}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    maisonName: row.MaisonName,
+                    licenseType: row.LicenseType,
+                    quarters: {}
+                };
+            }
+            grouped[key].quarters[row.Quarter] = {
+                quantity: row.TotalQuantity || 0,
+                cost: row.TotalCost || 0
+            };
+        });
+
+        // Build CSV rows
+        Object.values(grouped).forEach(item => {
+            let totalQty = 0;
+            let totalCost = 0;
+            let row = `${item.maisonName},${item.licenseType},`;
+
+            quarters.forEach(q => {
+                const qData = item.quarters[q] || { quantity: 0, cost: 0 };
+                const qty = parseInt(qData.quantity) || 0;
+                const cost = parseFloat(qData.cost) || 0;
+
+                totalQty += qty;
+                totalCost += cost;
+
+                row += `${qty},${cost.toFixed(2)},`;
+            });
+
+            row += `${totalQty},${totalCost.toFixed(2)}\n`;
+            csv += row;
+        });
+
+        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const l = document.createElement('a');
+        l.href = URL.createObjectURL(b); 
+        l.download = `SFSC_Forecast_${currentYear}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+        document.body.appendChild(l); 
+        l.click(); 
+        document.body.removeChild(l);
+
+        msg($('loginMessage'), 'Forecast data exported successfully!', true);
+    },
+
 
         submitEmailButton: async () => {
             if (!currentUser || currentUser.role !== 'maison') { msg($('emailMessage'), 'Maison only.', false); return; }

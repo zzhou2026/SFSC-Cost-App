@@ -287,6 +287,113 @@ table tr:hover {
 #exportDataButton:hover {
     background-color: #1565c0;
 }
+/* NEW: Forecast Table Styles */
+.forecast-table-container {
+    max-height: 500px; /* Slightly taller for forecast table */
+    background-color: #f0f8ff; /* Light blue background to distinguish from other tables */
+    border: 2px solid #b3e0ff;
+}
+
+/* Forecast table: Fixed layout with specific column widths */
+#forecastTableContainer table {
+    table-layout: auto; /* Allow flexible column sizing */
+    min-width: 100%; /* Ensure table takes full width */
+}
+
+#forecastTableContainer table th,
+#forecastTableContainer table td {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    padding: 8px;
+    text-align: center;
+    font-size: 0.85em;
+}
+
+/* Forecast table column widths */
+#forecastTableContainer table th:nth-child(1),
+#forecastTableContainer table td:nth-child(1) {
+    width: 100px; /* Maison */
+    text-align: left;
+}
+
+#forecastTableContainer table th:nth-child(2),
+#forecastTableContainer table td:nth-child(2) {
+    width: 110px; /* License Type */
+    text-align: left;
+}
+
+/* Q1-Q4 Quantity columns */
+#forecastTableContainer table th:nth-child(3),
+#forecastTableContainer table td:nth-child(3),
+#forecastTableContainer table th:nth-child(5),
+#forecastTableContainer table td:nth-child(5),
+#forecastTableContainer table th:nth-child(7),
+#forecastTableContainer table td:nth-child(7),
+#forecastTableContainer table th:nth-child(9),
+#forecastTableContainer table td:nth-child(9) {
+    width: 70px; /* Quantity columns */
+}
+
+/* Q1-Q4 Cost columns */
+#forecastTableContainer table th:nth-child(4),
+#forecastTableContainer table td:nth-child(4),
+#forecastTableContainer table th:nth-child(6),
+#forecastTableContainer table td:nth-child(6),
+#forecastTableContainer table th:nth-child(8),
+#forecastTableContainer table td:nth-child(8),
+#forecastTableContainer table th:nth-child(10),
+#forecastTableContainer table td:nth-child(10) {
+    width: 80px; /* Cost columns */
+}
+
+/* Total columns */
+#forecastTableContainer table th:nth-child(11),
+#forecastTableContainer table td:nth-child(11) {
+    width: 80px; /* Total Quantity */
+    font-weight: bold;
+}
+
+#forecastTableContainer table th:nth-child(12),
+#forecastTableContainer table td:nth-child(12) {
+    width: 90px; /* Total Cost */
+    font-weight: bold;
+    color: #00796b;
+}
+
+/* Forecast table header styling */
+#forecastTableContainer table th {
+    background-color: #b3e0ff;
+    color: #004d40;
+    font-weight: bold;
+    font-size: 0.75em;
+    position: sticky;
+    top: -10px;
+    z-index: 1;
+}
+
+/* Forecast table row hover */
+#forecastTableContainer table tr:hover {
+    background-color: #e0f2ff;
+}
+
+/* Highlight Total columns */
+#forecastTableContainer table td:nth-child(11),
+#forecastTableContainer table td:nth-child(12) {
+    background-color: #fffacd; /* Light yellow for totals */
+}
+
+/* Export Forecast Button */
+#exportForecastButton {
+    background-color: #1e88e5;
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+#exportForecastButton:hover {
+    background-color: #1565c0;
+}
+/* END NEW: Forecast Table Styles */
 
 label {
     display: block;
