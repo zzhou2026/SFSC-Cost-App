@@ -279,14 +279,6 @@ table tr:hover {
     background-color: #e0e0e0;
 }
 
-#exportDataButton {
-    background-color: #1e88e5;
-    margin-top: 20px;
-}
-
-#exportDataButton:hover {
-    background-color: #1565c0;
-}
 /* NEW: Forecast Table Styles */
 .forecast-table-container {
     max-height: 500px; /* Slightly taller for forecast table */
@@ -382,18 +374,6 @@ table tr:hover {
 #forecastTableContainer table td:nth-child(12) {
     background-color: #fffacd; /* Light yellow for totals */
 }
-
-/* Export Forecast Button */
-#exportForecastButton {
-    background-color: #1e88e5;
-    margin-top: 15px;
-    margin-bottom: 20px;
-}
-
-#exportForecastButton:hover {
-    background-color: #1565c0;
-}
-/* END NEW: Forecast Table Styles */
 
 label {
     display: block;
