@@ -256,16 +256,25 @@ document.addEventListener('DOMContentLoaded', () => {
             let totalCost = 0;
 
             quarters.forEach(q => {
-                const qData = item.quarters[q] || { quantity: 0, cost: 0 };
-                const qty = parseInt(qData.quantity) || 0;
-                const cost = parseFloat(qData.cost) || 0;
+                const qData = item.quarters[q];
+                
+                if (qData) {
+                    // 有提交数据
+                    const qty = parseInt(qData.quantity) || 0;
+                    const cost = parseFloat(qData.cost) || 0;
 
-                totalQty += qty;
-                totalCost += cost;
+                    totalQty += qty;
+                    totalCost += cost;
 
-                html += `<td>${qty}</td>`;
-                html += `<td>${cost.toFixed(2)}</td>`;
+                    html += `<td>${qty}</td>`;
+                    html += `<td>${cost.toFixed(2)}</td>`;
+                } else {
+                    // 没有提交数据，显示 -
+                    html += `<td>-</td>`;
+                    html += `<td>-</td>`;
+                }
             });
+
 
             html += `<td>${totalQty}</td>`;
             html += `<td>${totalCost.toFixed(2)}</td>`;
