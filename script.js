@@ -683,7 +683,7 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         
          // ← 新增：导出历史数据
-    exportHistoryButton: async () => {
+    exportHistoryDataButton: async () => {
         if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
         const res = await api('getAllSfscHistory');  // 调用历史数据API
         if (!res.success || !res.data || !res.data.length) { 
