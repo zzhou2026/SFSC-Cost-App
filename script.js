@@ -996,7 +996,38 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 document.body.removeChild(t);
             });
+        }        ,
+        quickStartDataCollection: () => {
+            // Auto-fill email subject and content
+            const subject = 'SFSC License Quantity Forecast Data Collection';
+            const body = `Dear All,
+
+As part of our regular business forecast process, we kindly ask you to submit your forecasted SFSC license quantities for the period from Q1 2026 to Q4 2026. This information is essential for our upcoming budget planning cycle. Please complete the required details using the form below.
+
+Deadline: 
+Form Link: 
+
+Your timely response is critical to ensuring accurate business planning. If you have any questions or require assistance, please contact [contact person or team].
+
+Thank you for your cooperation.
+
+Best regards,
+BT-admin`;
+
+            $('emailSubjectInput').value = subject;
+            $('emailContentInput').value = body;
+            
+            // Select all users with email
+            $('userListContainer').querySelectorAll('.user-checkbox:not(:disabled)').forEach(c => c.checked = true);
+            updCnt();
+            
+            // Show success message
+            msg($('emailBroadcastMessage'), 'Data collection email template loaded and all users selected. Please review and click "Open in Outlook" to send.', true);
+            
+            // Scroll to email content area for review
+            $('emailSubjectInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+
     };
 
     // 统一绑定事件
