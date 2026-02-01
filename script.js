@@ -387,26 +387,74 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', async e => {
         const id = e.target.dataset.id;
         if (!id) return;
-                // NEW: Handle Alert button clicks
-                if (e.target.classList.contains('alert-button-table')) {
-                    const maisonName = e.target.dataset.maison;
-                    const licenseType = e.target.dataset.licenseType;
-                    const annualTarget = e.target.dataset.annualTarget;
-                    const latestMonth = e.target.dataset.latestMonth;
-                    const latestActual = e.target.dataset.latestActual;
-                    const variance = e.target.dataset.variance;
-                    
-                    console.log('Alert button clicked!');
-                    console.log('Maison:', maisonName);
-                    console.log('License Type:', licenseType);
-                    console.log('Annual Target:', annualTarget);
-                    console.log('Latest Month:', latestMonth);
-                    console.log('Latest Actual:', latestActual);
-                    console.log('Variance:', variance);
-                    
-                    // Phase 1: 只打印数据，暂不执行其他操作
-                    return;
-                }
+                        // NEW: Handle Alert button clicks
+        if (e.target.classList.contains('alert-button-table')) {
+            const maisonName = e.target.dataset.maison;
+            const licenseType = e.target.dataset.licenseType;
+            const annualTarget = e.target.dataset.annualTarget;
+            const latestMonth = e.target.dataset.latestMonth;
+            const latestActual = e.target.dataset.latestActual;
+            const variance = e.target.dataset.variance;
+            
+            console.log('Alert button clicked!');
+            console.log('Maison:', maisonName);
+            console.log('License Type:', licenseType);
+            
+            // Phase 2: 自动选择收件人
+            // 构造用户名：MaisonName-LicenseType
+            const targetUsername = `${maisonName}-${licenseType}`;
+            console.log('Looking for user:', targetUsername);
+            
+            // 确保用户列表已加载
+            if (!allUsers || !allUsers.length) {
+                msg($('emailBroadcastMessage'), 'User list not loaded. Please wait and try again.', false);
+                return;
+            }
+            
+            // 查找目标用户
+            const targetUser = allUsers.find(u => u.username === targetUsername);
+            
+            if (!targetUser) {
+                msg($('emailBroadcastMessage'), `User "${targetUsername}" not found in the system.`, false);
+                return;
+            }
+            
+            if (!targetUser.email || !targetUser.email.trim()) {
+                msg($('emailBroadcastMessage'), `User "${targetUsername}" has no registered email address.`, false);
+                return;
+            }
+            
+            // 清空搜索框和搜索词
+            searchTerm = '';
+            if ($('userSearchInput')) $('userSearchInput').value = '';
+            
+            // 重新渲染用户列表
+            renderU();
+            
+            // 取消所有选择
+            $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
+                cb.checked = false; 
+            });
+            
+            // 选中目标用户
+            const targetCheckbox = $('userListContainer').querySelector(`.user-checkbox[data-username="${targetUsername}"]`);
+            if (targetCheckbox) {
+                targetCheckbox.checked = true;
+                updCnt();
+                
+                // 滚动到邮件区域
+                $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                msg($('emailBroadcastMessage'), `Recipient "${targetUsername}" selected. Please compose your alert email below.`, true);
+                console.log('User selected successfully:', targetUsername);
+            } else {
+                msg($('emailBroadcastMessage'), `Failed to select user "${targetUsername}". Please try again.`, false);
+                console.error('Checkbox not found for user:', targetUsername);
+            }
+            
+            return;
+        }
+
         
 
         if (e.target.classList.contains('delete-button-table')) {
