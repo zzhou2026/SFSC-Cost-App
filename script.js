@@ -996,7 +996,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 document.body.removeChild(t);
             });
-        }        ,
+        },
         quickStartDataCollection: () => {
             // Auto-fill email subject and content
             const subject = 'SFSC License Quantity Forecast Data Collection';
@@ -1054,3 +1054,4 @@ BT-admin`;
 
     showPage($('loginPage'));
 });
+
