@@ -310,7 +310,9 @@ document.addEventListener('DOMContentLoaded', () => {
         
         html += '<th>2026<br>Forecast</th>';
         html += '<th>Variance</th>';
+        html += '<th>Alert</th>';  // ← 新增这一行
         html += '</tr></thead><tbody>';
+
 
         // 渲染数据行
         res.data.forEach(row => {
@@ -354,7 +356,24 @@ document.addEventListener('DOMContentLoaded', () => {
             } else {
                 html += `<td>-</td>`;
             }
-
+            // Alert 按钮
+            const alertData = {
+                maisonName: row.MaisonName,
+                licenseType: row.LicenseType,
+                annualTarget: annualTarget,
+                latestMonth: latestMonth || '',
+                latestActual: latestActual !== null ? latestActual : '',
+                variance: latestActual !== null ? (latestActual - annualTarget) : ''
+            };
+            
+            html += `<td><button class="alert-button-table" 
+                data-maison="${alertData.maisonName}" 
+                data-license-type="${alertData.licenseType}"
+                data-annual-target="${alertData.annualTarget}"
+                data-latest-month="${alertData.latestMonth}"
+                data-latest-actual="${alertData.latestActual}"
+                data-variance="${alertData.variance}">Alert</button></td>`;
+            
             html += '</tr>';
         });
 
@@ -368,6 +387,27 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', async e => {
         const id = e.target.dataset.id;
         if (!id) return;
+                // NEW: Handle Alert button clicks
+                if (e.target.classList.contains('alert-button-table')) {
+                    const maisonName = e.target.dataset.maison;
+                    const licenseType = e.target.dataset.licenseType;
+                    const annualTarget = e.target.dataset.annualTarget;
+                    const latestMonth = e.target.dataset.latestMonth;
+                    const latestActual = e.target.dataset.latestActual;
+                    const variance = e.target.dataset.variance;
+                    
+                    console.log('Alert button clicked!');
+                    console.log('Maison:', maisonName);
+                    console.log('License Type:', licenseType);
+                    console.log('Annual Target:', annualTarget);
+                    console.log('Latest Month:', latestMonth);
+                    console.log('Latest Actual:', latestActual);
+                    console.log('Variance:', variance);
+                    
+                    // Phase 1: 只打印数据，暂不执行其他操作
+                    return;
+                }
+        
 
         if (e.target.classList.contains('delete-button-table')) {
             if (!confirm('Delete this record?')) return;
