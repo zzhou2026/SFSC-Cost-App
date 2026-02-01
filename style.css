@@ -122,30 +122,6 @@ button:hover { background-color: var(--primary-dark); }
 .reject-button-table { background-color: var(--warning-color); color: var(--text-color); margin-top: -3px; }
 .reject-button-table:hover { background-color: #e0a800; }
 
-.alert-button-table {
-    padding: 5px 10px;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.85em;
-    margin: 0;
-    transition: background-color 0.2s;
-    display: inline-block;
-    vertical-align: middle;
-    background-color: #ff9800;
-    color: white;
-}
-
-.alert-button-table:hover { 
-    background-color: #f57c00; 
-}
-
-.alert-button-table:disabled {
-    background-color: #ccc;
-    cursor: not-allowed;
-    color: #666;
-}
-
 /* === 消息提示 === */
 .message { margin-top: 10px; font-weight: bold; color: #e53935; }
 .message.success { color: #43a047; }
@@ -690,3 +666,27 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
 
 #targetSubmitMessage, #actualSubmitMessage { margin-top: 10px; min-height: 20px; }
 #exportMonthlyTrackingButton { margin: 15px 0 20px; }
+/* Alert button style for Monthly Tracking table */
+.alert-button-table {
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.85em;
+    margin: 0;
+    transition: background-color 0.2s;
+    display: inline-block;
+    vertical-align: middle;
+    background-color: #ff9800;
+    color: white;
+}
+
+.alert-button-table:hover { 
+    background-color: #f57c00; 
+}
+
+.alert-button-table:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    color: #666;
+}
