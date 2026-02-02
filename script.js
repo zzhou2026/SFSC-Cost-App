@@ -407,6 +407,16 @@ document.addEventListener('DOMContentLoaded', () => {
         document.addEventListener('click', async e => {
             // Handle Alert button clicks
 if (e.target.classList.contains('alert-button-table')) {
+    // 检查按钮是否已禁用（已发送过）
+    if (e.target.disabled) {
+        // 弹出确认框
+        const confirmed = confirm('This alert has already been sent. Do you want to send it again?');
+        if (!confirmed) {
+            return; // 用户取消，什么都不做
+        }
+        // 用户确认，继续执行发送逻辑
+    }
+    
     const maisonName = e.target.dataset.maison;
     const licenseType = e.target.dataset.licenseType;
     const annualTarget = e.target.dataset.annualTarget;
@@ -497,7 +507,7 @@ if (e.target.classList.contains('alert-button-table')) {
     $('emailSubjectInput').value = subject;
     $('emailContentInput').value = body;
     
-    // *** 关键修改：立即记录到 Alert_History ***
+    // 立即记录到 Alert_History
     (async () => {
         const recordRes = await api('recordAlertSent', {
             maisonName: maisonName,
@@ -525,6 +535,7 @@ if (e.target.classList.contains('alert-button-table')) {
     
     return;
 }
+
 
     
             const id = e.target.dataset.id;
@@ -1042,9 +1053,10 @@ if (e.target.classList.contains('alert-button-table')) {
         $('actualClientelingInput').value = '0';
         $('actualFullInput').value = '0';
         
-        // 重新加载月度跟踪表格
+        // *** 确保这行存在：重新加载月度跟踪表格 ***
         loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
     },
+    
     exportMonthlyTrackingButton: async () => {
         if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
         
