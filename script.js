@@ -406,137 +406,104 @@ document.addEventListener('DOMContentLoaded', () => {
         // ===== 事件委托：表格按钮 =====
         document.addEventListener('click', async e => {
             // Handle Alert button clicks
-if (e.target.classList.contains('alert-button-table')) {
-    // 检查按钮是否已禁用（已发送过）
-    if (e.target.disabled) {
-        // 弹出确认框
-        const confirmed = confirm('This alert has already been sent. Do you want to send it again?');
-        if (!confirmed) {
-            return; // 用户取消，什么都不做
-        }
-        // 用户确认，继续执行发送逻辑
-    }
-    
-    const maisonName = e.target.dataset.maison;
-    const licenseType = e.target.dataset.licenseType;
-    const annualTarget = e.target.dataset.annualTarget;
-    const latestMonth = e.target.dataset.latestMonth;
-    const latestActual = e.target.dataset.latestActual;
-    const variance = e.target.dataset.variance;
-    
-    console.log('Alert button clicked!', maisonName, licenseType);
-    
-    // 构造用户名：MaisonName-LicenseType
-    const targetUsername = `${maisonName}-${licenseType}`;
-    
-    // 确保用户列表已加载
-    if (!allUsers || !allUsers.length) {
-        msg($('emailBroadcastMessage'), 'User list not loaded. Please wait and try again.', false);
-        return;
-    }
-    
-    // 查找目标用户
-    const targetUser = allUsers.find(u => u.username === targetUsername);
-    
-    if (!targetUser) {
-        msg($('emailBroadcastMessage'), `User "${targetUsername}" not found in the system.`, false);
-        return;
-    }
-    
-    if (!targetUser.email || !targetUser.email.trim()) {
-        msg($('emailBroadcastMessage'), `User "${targetUsername}" has no registered email address.`, false);
-        return;
-    }
-    
-    // 清空搜索框和搜索词
-    searchTerm = '';
-    if ($('userSearchInput')) $('userSearchInput').value = '';
-    
-    // 重新渲染用户列表
-    renderU();
-    
-    // 取消所有选择
-    $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
-        cb.checked = false; 
-    });
-    
-    // 选中目标用户
-    const targetCheckbox = $('userListContainer').querySelector(`.user-checkbox[data-username="${targetUsername}"]`);
-    if (targetCheckbox) {
-        targetCheckbox.checked = true;
-        updCnt();
-    } else {
-        msg($('emailBroadcastMessage'), `Failed to select user "${targetUsername}".`, false);
-        return;
-    }
-    
-    // 生成邮件主题和内容
-    const subject = `SFSC License Variance Alert - ${maisonName} ${licenseType}`;
-    
-    let body = `Dear ${targetUsername},\n\n`;
-    body += `This is an automated alert regarding your SFSC license usage for ${maisonName} - ${licenseType}.\n\n`;
-    body += `=== Summary ===\n`;
-    body += `Annual Target (2026 Forecast): ${annualTarget}\n`;
-    
-    if (latestMonth && latestActual !== '') {
-        const monthNames = {
-            '01': 'January', '02': 'February', '03': 'March', '04': 'April',
-            '05': 'May', '06': 'June', '07': 'July', '08': 'August',
-            '09': 'September', '10': 'October', '11': 'November', '12': 'December'
-        };
-        body += `Latest Month: ${monthNames[latestMonth] || latestMonth}\n`;
-        body += `Latest Actual: ${latestActual}\n`;
-        body += `Variance: ${variance}\n\n`;
-        
-        if (parseFloat(variance) < 0) {
-            body += `⚠️ Your actual usage is BELOW the target by ${Math.abs(variance)} licenses.\n`;
-        } else if (parseFloat(variance) > 0) {
-            body += `⚠️ Your actual usage is ABOVE the target by ${variance} licenses.\n`;
-        } else {
-            body += `✓ Your actual usage matches the target.\n`;
-        }
-    } else {
-        body += `No monthly actual data has been submitted yet.\n`;
-    }
-    
-    body += `\nPlease review your license usage and take appropriate action if needed.\n`;
-    body += `\nIf you have any questions, please contact the BT team.\n\n`;
-    body += `Best regards,\nBT-admin`;
-    
-    // 填充邮件表单
-    $('emailSubjectInput').value = subject;
-    $('emailContentInput').value = body;
-    
-    // 立即记录到 Alert_History
-    (async () => {
-        const recordRes = await api('recordAlertSent', {
-            maisonName: maisonName,
-            licenseType: licenseType,
-            latestMonth: latestMonth,
-            latestActualValue: latestActual,
-            sentBy: currentUser.username
-        });
-        
-        console.log('Alert recorded:', recordRes);
-        
-        if (recordRes.success) {
-            // 刷新月度跟踪表格，让按钮变灰
-            const currentYear = parseInt($('actualYearSelect').value) || new Date().getFullYear();
-            await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
-            
-            // 滚动到邮件区域
-            $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            msg($('emailBroadcastMessage'), `Alert recorded and email prepared for "${targetUsername}". Please click "Open in Outlook" to send.`, true);
-        } else {
-            msg($('emailBroadcastMessage'), `Failed to record alert: ${recordRes.message}`, false);
-        }
-    })();
-    
-    return;
-}
-
-
+            if (e.target.classList.contains('alert-button-table')) {
+                const maisonName = e.target.dataset.maison;
+                const licenseType = e.target.dataset.licenseType;
+                const annualTarget = e.target.dataset.annualTarget;
+                const latestMonth = e.target.dataset.latestMonth;
+                const latestActual = e.target.dataset.latestActual;
+                const variance = e.target.dataset.variance;
+                
+                console.log('Alert button clicked!', maisonName, licenseType);
+                
+                // 构造用户名：MaisonName-LicenseType
+                const targetUsername = `${maisonName}-${licenseType}`;
+                
+                // 确保用户列表已加载
+                if (!allUsers || !allUsers.length) {
+                    msg($('emailBroadcastMessage'), 'User list not loaded. Please wait and try again.', false);
+                    return;
+                }
+                
+                // 查找目标用户
+                const targetUser = allUsers.find(u => u.username === targetUsername);
+                
+                if (!targetUser) {
+                    msg($('emailBroadcastMessage'), `User "${targetUsername}" not found in the system.`, false);
+                    return;
+                }
+                
+                if (!targetUser.email || !targetUser.email.trim()) {
+                    msg($('emailBroadcastMessage'), `User "${targetUsername}" has no registered email address.`, false);
+                    return;
+                }
+                
+                // 清空搜索框和搜索词
+                searchTerm = '';
+                if ($('userSearchInput')) $('userSearchInput').value = '';
+                
+                // 重新渲染用户列表
+                renderU();
+                
+                // 取消所有选择
+                $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
+                    cb.checked = false; 
+                });
+                
+                // 选中目标用户
+                const targetCheckbox = $('userListContainer').querySelector(`.user-checkbox[data-username="${targetUsername}"]`);
+                if (targetCheckbox) {
+                    targetCheckbox.checked = true;
+                    updCnt();
+                } else {
+                    msg($('emailBroadcastMessage'), `Failed to select user "${targetUsername}".`, false);
+                    return;
+                }
+                
+                // 生成邮件主题和内容
+                const subject = `SFSC License Variance Alert - ${maisonName} ${licenseType}`;
+                
+                let body = `Dear ${targetUsername},\n\n`;
+                body += `This is an automated alert regarding your SFSC license usage for ${maisonName} - ${licenseType}.\n\n`;
+                body += `=== Summary ===\n`;
+                body += `Annual Target (2026 Forecast): ${annualTarget}\n`;
+                
+                if (latestMonth && latestActual !== '') {
+                    const monthNames = {
+                        '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+                        '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+                        '09': 'September', '10': 'October', '11': 'November', '12': 'December'
+                    };
+                    body += `Latest Month: ${monthNames[latestMonth] || latestMonth}\n`;
+                    body += `Latest Actual: ${latestActual}\n`;
+                    body += `Variance: ${variance}\n\n`;
+                    
+                    if (parseFloat(variance) < 0) {
+                        body += `⚠️ Your actual usage is BELOW the target by ${Math.abs(variance)} licenses.\n`;
+                    } else if (parseFloat(variance) > 0) {
+                        body += `⚠️ Your actual usage is ABOVE the target by ${variance} licenses.\n`;
+                    } else {
+                        body += `✓ Your actual usage matches the target.\n`;
+                    }
+                } else {
+                    body += `No monthly actual data has been submitted yet.\n`;
+                }
+                
+                body += `\nPlease review your license usage and take appropriate action if needed.\n`;
+                body += `\nIf you have any questions, please contact the BT team.\n\n`;
+                body += `Best regards,\nBT-admin`;
+                
+                // 填充邮件表单
+                $('emailSubjectInput').value = subject;
+                $('emailContentInput').value = body;
+                
+                // 滚动到邮件区域
+                $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+                
+                msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
+                
+                return;
+            }
     
             const id = e.target.dataset.id;
             if (!id) return;
@@ -1053,10 +1020,9 @@ if (e.target.classList.contains('alert-button-table')) {
         $('actualClientelingInput').value = '0';
         $('actualFullInput').value = '0';
         
-        // *** 确保这行存在：重新加载月度跟踪表格 ***
+        // 重新加载月度跟踪表格
         loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
     },
-    
     exportMonthlyTrackingButton: async () => {
         if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
         
@@ -1139,13 +1105,11 @@ if (e.target.classList.contains('alert-button-table')) {
         openOutlookButton: async () => {
             const em = selected();
             if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to send email.', false); return; }
-            
-            const s = encodeURIComponent($('emailSubjectInput').value.trim());
-            const b = encodeURIComponent($('emailContentInput').value.trim());
+            const s = encodeURIComponent($('emailSubjectInput').value.trim()), b = encodeURIComponent($('emailContentInput').value.trim());
             const p = [s && `subject=${s}`, b && `body=${b}`].filter(Boolean);
             const mailtoLink = `mailto:${em.join(',')}${p.length ? '?' + p.join('&') : ''}`;
             
-            // 打开 Outlook
+            // Use a temporary anchor element to trigger mailto: link (more reliable than window.location.href)
             const tempLink = document.createElement('a');
             tempLink.href = mailtoLink;
             tempLink.style.display = 'none';
@@ -1154,8 +1118,36 @@ if (e.target.classList.contains('alert-button-table')) {
             document.body.removeChild(tempLink);
             
             msg($('emailBroadcastMessage'), `Opening Outlook with ${em.length} recipient(s)...`, true);
+            
+            // 检查是否有 Alert 按钮需要记录
+            const alertButtons = document.querySelectorAll('.alert-button-table[data-prepared-alert="true"]');
+            if (alertButtons.length > 0) {
+                for (const btn of alertButtons) {
+                    const maisonName = btn.dataset.maison;
+                    const licenseType = btn.dataset.licenseType;
+                    const latestMonth = btn.dataset.latestMonth;
+                    const latestActual = btn.dataset.latestActual;
+                    
+                    // 记录到 Alert_History
+                    await api('recordAlertSent', {
+                        maisonName: maisonName,
+                        licenseType: licenseType,
+                        latestMonth: latestMonth,
+                        latestActualValue: latestActual,
+                        sentBy: currentUser.username
+                    });
+                    
+                    // 清除标记
+                    btn.removeAttribute('data-prepared-alert');
+                }
+                
+                // 刷新月度跟踪表格
+                const currentYear = new Date().getFullYear();
+                await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
+                
+                msg($('emailBroadcastMessage'), `Alert sent and recorded successfully!`, true);
+            }
         },
-        
 
         copyEmailsButton: () => {
             const em = selected();
@@ -1232,4 +1224,3 @@ BT-admin`;
 
     showPage($('loginPage'));
 });
-
