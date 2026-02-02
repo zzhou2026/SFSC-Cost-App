@@ -687,6 +687,6 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
 
 .alert-button-table:disabled {
     background-color: #ccc;
-    cursor: not-allowed;
+    cursor: pointer;  /* 修改这一行：从 not-allowed 改为 pointer */
     color: #666;
 }

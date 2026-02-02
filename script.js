@@ -405,16 +405,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
         // ===== 事件委托：表格按钮 =====
         document.addEventListener('click', async e => {
-            // Handle Alert button clicks
-            if (e.target.classList.contains('alert-button-table')) {
-                const maisonName = e.target.dataset.maison;
-                const licenseType = e.target.dataset.licenseType;
-                const annualTarget = e.target.dataset.annualTarget;
-                const latestMonth = e.target.dataset.latestMonth;
-                const latestActual = e.target.dataset.latestActual;
-                const variance = e.target.dataset.variance;
-                
-                console.log('Alert button clicked!', maisonName, licenseType);
+                // Handle Alert button clicks
+    if (e.target.classList.contains('alert-button-table')) {
+        const maisonName = e.target.dataset.maison;
+        const licenseType = e.target.dataset.licenseType;
+        const annualTarget = e.target.dataset.annualTarget;
+        const latestMonth = e.target.dataset.latestMonth;
+        const latestActual = e.target.dataset.latestActual;
+        const variance = e.target.dataset.variance;
+        
+        console.log('Alert button clicked!', maisonName, licenseType);
+        
+        // NEW: 检查按钮是否已经是 "Alert Sent" 状态
+        const isAlreadySent = e.target.disabled;
+        
+        if (isAlreadySent) {
+            // 按钮已发送状态，弹出确认框
+            const confirmMsg = `Alert has already been sent for ${maisonName} ${licenseType}\n` +
+                             `(Month: ${latestMonth || 'N/A'}, Actual: ${latestActual || 'N/A'}).\n\n` +
+                             `Do you want to prepare the email again?`;
+            
+            if (!confirm(confirmMsg)) {
+                // 用户取消，直接返回
+                return;
+            }
+            
+            // 用户确认，继续准备邮件（但不记录到 Alert_History）
+            console.log('User confirmed to prepare email again (no recording).');
+        } else {
+            // 正常状态，记录到 Alert_History
+            console.log('Recording alert to Alert_History...');
+            
+            const recordRes = await api('recordAlertSent', {
+                maisonName: maisonName,
+                licenseType: licenseType,
+                latestMonth: latestMonth || '',
+                latestActualValue: latestActual !== null && latestActual !== '' ? latestActual : '',
+                sentBy: currentUser.username
+            });
+            
+            if (!recordRes.success) {
+                msg($('emailBroadcastMessage'), `Failed to record alert: ${recordRes.message}`, false);
+                return;
+            }
+            
+            console.log('Alert recorded successfully.');
+        }
+
                 
                 // 构造用户名：MaisonName-LicenseType
                 const targetUsername = `${maisonName}-${licenseType}`;
@@ -501,7 +538,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
                 
                 msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
-                
+                  // NEW: 如果是正常状态（刚记录了 Alert），重新加载表格以更新按钮状态
+        if (!isAlreadySent) {
+            const currentYear = new Date().getFullYear();
+            await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
+        }
                 return;
             }
     
@@ -1118,35 +1159,6 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.removeChild(tempLink);
             
             msg($('emailBroadcastMessage'), `Opening Outlook with ${em.length} recipient(s)...`, true);
-            
-            // 检查是否有 Alert 按钮需要记录
-            const alertButtons = document.querySelectorAll('.alert-button-table[data-prepared-alert="true"]');
-            if (alertButtons.length > 0) {
-                for (const btn of alertButtons) {
-                    const maisonName = btn.dataset.maison;
-                    const licenseType = btn.dataset.licenseType;
-                    const latestMonth = btn.dataset.latestMonth;
-                    const latestActual = btn.dataset.latestActual;
-                    
-                    // 记录到 Alert_History
-                    await api('recordAlertSent', {
-                        maisonName: maisonName,
-                        licenseType: licenseType,
-                        latestMonth: latestMonth,
-                        latestActualValue: latestActual,
-                        sentBy: currentUser.username
-                    });
-                    
-                    // 清除标记
-                    btn.removeAttribute('data-prepared-alert');
-                }
-                
-                // 刷新月度跟踪表格
-                const currentYear = new Date().getFullYear();
-                await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
-                
-                msg($('emailBroadcastMessage'), `Alert sent and recorded successfully!`, true);
-            }
         },
 
         copyEmailsButton: () => {
