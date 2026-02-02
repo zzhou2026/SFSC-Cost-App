@@ -496,10 +496,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 // 填充邮件表单
                 $('emailSubjectInput').value = subject;
                 $('emailContentInput').value = body;
-                
-                // 滚动到邮件区域
+                e.target.setAttribute('data-prepared-alert', 'true');
                 $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                
                 msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
                 
                 return;
@@ -1120,33 +1118,35 @@ document.addEventListener('DOMContentLoaded', () => {
             msg($('emailBroadcastMessage'), `Opening Outlook with ${em.length} recipient(s)...`, true);
             
             // 检查是否有 Alert 按钮需要记录
-            const alertButtons = document.querySelectorAll('.alert-button-table[data-prepared-alert="true"]');
-            if (alertButtons.length > 0) {
-                for (const btn of alertButtons) {
-                    const maisonName = btn.dataset.maison;
-                    const licenseType = btn.dataset.licenseType;
-                    const latestMonth = btn.dataset.latestMonth;
-                    const latestActual = btn.dataset.latestActual;
-                    
-                    // 记录到 Alert_History
-                    await api('recordAlertSent', {
-                        maisonName: maisonName,
-                        licenseType: licenseType,
-                        latestMonth: latestMonth,
-                        latestActualValue: latestActual,
-                        sentBy: currentUser.username
-                    });
-                    
-                    // 清除标记
-                    btn.removeAttribute('data-prepared-alert');
-                }
-                
-                // 刷新月度跟踪表格
-                const currentYear = new Date().getFullYear();
-                await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
-                
-                msg($('emailBroadcastMessage'), `Alert sent and recorded successfully!`, true);
-            }
+const alertButtons = document.querySelectorAll('.alert-button-table[data-prepared-alert="true"]');
+if (alertButtons.length > 0) {
+    for (const btn of alertButtons) {
+        const maisonName = btn.dataset.maison;
+        const licenseType = btn.dataset.licenseType;
+        const latestMonth = btn.dataset.latestMonth;
+        const latestActual = btn.dataset.latestActual;
+        
+        // 记录到 Alert_History
+        await api('recordAlertSent', {
+            maisonName: maisonName,
+            licenseType: licenseType,
+            latestMonth: latestMonth,
+            latestActualValue: latestActual,
+            sentBy: currentUser.username
+        });
+        
+        // 清除标记
+        btn.removeAttribute('data-prepared-alert');
+    }
+    
+    // 刷新月度跟踪表格
+    // *** 修改这一行 ***
+    const currentYear = parseInt($('actualYearSelect').value) || new Date().getFullYear();
+    await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
+    
+    msg($('emailBroadcastMessage'), `Alert sent and recorded successfully!`, true);
+}
+
         },
 
         copyEmailsButton: () => {
