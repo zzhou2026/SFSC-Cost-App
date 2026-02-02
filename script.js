@@ -497,54 +497,60 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
                 
-                // 生成邮件主题和内容
-                const subject = `SFSC License Variance Alert - ${maisonName} ${licenseType}`;
+                            // 生成邮件主题和内容
+            const subject = `SFSC License Variance Alert - ${maisonName} ${licenseType}`;
+            
+            let body = `Dear ${targetUsername},\n\n`;
+            body += `This is an automated alert regarding your SFSC license usage for ${maisonName} - ${licenseType}.\n\n`;
+            body += `=== Summary ===\n`;
+            body += `Annual Target (2026 Forecast): ${annualTarget}\n`;
+            
+            if (latestMonth && latestActual !== '') {
+                const monthNames = {
+                    '01': 'January', '02': 'February', '03': 'March', '04': 'April',
+                    '05': 'May', '06': 'June', '07': 'July', '08': 'August',
+                    '09': 'September', '10': 'October', '11': 'November', '12': 'December'
+                };
+                body += `Latest Month: ${monthNames[latestMonth] || latestMonth}\n`;
+                body += `Latest Actual: ${latestActual}\n`;
+                body += `Variance: ${variance}\n\n`;
                 
-                let body = `Dear ${targetUsername},\n\n`;
-                body += `This is an automated alert regarding your SFSC license usage for ${maisonName} - ${licenseType}.\n\n`;
-                body += `=== Summary ===\n`;
-                body += `Annual Target (2026 Forecast): ${annualTarget}\n`;
-                
-                if (latestMonth && latestActual !== '') {
-                    const monthNames = {
-                        '01': 'January', '02': 'February', '03': 'March', '04': 'April',
-                        '05': 'May', '06': 'June', '07': 'July', '08': 'August',
-                        '09': 'September', '10': 'October', '11': 'November', '12': 'December'
-                    };
-                    body += `Latest Month: ${monthNames[latestMonth] || latestMonth}\n`;
-                    body += `Latest Actual: ${latestActual}\n`;
-                    body += `Variance: ${variance}\n\n`;
-                    
-                    if (parseFloat(variance) < 0) {
-                        body += `⚠️ Your actual usage is BELOW the target by ${Math.abs(variance)} licenses.\n`;
-                    } else if (parseFloat(variance) > 0) {
-                        body += `⚠️ Your actual usage is ABOVE the target by ${variance} licenses.\n`;
-                    } else {
-                        body += `✓ Your actual usage matches the target.\n`;
-                    }
+                if (parseFloat(variance) < 0) {
+                    body += `⚠️ Your actual usage is BELOW the target by ${Math.abs(variance)} licenses.\n`;
+                } else if (parseFloat(variance) > 0) {
+                    body += `⚠️ Your actual usage is ABOVE the target by ${variance} licenses.\n`;
                 } else {
-                    body += `No monthly actual data has been submitted yet.\n`;
+                    body += `✓ Your actual usage matches the target.\n`;
                 }
-                
-                body += `\nPlease review your license usage and take appropriate action if needed.\n`;
-                body += `\nIf you have any questions, please contact the BT team.\n\n`;
-                body += `Best regards,\nBT-admin`;
-                
-                // 填充邮件表单
-                $('emailSubjectInput').value = subject;
-                $('emailContentInput').value = body;
-                
-                // 滚动到邮件区域
-                $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-                
-                msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
-                  // NEW: 如果是正常状态（刚记录了 Alert），重新加载表格以更新按钮状态
-        if (!isAlreadySent) {
-            const currentYear = new Date().getFullYear();
-            await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
-        }
-                return;
+            } else {
+                body += `No monthly actual data has been submitted yet.\n`;
             }
+            
+            body += `\nPlease review your license usage and take appropriate action if needed.\n`;
+            body += `\nIf you have any questions, please contact the BT team.\n\n`;
+            body += `Best regards,\nBT-admin`;
+            
+            // 填充邮件表单
+            $('emailSubjectInput').value = subject;
+            $('emailContentInput').value = body;
+            
+            // 滚动到邮件区域
+            $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
+            
+            // NEW: 如果是正常状态（刚记录了 Alert），重新加载表格以更新按钮状态
+            if (!isAlreadySent) {
+                console.log('Reloading monthly tracking table...');
+                const currentYear = new Date().getFullYear();
+                await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
+                console.log('Table reloaded.');
+            }
+            
+            return;
+        }
+
+
     
             const id = e.target.dataset.id;
             if (!id) return;
