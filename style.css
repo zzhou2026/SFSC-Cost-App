@@ -218,6 +218,15 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
 #adminActionsLogTableContainer table th:nth-child(9),
 #adminActionsLogTableContainer table td:nth-child(9) { width: 140px; }
 
+/* Maison历史记录表格 */
+#maisonActionsLogTableContainer table th:nth-child(2),
+#maisonActionsLogTableContainer table td:nth-child(2) { width: 100px; } /* Quarter 列加宽 */
+
+#maisonActionsLogTableContainer table th:nth-child(7),
+#maisonActionsLogTableContainer table td:nth-child(7),
+#maisonActionsLogTableContainer table th:nth-child(10),
+#maisonActionsLogTableContainer table td:nth-child(10) { width: 120px; } /* Submission Time 和 Action Time 缩小 */
+
 /* Forecast表格 */
 #forecastTableContainer table { table-layout: auto; min-width: 100%; }
 #forecastTableContainer table th, #forecastTableContainer table td { padding: 8px; text-align: center; font-size: 0.85em; }
