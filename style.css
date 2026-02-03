@@ -226,7 +226,10 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
 #maisonActionsLogTableContainer table td:nth-child(7),
 #maisonActionsLogTableContainer table th:nth-child(10),
 #maisonActionsLogTableContainer table td:nth-child(10) { width: 130px; } /* Submission Time 和 Action Time 缩小 */
-
+#maisonActionsLogTableContainer table th:nth-child(10), /* 对应你实际的第10列：Action By */
+#maisonActionsLogTableContainer table td:nth-child(10) {
+    width: 80px; /* Action By 列变窄 */
+}
 /* Forecast表格 */
 #forecastTableContainer table { table-layout: auto; min-width: 100%; }
 #forecastTableContainer table th, #forecastTableContainer table td { padding: 8px; text-align: center; font-size: 0.85em; }
