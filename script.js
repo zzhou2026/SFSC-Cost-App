@@ -778,7 +778,7 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 showPage($('loginPage')); // Start on login page, then transition
                 showPage($('mainPage'));
-                $('welcomeMessage').textContent = `Welcome, ${currentUser.maisonName} (${currentUser.role})!`;
+                $('welcomeMessage').textContent = `Welcome, ${currentUser.username} (${currentUser.role})!`;
                 if (currentUser.role === 'maison') {
                     $('maisonView').classList.remove('hidden'); $('adminView').classList.add('hidden');
                     popQ(); popM();
