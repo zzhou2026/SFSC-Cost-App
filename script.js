@@ -1154,7 +1154,8 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to send email.', false); return; }
             const s = encodeURIComponent($('emailSubjectInput').value.trim()), b = encodeURIComponent($('emailContentInput').value.trim());
             const p = [s && `subject=${s}`, b && `body=${b}`].filter(Boolean);
-            const mailtoLink = `mailto:${em.join(',')}${p.length ? '?' + p.join('&') : ''}`;
+            const mailtoLink = `mailto:${em.join(';')}${p.length ? '?' + p.join('&') : ''}`;
+
             
             // Use a temporary anchor element to trigger mailto: link (more reliable than window.location.href)
             const tempLink = document.createElement('a');
