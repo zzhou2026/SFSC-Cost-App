@@ -561,10 +561,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const res = await api('deleteSfscData', { recordId: id, actionBy: currentUser.username });
                 msg($('maisonSubmitMessage'), res.success ? 'Deleted!' : 'Delete failed: ' + res.message, res.success);
                 if (res.success) {
-                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName });
-                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: 重新加载历史日志
+                    loadTable('maison', $('maisonHistoryTableContainer'), { submittedBy: currentUser.username });
+                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { submittedBy: currentUser.username }); // NEW: 重新加载历史日志
                 }
-            } else if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
+            }
+             else if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
                 const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
                 if (!confirm(`Set to ${st}?`)) return;
                 
@@ -783,10 +784,11 @@ document.addEventListener('DOMContentLoaded', () => {
                     popQ(); popM();
                     $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0';
                     $('calculatedCostDisplay').textContent = 'Estimated Cost: 0.00 €';
-                    loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); // Load current data
-                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: Load historical actions log
+                    loadTable('maison', $('maisonHistoryTableContainer'), { submittedBy: currentUser.username }); // 修改：maisonName 改为 username
+                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { submittedBy: currentUser.username }); // 修改：maisonName 改为 username
                     initEmail();
-                } else {
+                }
+                 else {
                     $('adminView').classList.remove('hidden'); $('maisonView').classList.add('hidden');
                     loadTable('admin', $('adminDataTableContainer')); // Load current data
                     loadForecastTable($('forecastTableContainer')); // NEW: Load forecast table
@@ -814,7 +816,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!q || c < 0 || f < 0 || isNaN(c) || isNaN(f)) { msg($('maisonSubmitMessage'), 'Invalid inputs!', false); return; }
             
             // Check for existing record
-            const chk = await api('checkExistingRecord', { maisonName: currentUser.maisonName, quarter: q });
+            const chk = await api('checkExistingRecord', { maisonName: currentUser.maisonName, quarter: q, submittedBy: currentUser.username });        
             let id = null;
             if (chk.success && chk.exists) {
                 if (!confirm(`An existing record for ${q} will be updated. Do you want to proceed?`)) {
@@ -836,9 +838,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (res.success) { 
                 msg($('maisonSubmitMessage'), `${id ? 'Updated' : 'Submitted'}! Cost: ${res.calculatedCost} €`, true); 
                 $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0'; 
-                loadTable('maison', $('maisonHistoryTableContainer'), { maisonName: currentUser.maisonName }); 
-                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { maisonName: currentUser.maisonName }); // NEW: 重新加载历史日志
-            } else {
+                loadTable('maison', $('maisonHistoryTableContainer'), { submittedBy: currentUser.username }); 
+                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { submittedBy: currentUser.username }); // NEW: 重新加载历史日志
+            } else {            
                 msg($('maisonSubmitMessage'), 'Failed to submit/update: ' + res.message, false);
             }
         },
