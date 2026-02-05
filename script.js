@@ -1063,20 +1063,22 @@ document.addEventListener('DOMContentLoaded', () => {
             // 验证递增规则（基于合并后的数据）
             const warnings = validateQuarterData(filledData);
             
+            // 构建确认消息（包含Warning）
+            const quarters = await getQuarters();
+            let confirmMsg = '';
+            
+            // ⭐ 如果有Warning，先显示在弹窗顶部
             if (warnings.length > 0) {
                 const beautyTechEmail = configPrices.BeautyTechEmail || 'beautytech@example.com';
-                const warningMsg = `⚠️ Warning: ${warnings.join('; ')}<br>` +
-                    `Due to contract restrictions, license quantities should not decrease during the year.<br>` +
-                    `If you need to reduce licenses, you should contact Beauty Tech at ${beautyTechEmail} ` +
-                    `to discuss and confirm your situation AFTER submitting.`;
-                
-                $('validationMessage').innerHTML = warningMsg;
-                $('validationMessage').className = 'message warning';
+                confirmMsg += '⚠️ WARNING ⚠️\n';
+                confirmMsg += warnings.join('\n') + '\n\n';
+                confirmMsg += `Due to contract restrictions, license quantities should not decrease during the year.\n`;
+                confirmMsg += `If you need to reduce licenses, you should contact Beauty Tech at ${beautyTechEmail}\n`;
+                confirmMsg += `to discuss and confirm your situation AFTER submitting.\n\n`;
+                confirmMsg += '═'.repeat(50) + '\n\n';
             }
             
-            // 构建确认消息
-            const quarters = await getQuarters();
-            let confirmMsg = 'You are about to submit the following quarterly forecast:\n\n';
+            confirmMsg += 'You are about to submit the following quarterly forecast:\n\n';
             
             filledData.forEach((val, idx) => {
                 const isUserFilled = userInput[idx] !== '' && userInput[idx] !== null;
@@ -1085,9 +1087,20 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 let marker = '';
                 if (isUserFilled) {
+                    // 用户手动填写
                     marker = isNew ? ' (new)' : isChanged ? ' (updated)' : ' (no change)';
                 } else {
-                    marker = isNew ? ' (auto-filled)' : ' (kept existing)';
+                    // 自动填充
+                    if (isNew) {
+                        // ⭐ 从前一个季度传播过来的
+                        marker = ' (auto-filled from previous quarter)';
+                    } else if (isChanged) {
+                        // ⭐ 因为前面季度更新，这个也跟着变了
+                        marker = ' (auto-updated from previous quarter)';
+                    } else {
+                        // 真正保持原值
+                        marker = ' (kept existing)';
+                    }
                 }
                 
                 confirmMsg += `${quarters[idx]}: ${val}${marker}\n`;
@@ -1107,7 +1120,6 @@ document.addEventListener('DOMContentLoaded', () => {
             // 构建季度数据（只提交需要更新的季度）
             const quarterData = [];
             filledData.forEach((count, idx) => {
-                // 只提交有变化的季度，或者是新数据
                 const hasChange = !existingData || existingData[idx] === null || existingData[idx] !== count;
                 if (hasChange && count !== null) {
                     quarterData.push({
@@ -1154,6 +1166,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg($('maisonSubmitMessage'), 'Failed to submit: ' + res.message, false);
             }
         },
+        
 
 
         calculateCostButton: () => {
