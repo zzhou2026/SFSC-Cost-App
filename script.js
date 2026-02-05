@@ -1063,6 +1063,19 @@ document.addEventListener('DOMContentLoaded', () => {
             // 验证递增规则（基于合并后的数据）
             const warnings = validateQuarterData(filledData);
             
+            // ⭐ 检测哪些季度有递减问题，并记录详细信息
+            const decreaseInfo = {}; // {索引: {previousQuarter: 'Q2', previousValue: 2}}
+            for (let i = 1; i < filledData.length; i++) {
+                if (filledData[i] !== null && filledData[i - 1] !== null) {
+                    if (filledData[i] < filledData[i - 1]) {
+                        decreaseInfo[i] = {
+                            previousQuarter: `Q${i}`, // Q1索引0, Q2索引1...所以i就是前一个季度号
+                            previousValue: filledData[i - 1]
+                        };
+                    }
+                }
+            }
+            
             // 构建确认消息（包含Warning）
             const quarters = await getQuarters();
             let confirmMsg = '';
@@ -1073,8 +1086,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 confirmMsg += '⚠️ WARNING ⚠️\n';
                 confirmMsg += warnings.join('\n') + '\n\n';
                 confirmMsg += `Due to contract restrictions, license quantities should not decrease during the year.\n`;
-                confirmMsg += `If you need to reduce licenses, you should contact Beauty Tech at ${beautyTechEmail}\n`;
-                confirmMsg += `to discuss and confirm your situation AFTER submitting.\n\n`;
+                confirmMsg += `If you need to reduce licenses, contact Beauty Tech at ${beautyTechEmail} AFTER submitting.\n\n`;
                 confirmMsg += '═'.repeat(50) + '\n\n';
             }
             
@@ -1084,18 +1096,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isUserFilled = userInput[idx] !== '' && userInput[idx] !== null;
                 const isChanged = existingData && existingData[idx] !== null && val !== existingData[idx];
                 const isNew = !existingData || existingData[idx] === null;
+                const decreaseDetail = decreaseInfo[idx]; // ⭐ 获取递减详情
                 
                 let marker = '';
                 if (isUserFilled) {
                     // 用户手动填写
-                    marker = isNew ? ' (new)' : isChanged ? ' (updated)' : ' (no change)';
+                    if (decreaseDetail) {
+                        // ⭐ 用户填的值导致递减，显示具体信息
+                        const prevQ = decreaseDetail.previousQuarter;
+                        const prevVal = decreaseDetail.previousValue;
+                        marker = isNew 
+                            ? ` (new - WARNING: less than ${prevQ} (${prevVal}))`
+                            : ` (updated - WARNING: less than ${prevQ} (${prevVal}))`;
+                    } else {
+                        marker = isNew ? ' (new)' : isChanged ? ' (updated)' : ' (no change)';
+                    }
                 } else {
                     // 自动填充
                     if (isNew) {
-                        // ⭐ 从前一个季度传播过来的
+                        // 从前一个季度传播过来的（首次）
                         marker = ' (auto-filled from previous quarter)';
                     } else if (isChanged) {
-                        // ⭐ 因为前面季度更新，这个也跟着变了
+                        // 因为前面季度更新，这个也跟着变了
                         marker = ' (auto-updated from previous quarter)';
                     } else {
                         // 真正保持原值
@@ -1166,6 +1188,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg($('maisonSubmitMessage'), 'Failed to submit: ' + res.message, false);
             }
         },
+        
         
 
 
