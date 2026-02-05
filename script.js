@@ -63,39 +63,65 @@ document.addEventListener('DOMContentLoaded', () => {
         return count * unitPrice * 3; // 3个月
     };
 
-    // ===== 季度数据验证 =====
-    const validateQuarterData = (q1, q2, q3, q4) => {
-        const values = [q1, q2, q3, q4];
-        const warnings = [];
-        
-        // 检查递增规则
-        for (let i = 1; i < values.length; i++) {
-            if (values[i] !== '' && values[i] !== null && values[i - 1] !== '' && values[i - 1] !== null) {
-                if (parseInt(values[i]) < parseInt(values[i - 1])) {
-                    warnings.push(`Q${i + 1} (${values[i]}) is less than Q${i} (${values[i - 1]})`);
+        // ===== 季度数据验证 =====
+        const validateQuarterData = (values) => {
+            // values: [q1, q2, q3, q4] - 数字数组
+            const warnings = [];
+            
+            // 检查递增规则
+            for (let i = 1; i < values.length; i++) {
+                if (values[i] !== null && values[i - 1] !== null) {
+                    if (values[i] < values[i - 1]) {
+                        warnings.push(`Q${i + 1} (${values[i]}) is less than Q${i} (${values[i - 1]})`);
+                    }
                 }
             }
-        }
-        
-        return warnings;
-    };
+            
+            return warnings;
+        };
+    
 
-    // ===== 自动填充季度数据 =====
-    const fillMissingQuarters = (q1, q2, q3, q4) => {
-        const values = [q1, q2, q3, q4];
-        const filled = [...values];
-        let lastValue = null;
-        
-        for (let i = 0; i < filled.length; i++) {
-            if (filled[i] === '' || filled[i] === null) {
-                filled[i] = lastValue !== null ? lastValue : 0;
-            } else {
-                lastValue = parseInt(filled[i]);
+        // ===== 智能填充季度数据 =====
+        const fillMissingQuarters = (userInput, existingData = null) => {
+            // userInput: [q1, q2, q3, q4] - 用户填写的值（空字符串表示未填写）
+            // existingData: [q1, q2, q3, q4] - 数据库现有值（null 表示没有数据）
+            
+            const values = userInput.map(v => v === '' || v === null ? null : parseInt(v));
+            const existing = existingData || [null, null, null, null];
+            const filled = [...existing]; // 从现有数据开始
+            
+            // 找到用户填写的第一个季度
+            let firstFilledIndex = -1;
+            for (let i = 0; i < 4; i++) {
+                if (values[i] !== null) {
+                    firstFilledIndex = i;
+                    break;
+                }
             }
-        }
-        
-        return filled;
-    };
+            
+            // 如果用户什么都没填，返回现有数据
+            if (firstFilledIndex === -1) {
+                return filled;
+            }
+            
+            // 从用户填写的第一个季度开始，向后更新
+            let lastFilledValue = null;
+            for (let i = firstFilledIndex; i < 4; i++) {
+                if (values[i] !== null) {
+                    // 用户填写了这个季度
+                    filled[i] = values[i];
+                    lastFilledValue = values[i];
+                } else {
+                    // 用户没填写，用上一个填写的值（向后传播）
+                    if (lastFilledValue !== null) {
+                        filled[i] = lastFilledValue;
+                    }
+                }
+            }
+            
+            return filled;
+        };
+    
 
     // ===== 获取当前季度列表 =====
     const getQuarters = async () => {
@@ -105,7 +131,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         // 默认返回当前年份的Q1-Q4
         return [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
+    };  // ← getQuarters 函数的结束
+
+    // ===== 获取现有季度数据 =====
+    const getExistingQuarterlyData = async () => {
+        if (!currentUser || currentUser.role !== 'maison') return null;
+        
+        const quarters = await getQuarters();
+        const res = await api('getMaisonSfscData', { 
+            submittedBy: currentUser.username,
+            licenseType: currentUser.licenseType
+        });
+        
+        if (!res.success || !res.data || res.data.length === 0) {
+            return null; // 没有现有数据
+        }
+        
+        // 构建现有数据映射 {quarter: count}
+        const existingMap = {};
+        res.data.forEach(record => {
+            if (record.Quarter && record.LicenseCount !== undefined) {
+                existingMap[record.Quarter] = parseInt(record.LicenseCount) || 0;
+            }
+        });
+        
+        // 返回 Q1-Q4 的数组形式
+        return quarters.slice(0, 4).map(q => existingMap[q] || null);
     };
+    // ← 新函数结束
+
+    // ===== 表格配置和渲染 =====  ← 下一个部分开始
+
     // ===== 表格配置和渲染 =====
     const baseHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
@@ -988,14 +1044,24 @@ document.addEventListener('DOMContentLoaded', () => {
             const q4 = $('q4Input').value.trim();
             const maisonNotes = $('maisonNotesInput').value.trim();
             
+            const userInput = [q1, q2, q3, q4];
+            
             // 检查是否至少填写了一个季度
             if (!q1 && !q2 && !q3 && !q4) {
                 msg($('maisonSubmitMessage'), 'Please fill in at least one quarter!', false);
                 return;
             }
             
-            // 验证递增规则
-            const warnings = validateQuarterData(q1, q2, q3, q4);
+            // 获取数据库现有数据
+            msg($('maisonSubmitMessage'), 'Loading existing data...', true);
+            const existingData = await getExistingQuarterlyData();
+            clr($('maisonSubmitMessage'));
+            
+            // 智能填充：合并用户输入和现有数据
+            const filledData = fillMissingQuarters(userInput, existingData);
+            
+            // 验证递增规则（基于合并后的数据）
+            const warnings = validateQuarterData(filledData);
             
             if (warnings.length > 0) {
                 const beautyTechEmail = configPrices.BeautyTechEmail || 'beautytech@example.com';
@@ -1008,28 +1074,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 $('validationMessage').className = 'message warning';
             }
             
-            
-            
-            // 自动填充空白季度
-            const filled = fillMissingQuarters(q1, q2, q3, q4);
-            
             // 构建确认消息
-            let confirmMsg = 'You are about to submit the following quarterly forecast:\n\n';
             const quarters = await getQuarters();
+            let confirmMsg = 'You are about to submit the following quarterly forecast:\n\n';
             
-            filled.forEach((val, idx) => {
-                confirmMsg += `${quarters[idx]}: ${val} licenses\n`;
+            filledData.forEach((val, idx) => {
+                const isUserFilled = userInput[idx] !== '' && userInput[idx] !== null;
+                const isChanged = existingData && existingData[idx] !== null && val !== existingData[idx];
+                const isNew = !existingData || existingData[idx] === null;
+                
+                let marker = '';
+                if (isUserFilled) {
+                    marker = isNew ? ' (new)' : isChanged ? ' (updated)' : ' (no change)';
+                } else {
+                    marker = isNew ? ' (auto-filled)' : ' (kept existing)';
+                }
+                
+                confirmMsg += `${quarters[idx]}: ${val}${marker}\n`;
             });
-            
-            // 检查是否有自动填充
-            const hasAutoFill = filled.some((val, idx) => {
-                const original = [q1, q2, q3, q4][idx];
-                return original === '' && val !== 0;
-            });
-            
-            if (hasAutoFill) {
-                confirmMsg += '\n⚠️ Note: Empty quarters have been automatically filled with previous quarter values.\n';
-            }
             
             if (maisonNotes) {
                 confirmMsg += `\nYour Notes: ${maisonNotes}\n`;
@@ -1042,11 +1104,23 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // 构建季度数据
-            const quarterData = filled.map((count, idx) => ({
-                quarter: quarters[idx],
-                count: parseInt(count) || 0
-            }));
+            // 构建季度数据（只提交需要更新的季度）
+            const quarterData = [];
+            filledData.forEach((count, idx) => {
+                // 只提交有变化的季度，或者是新数据
+                const hasChange = !existingData || existingData[idx] === null || existingData[idx] !== count;
+                if (hasChange && count !== null) {
+                    quarterData.push({
+                        quarter: quarters[idx],
+                        count: count
+                    });
+                }
+            });
+            
+            if (quarterData.length === 0) {
+                msg($('maisonSubmitMessage'), 'No changes to submit.', false);
+                return;
+            }
             
             const res = await api('submitSfscData', {
                 maisonName: currentUser.maisonName,
@@ -1080,6 +1154,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg($('maisonSubmitMessage'), 'Failed to submit: ' + res.message, false);
             }
         },
+
 
         calculateCostButton: () => {
             clr($('calculatorErrorMessage'));
