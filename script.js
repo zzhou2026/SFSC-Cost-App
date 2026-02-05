@@ -1001,14 +1001,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const beautyTechEmail = configPrices.BeautyTechEmail || 'beautytech@example.com';
                 const warningMsg = `⚠️ Warning: ${warnings.join('; ')}\n\n` +
                     `Due to contract restrictions, license quantities should not decrease during the year.\n\n` +
-                    `If you need to reduce licenses, you MUST contact Beauty Tech at ${beautyTechEmail} ` +
-                    `to discuss and confirm your situation BEFORE submitting.\n\n` +
-                    `⚠️ IMPORTANT: Submissions without prior Beauty Tech confirmation will be REJECTED.\n\n` +
-                    `Note: Your submission will require special approval from Admin.`;
+                    `If you need to reduce licenses, you should contact Beauty Tech at ${beautyTechEmail} ` +
+                    `to discuss and confirm your situation AFTER submitting.`;
                 
                 msg($('validationMessage'), warningMsg, false);
                 $('validationMessage').className = 'message warning';
             }
+            
             
             // 自动填充空白季度
             const filled = fillMissingQuarters(q1, q2, q3, q4);

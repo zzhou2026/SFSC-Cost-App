@@ -252,12 +252,13 @@ button:hover {
 }
 
 .message.warning {
-    color: var(--warning-color);
+    color: #333;  /* ← 改为黑色 */
     background-color: #fff3cd;
     padding: 10px;
     border-radius: var(--border-radius);
     border: 1px solid var(--warning-color);
 }
+
 
 /* === 通用区块 === */
 .user-view { 
