@@ -5,9 +5,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const $ = id => document.getElementById(id);
     
     let currentUser = null;
-    let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52, FixedCost: 0 };
+    let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52 };
     let allUsers = [];
     let searchTerm = '';
+    let currentYear = new Date().getFullYear();
 
     // ===== 工具函数 =====
     const showPage = page => {
@@ -18,7 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const msg = (el, text, ok = false) => {
         el.textContent = text;
-        el.className = `message ${ok ? 'success' : 'error'}`;
+        el.className = ok ? 'message success' : 'message';
     };
 
     const clr = el => { el.textContent = ''; el.className = 'message'; };
@@ -34,15 +35,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ===== API 调用 =====
     const api = async (act, data = {}) => {
-        const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers', 'getAllSfscHistory', 'getMaisonSfscHistory']; // NEW: 添加历史记录API
+        const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers', 'getAllSfscHistory', 'getMaisonSfscHistory', 'getForecastData', 'getAnnualBudgets'];
         const loading = !silent.includes(act);
 
         try {
             if (loading) msg($('loginMessage'), 'Requesting...', true);
-            if (act === 'submitSfscData') {
-                data.clientelingLicenseCount = parseInt(data.clientelingLicenseCount, 10) || 0;
-                data.fullLicenseCount = parseInt(data.fullLicenseCount, 10) || 0;
-            }
+            
             const res = await fetch(APP_SCRIPT_URL, {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/plain' },
@@ -57,73 +55,103 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // ===== 表格配置（优化：共享基础 headers）=====
-    // SFSC_Data 表的配置
+    // ===== 成本计算 =====
+    const calculateQuarterlyCost = (count, licenseType) => {
+        const unitPrice = licenseType === 'Clienteling' 
+            ? parseFloat(configPrices.ClientelingUnitPrice) || 16
+            : parseFloat(configPrices.FullUnitPrice) || 52;
+        return count * unitPrice * 3; // 3个月
+    };
+
+    // ===== 季度数据验证 =====
+    const validateQuarterData = (q1, q2, q3, q4) => {
+        const values = [q1, q2, q3, q4];
+        const warnings = [];
+        
+        // 检查递增规则
+        for (let i = 1; i < values.length; i++) {
+            if (values[i] !== '' && values[i] !== null && values[i - 1] !== '' && values[i - 1] !== null) {
+                if (parseInt(values[i]) < parseInt(values[i - 1])) {
+                    warnings.push(`Q${i + 1} (${values[i]}) is less than Q${i} (${values[i - 1]})`);
+                }
+            }
+        }
+        
+        return warnings;
+    };
+
+    // ===== 自动填充季度数据 =====
+    const fillMissingQuarters = (q1, q2, q3, q4) => {
+        const values = [q1, q2, q3, q4];
+        const filled = [...values];
+        let lastValue = null;
+        
+        for (let i = 0; i < filled.length; i++) {
+            if (filled[i] === '' || filled[i] === null) {
+                filled[i] = lastValue !== null ? lastValue : 0;
+            } else {
+                lastValue = parseInt(filled[i]);
+            }
+        }
+        
+        return filled;
+    };
+
+    // ===== 获取当前季度列表 =====
+    const getQuarters = async () => {
+        const res = await api('getQuarterList', { numberOfFutureQuarters: 3 });
+        if (res.success && res.data && res.data.length >= 4) {
+            return res.data.slice(0, 4); // 返回当前季度和未来3个季度
+        }
+        // 默认返回当前年份的Q1-Q4
+        return [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
+    };
+    // ===== 表格配置和渲染 =====
     const baseHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
         { key: 'Quarter', label: 'Quarter' },
-        { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
-        { key: 'FullLicenseCount', label: 'Full Licenses' },
-        { key: 'CalculatedCost', label: 'Calculated Cost (\u20AC)' }
+        { key: 'LicenseType', label: 'License Type' },
+        { key: 'LicenseCount', label: 'Quantity' },
+        { key: 'CalculatedCost', label: 'Cost (\u20AC)' }
     ];
 
-    // NEW: 历史记录表格的基础头部
     const baseHistoryHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
         { key: 'Quarter', label: 'Quarter' },
-        { key: 'ClientelingLicenseCount', label: 'Clienteling Licenses' },
-        { key: 'FullLicenseCount', label: 'Full Licenses' },
-        { key: 'CalculatedCost', label: 'Calculated Cost(\u20AC)' },
+        { key: 'LicenseType', label: 'License Type' },
+        { key: 'LicenseCount', label: 'Quantity' },
+        { key: 'CalculatedCost', label: 'Cost(\u20AC)' },
         { key: 'SubmittedBy', label: 'Submitted By' },
-        { key: 'Timestamp', label: 'Submission Time' }, // 这是 SFSC_Data 中的 Timestamp
+        { key: 'Timestamp', label: 'Submission Time' },
         { key: 'ApprovalStatus', label: 'Approval Status' },
-        { key: 'Action', label: 'Action Type' }, // NEW
-        { key: 'ActionTimestamp', label: 'Action Time' }, // NEW
-        { key: 'ActionBy', label: 'Action By' } // NEW
+        { key: 'Action', label: 'Action Type' },
+        { key: 'ActionTimestamp', label: 'Action Time' },
+        { key: 'ActionBy', label: 'Action By' }
     ];
 
     const configs = {
         maison: {
-            action: 'getMaisonSfscData', // 获取 Maison 当前数据
-            headers: [...baseHeaders, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
-            actionColumn: null // Removed Action column for My Current Data table
+            action: 'getMaisonSfscData',
+            headers: [...baseHeaders, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Notes' }],
+            actionColumn: null
         },
         admin: {
-            action: 'getAllSfscData', // 获取所有 Maison 当前数据
-            headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }],
+            action: 'getAllSfscData',
+            headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
             actionColumn: 'approve'
         },
-        // NEW: SFSC_History 表的配置
-        maisonActionsLog: { // 针对 Maison 用户的历史操作日志
+        maisonActionsLog: {
             action: 'getMaisonSfscHistory',
-            // Move "Action Type" to the end and replace it with a derived "Status" column
-            headers: [
-                ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
-                { key: 'Current', label: 'Status' }
-            ],
-            renderStatusBadge: false, // My Historical Actions: show plain text status
-            computeCurrentFlag: true,
-            actionColumn: null // 历史记录通常不需要操作列
+            headers: [...baseHistoryHeaders, { key: 'MaisonNotes', label: 'Notes' }],
+            renderStatusBadge: false,
+            actionColumn: null
         },
-        adminActionsLog: { // 针对 Admin 用户的历史操作日志
+        adminActionsLog: {
             action: 'getAllSfscHistory',
-            // Keep Admin history consistent: show derived "Status" column at the end
-            headers: [
-                ...baseHistoryHeaders.filter(h => h.key !== 'Action'),
-                { key: 'Current', label: 'Status' }
-            ],
-            renderStatusBadge: false,  //
-            computeCurrentFlag: true,
+            headers: [...baseHistoryHeaders, { key: 'MaisonNotes', label: 'Maison Notes' }, { key: 'AdminNotes', label: 'Admin Notes' }],
+            renderStatusBadge: false,
             actionColumn: null
         }
-        ,
-        // NEW: Forecast table configuration
-        forecast: {
-            action: 'getForecastData',
-            headers: null, // Will be dynamically generated
-            actionColumn: null
-        }
-
     };
 
     // ===== 表格渲染 =====
@@ -146,97 +174,134 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cfg.actionColumn) html += `<th>${cfg.actionColumn === 'delete' ? 'Action' : 'Approval Action'}</th>`;
         html += '</tr></thead><tbody>';
 
-        // Derive "Status" (active/deprecated) for history tables:
-        // Latest record (by Timestamp) within same MaisonName + Quarter + SubmittedBy => "active"
-        if (cfg.computeCurrentFlag) {
-            const latestByKey = new Map();
-            const toMs = (v) => {
-                const t = new Date(v).getTime();
-                return Number.isFinite(t) ? t : -Infinity;
-            };
-
-            res.data.forEach(r => {
-                const key = `${r.MaisonName ?? ''}||${r.Quarter ?? ''}||${r.SubmittedBy ?? ''}`;
-                const ts = toMs(r.Timestamp);
-                const prev = latestByKey.get(key);
-                if (prev === undefined || ts > prev) latestByKey.set(key, ts);
-            });
-
-            res.data.forEach(r => {
-                const key = `${r.MaisonName ?? ''}||${r.Quarter ?? ''}||${r.SubmittedBy ?? ''}`;
-                const ts = toMs(r.Timestamp);
-                r.Current = (latestByKey.get(key) === ts) ? 'Active' : 'Deprecated';
-            });
-        }
-
         res.data.forEach(row => {
-            html += '<tr>' + cfg.headers.map(h => {
+            // 检查是否有减少数量的情况（仅针对admin表格）
+            const hasDecrease = type === 'admin' && checkForDecrease(row, res.data);
+            const rowClass = hasDecrease ? 'warning-row' : '';
+            
+            html += `<tr class="${rowClass}">` + cfg.headers.map(h => {
                 let v = row[h.key];
-                // NEW: 格式化 Timestamp 和 ActionTimestamp
-                if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v); 
+                
+                if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v);
+                
                 if (h.key === 'ApprovalStatus') {
                     if (cfg.renderStatusBadge === false) {
-                        // Keep plain text for this table
                         v = v ?? '';
                     } else {
                         const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
                         v = `<span class="status-badge ${sc}">${v}</span>`;
                     }
                 }
+                
+                // 限制Notes显示长度
+                if ((h.key === 'MaisonNotes' || h.key === 'AdminNotes') && v && v.length > 50) {
+                    v = `<span title="${v}">${v.substring(0, 50)}...</span>`;
+                }
+                
                 return `<td>${v ?? ''}</td>`;
             }).join('');
 
-            if (cfg.actionColumn === 'delete') html += `<td><button class="delete-button-table" data-id="${row.RecordId}">Delete</button></td>`;
-            else if (cfg.actionColumn === 'approve') {
+            if (cfg.actionColumn === 'approve') {
                 const submittedBy = row.SubmittedBy || '';
                 const maisonName = row.MaisonName || '';
                 const quarter = row.Quarter || '';
-                const clientelingLicenses = row.ClientelingLicenseCount || '0';
-                const fullLicenses = row.FullLicenseCount || '0';
+                const licenseType = row.LicenseType || '';
+                const licenseCount = row.LicenseCount || '0';
                 const calculatedCost = row.CalculatedCost || '0';
                 const timestamp = row.Timestamp || '';
-                html += `<td><button class="approve-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Approve</button><button class="reject-button-table" data-id="${row.RecordId}" data-submitted-by="${submittedBy}" data-maison-name="${maisonName}" data-quarter="${quarter}" data-clienteling="${clientelingLicenses}" data-full="${fullLicenses}" data-cost="${calculatedCost}" data-timestamp="${timestamp}">Reject</button></td>`;
+                const maisonNotes = row.MaisonNotes || '';
+                const recordId = row.RecordId || '';
+                
+                html += `<td>
+                    <button class="approve-button-table" 
+                        data-id="${recordId}" 
+                        data-submitted-by="${submittedBy}" 
+                        data-maison-name="${maisonName}" 
+                        data-quarter="${quarter}"
+                        data-license-type="${licenseType}"
+                        data-license-count="${licenseCount}" 
+                        data-cost="${calculatedCost}" 
+                        data-timestamp="${timestamp}"
+                        data-maison-notes="${maisonNotes}">Approve</button>
+                    <button class="reject-button-table" 
+                        data-id="${recordId}" 
+                        data-submitted-by="${submittedBy}" 
+                        data-maison-name="${maisonName}" 
+                        data-quarter="${quarter}"
+                        data-license-type="${licenseType}"
+                        data-license-count="${licenseCount}" 
+                        data-cost="${calculatedCost}" 
+                        data-timestamp="${timestamp}"
+                        data-maison-notes="${maisonNotes}">Reject</button>
+                </td>`;
             }
             html += '</tr>';
         });
 
         container.innerHTML = html + '</tbody></table>';
     };
-    
-    // ===== NEW: 预测表格渲染 =====
-    const loadForecastTable = async (container) => {
-        const res = await api('getForecastData');
 
-        if (!res.success || !res.data || !res.data.length) {
-            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No forecast data available.' : 'Failed to load forecast data: ' + (res.message || 'Unknown error')}</p>`;
+    // 检查是否有减少数量的情况
+    const checkForDecrease = (currentRow, allData) => {
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        const currentQuarterIndex = quarters.findIndex(q => currentRow.Quarter && currentRow.Quarter.includes(q));
+        
+        if (currentQuarterIndex <= 0) return false; // Q1 或无效季度不检查
+        
+        const previousQuarter = quarters[currentQuarterIndex - 1];
+        const previousRow = allData.find(r => 
+            r.MaisonName === currentRow.MaisonName &&
+            r.LicenseType === currentRow.LicenseType &&
+            r.Quarter && r.Quarter.includes(previousQuarter) &&
+            r.SubmittedBy === currentRow.SubmittedBy
+        );
+        
+        if (previousRow) {
+            return parseInt(currentRow.LicenseCount) < parseInt(previousRow.LicenseCount);
+        }
+        
+        return false;
+    };
+
+    // ===== Forecast 表格渲染 =====
+    const loadForecastTable = async (container, licenseType) => {
+        const budgetRes = await api('getAnnualBudgets', { year: currentYear });
+        const forecastRes = await api('getForecastData', { licenseType: licenseType });
+
+        if (!forecastRes.success || !forecastRes.data) {
+            container.innerHTML = `<p>Failed to load forecast data: ${forecastRes.message || 'Unknown error'}</p>`;
             return;
         }
 
-        const currentYear = new Date().getFullYear();
+        const budgets = {};
+        if (budgetRes.success && budgetRes.data) {
+            budgetRes.data.forEach(b => {
+                const key = `${b.MaisonName}|${b.LicenseType}`;
+                budgets[key] = parseFloat(b.AnnualTarget) || 0;
+            });
+        }
+
         const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
 
-                // Build table header
-                let html = '<table><thead><tr>';
-                html += '<th>Maison</th>';
-                html += '<th>License Type</th>';
-                quarters.forEach(q => {
-                    html += `<th>${q}<br>Qty</th>`;
-                    html += `<th>${q}<br>Cost (€)</th>`;
-                });
-                html += '<th>Total<br>Qty</th>';
-                html += '<th>Total<br>Cost (€)</th>';
-                html += '</tr></thead><tbody>';
-        
+        let html = '<table><thead><tr>';
+        html += '<th>Maison</th>';
+        html += '<th>Budget Annuel</th>';
+        quarters.forEach(q => {
+            html += `<th>${q}<br>Qty</th>`;
+            html += `<th>${q}<br>Cost (€)</th>`;
+        });
+        html += '<th>Forecast<br>Annuel (€)</th>';
+        html += '<th>Variance</th>';
+        html += '<th>Alert</th>';
+        html += '</tr></thead><tbody>';
 
-
-        // Group data by Maison and LicenseType
+        // 按 Maison 分组
         const grouped = {};
-        res.data.forEach(row => {
-            const key = `${row.MaisonName}|${row.LicenseType}`;
+        forecastRes.data.forEach(row => {
+            const key = row.MaisonName;
             if (!grouped[key]) {
                 grouped[key] = {
                     maisonName: row.MaisonName,
-                    licenseType: row.LicenseType,
                     quarters: {}
                 };
             }
@@ -246,264 +311,320 @@ document.addEventListener('DOMContentLoaded', () => {
             };
         });
 
-        // Render rows
         Object.values(grouped).forEach(item => {
             html += '<tr>';
             html += `<td>${item.maisonName}</td>`;
-            html += `<td>${item.licenseType}</td>`;
 
-            let totalQty = 0;
-            let totalCost = 0;
+            const budgetKey = `${item.maisonName}|${licenseType}`;
+            const budget = budgets[budgetKey] || 0;
+            html += `<td>${budget.toFixed(2)}</td>`;
+
+            let totalForecast = 0;
 
             quarters.forEach(q => {
                 const qData = item.quarters[q];
-                
                 if (qData) {
-                    // 有提交数据
                     const qty = parseInt(qData.quantity) || 0;
                     const cost = parseFloat(qData.cost) || 0;
-
-                    totalQty += qty;
-                    totalCost += cost;
-
+                    totalForecast += cost;
                     html += `<td>${qty}</td>`;
                     html += `<td>${cost.toFixed(2)}</td>`;
                 } else {
-                    // 没有提交数据，显示 -
                     html += `<td>-</td>`;
                     html += `<td>-</td>`;
                 }
             });
 
+            html += `<td><strong>${totalForecast.toFixed(2)}</strong></td>`;
 
-            html += `<td>${totalQty}</td>`;
-            html += `<td>${totalCost.toFixed(2)}</td>`;
+            // 计算 Variance
+            const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
+            const varianceThreshold = parseFloat(configPrices.VarianceThreshold) || 15;
+            
+            let varianceClass = 'variance-good';
+            if (Math.abs(variance) > varianceThreshold) {
+                varianceClass = 'variance-danger';
+            } else if (Math.abs(variance) > varianceThreshold / 2) {
+                varianceClass = 'variance-warning';
+            }
+            
+            const varianceSign = variance >= 0 ? '+' : '';
+            html += `<td class="${varianceClass}">${varianceSign}${variance.toFixed(1)}%</td>`;
+
+            // Alert 按钮
+            const needsAlert = Math.abs(variance) > varianceThreshold;
+            if (needsAlert) {
+                html += `<td><button class="alert-button-table forecast-alert" 
+                    data-maison="${item.maisonName}" 
+                    data-license-type="${licenseType}"
+                    data-budget="${budget.toFixed(2)}"
+                    data-forecast="${totalForecast.toFixed(2)}"
+                    data-variance="${variance.toFixed(1)}">🔔 Alert</button></td>`;
+            } else {
+                html += `<td>-</td>`;
+            }
+
             html += '</tr>';
         });
 
         container.innerHTML = html + '</tbody></table>';
     };
-    // ===== END NEW: 预测表格渲染 =====
+    // ===== Monthly Tracking 表格渲染 =====
+    const loadMonthlyTrackingTable = async (container, year) => {
+        const res = await api('getMonthlyTrackingData', { year: year });
 
+        if (!res.success || !res.data || !res.data.length) {
+            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No monthly tracking data available. Please set annual targets first.' : 'Failed to load monthly tracking data: ' + (res.message || 'Unknown error')}</p>`;
+            return;
+        }
 
-        // ===== NEW: 月度跟踪表格渲染 =====
-        const loadMonthlyTrackingTable = async (container, year) => {
-            const res = await api('getMonthlyTrackingData', { year: year });
-    
-            if (!res.success || !res.data || !res.data.length) {
-                container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No monthly tracking data available. Please set annual targets first.' : 'Failed to load monthly tracking data: ' + (res.message || 'Unknown error')}</p>`;
-                return;
-            }
-    
-            // 构建表头
-            let html = '<table><thead><tr>';
-            html += '<th>Maison</th>';
-            html += '<th>License Type</th>';
-            
-            // 12个月份列
-            const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-            const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-            months.forEach((m, idx) => {
-                html += `<th>${year}.${m}<br>${monthNames[idx]}</th>`;
-            });
-            
-            html += '<th>2026<br>Forecast</th>';
-            html += '<th>Variance</th>';
-            html += '<th>Alert</th>';
-            html += '</tr></thead><tbody>';
-    
-            // 渲染数据行
-            for (let rowIdx = 0; rowIdx < res.data.length; rowIdx++) {
-                const row = res.data[rowIdx];
-                html += '<tr>';
-                html += `<td>${row.MaisonName}</td>`;
-                html += `<td>${row.LicenseType}</td>`;
-    
-                let latestActual = null;
-                let latestMonth = null;
-    
-                // 显示12个月的实际数据
-                months.forEach(m => {
-                    const actualQty = row.MonthlyActuals[m];
-                    if (actualQty !== undefined && actualQty !== null) {
-                        html += `<td>${actualQty}</td>`;
-                        latestActual = actualQty;
-                        latestMonth = m;
-                    } else {
-                        html += `<td>-</td>`;
-                    }
-                });
-    
-                // 年度预测
-                const annualTarget = row.AnnualTarget || 0;
-                html += `<td>${annualTarget}</td>`;
-    
-                // 计算差值（最新月份实际 - 年度预测）
-                if (latestActual !== null) {
-                    const variance = latestActual - annualTarget;
-                    const variancePercent = annualTarget > 0 ? Math.abs(variance / annualTarget * 100) : 0;
-                    
-                    let varianceClass = 'variance-good';
-                    if (variancePercent > 15) {
-                        varianceClass = 'variance-danger';
-                    } else if (variancePercent > 5) {
-                        varianceClass = 'variance-warning';
-                    }
-                    
-                    const varianceSign = variance >= 0 ? '+' : '';
-                    html += `<td class="${varianceClass}">${varianceSign}${variance}</td>`;
+        let html = '<table><thead><tr>';
+        html += '<th>Maison</th>';
+        html += '<th>License Type</th>';
+        
+        const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+        const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        months.forEach((m, idx) => {
+            html += `<th>${year}.${m}<br>${monthNames[idx]}</th>`;
+        });
+        
+        html += `<th>${year}<br>Forecast</th>`;
+        html += '<th>Variance</th>';
+        html += '<th>Alert</th>';
+        html += '</tr></thead><tbody>';
+
+        for (let rowIdx = 0; rowIdx < res.data.length; rowIdx++) {
+            const row = res.data[rowIdx];
+            html += '<tr>';
+            html += `<td>${row.MaisonName}</td>`;
+            html += `<td>${row.LicenseType}</td>`;
+
+            let latestActual = null;
+            let latestMonth = null;
+
+            months.forEach(m => {
+                const actualQty = row.MonthlyActuals[m];
+                if (actualQty !== undefined && actualQty !== null) {
+                    html += `<td>${actualQty}</td>`;
+                    latestActual = actualQty;
+                    latestMonth = m;
                 } else {
                     html += `<td>-</td>`;
                 }
-    
-                // 检查 Alert 状态
-                const maisonName = row.MaisonName;
-                const licenseType = row.LicenseType;
-                const checkRes = await api('checkAlertStatus', {
-                    maisonName: maisonName,
-                    licenseType: licenseType,
-                    latestMonth: latestMonth || '',
-                    latestActualValue: latestActual !== null ? latestActual : ''
-                });
-    
-                let buttonDisabled = '';
-                let buttonText = 'Alert';
+            });
+
+            const annualTarget = row.AnnualTarget || 0;
+            html += `<td>${annualTarget}</td>`;
+
+            if (latestActual !== null) {
+                const variance = latestActual - annualTarget;
+                const variancePercent = annualTarget > 0 ? Math.abs(variance / annualTarget * 100) : 0;
                 
-                if (checkRes.success && checkRes.alreadySent) {
-                    buttonDisabled = 'disabled';
-                    buttonText = 'Alert Sent';
+                let varianceClass = 'variance-good';
+                if (variancePercent > 15) {
+                    varianceClass = 'variance-danger';
+                } else if (variancePercent > 5) {
+                    varianceClass = 'variance-warning';
                 }
-    
-                // Alert 按钮
-                const alertData = {
-                    maisonName: maisonName,
-                    licenseType: licenseType,
-                    annualTarget: annualTarget,
-                    latestMonth: latestMonth || '',
-                    latestActual: latestActual !== null ? latestActual : '',
-                    variance: latestActual !== null ? (latestActual - annualTarget) : ''
-                };
                 
-                html += `<td><button class="alert-button-table" 
-                    data-maison="${alertData.maisonName}" 
-                    data-license-type="${alertData.licenseType}"
-                    data-annual-target="${alertData.annualTarget}"
-                    data-latest-month="${alertData.latestMonth}"
-                    data-latest-actual="${alertData.latestActual}"
-                    data-variance="${alertData.variance}"
-                    ${buttonDisabled}>${buttonText}</button></td>`;
-    
-                html += '</tr>';
+                const varianceSign = variance >= 0 ? '+' : '';
+                html += `<td class="${varianceClass}">${varianceSign}${variance}</td>`;
+            } else {
+                html += `<td>-</td>`;
             }
-    
-            container.innerHTML = html + '</tbody></table>';
-        };
-        // ===== END NEW: 月度跟踪表格渲染 =====
-    
 
-
-
-        // ===== 事件委托：表格按钮 =====
-        document.addEventListener('click', async e => {
-                // Handle Alert button clicks
-    if (e.target.classList.contains('alert-button-table')) {
-        const maisonName = e.target.dataset.maison;
-        const licenseType = e.target.dataset.licenseType;
-        const annualTarget = e.target.dataset.annualTarget;
-        const latestMonth = e.target.dataset.latestMonth;
-        const latestActual = e.target.dataset.latestActual;
-        const variance = e.target.dataset.variance;
-        
-        console.log('Alert button clicked!', maisonName, licenseType);
-        
-        // NEW: 检查按钮是否已经是 "Alert Sent" 状态
-        const isAlreadySent = e.target.disabled;
-        
-        if (isAlreadySent) {
-            // 按钮已发送状态，弹出确认框
-            const confirmMsg = `Alert has already been sent for ${maisonName} ${licenseType}\n` +
-                             `(Month: ${latestMonth || 'N/A'}, Actual: ${latestActual || 'N/A'}).\n\n` +
-                             `Do you want to prepare the email again?`;
-            
-            if (!confirm(confirmMsg)) {
-                // 用户取消，直接返回
-                return;
-            }
-            
-            // 用户确认，继续准备邮件（但不记录到 Alert_History）
-            console.log('User confirmed to prepare email again (no recording).');
-        } else {
-            // 正常状态，记录到 Alert_History
-            console.log('Recording alert to Alert_History...');
-            
-            const recordRes = await api('recordAlertSent', {
+            const maisonName = row.MaisonName;
+            const licenseType = row.LicenseType;
+            const checkRes = await api('checkAlertStatus', {
                 maisonName: maisonName,
                 licenseType: licenseType,
                 latestMonth: latestMonth || '',
-                latestActualValue: latestActual !== null && latestActual !== '' ? latestActual : '',
-                sentBy: currentUser.username
+                latestActualValue: latestActual !== null ? latestActual : ''
             });
+
+            let buttonDisabled = '';
+            let buttonText = 'Alert';
             
-            if (!recordRes.success) {
-                msg($('emailBroadcastMessage'), `Failed to record alert: ${recordRes.message}`, false);
+            if (checkRes.success && checkRes.alreadySent) {
+                buttonDisabled = 'disabled';
+                buttonText = 'Alert Sent';
+            }
+
+            const alertData = {
+                maisonName: maisonName,
+                licenseType: licenseType,
+                annualTarget: annualTarget,
+                latestMonth: latestMonth || '',
+                latestActual: latestActual !== null ? latestActual : '',
+                variance: latestActual !== null ? (latestActual - annualTarget) : ''
+            };
+            
+            html += `<td><button class="alert-button-table" 
+                data-maison="${alertData.maisonName}" 
+                data-license-type="${alertData.licenseType}"
+                data-annual-target="${alertData.annualTarget}"
+                data-latest-month="${alertData.latestMonth}"
+                data-latest-actual="${alertData.latestActual}"
+                data-variance="${alertData.variance}"
+                ${buttonDisabled}>${buttonText}</button></td>`;
+
+            html += '</tr>';
+        }
+
+        container.innerHTML = html + '</tbody></table>';
+    };
+
+    // ===== 事件委托：表格按钮 =====
+    document.addEventListener('click', async e => {
+        // Forecast Alert 按钮
+        if (e.target.classList.contains('forecast-alert')) {
+            const maisonName = e.target.dataset.maison;
+            const licenseType = e.target.dataset.licenseType;
+            const budget = e.target.dataset.budget;
+            const forecast = e.target.dataset.forecast;
+            const variance = e.target.dataset.variance;
+            
+            const targetUsername = `${maisonName}-${licenseType}`;
+            
+            if (!allUsers || !allUsers.length) {
+                msg($('emailBroadcastMessage'), 'User list not loaded. Please wait and try again.', false);
                 return;
             }
             
-            console.log('Alert recorded successfully.');
+            const targetUser = allUsers.find(u => u.username === targetUsername);
+            
+            if (!targetUser) {
+                msg($('emailBroadcastMessage'), `User "${targetUsername}" not found in the system.`, false);
+                return;
+            }
+            
+            if (!targetUser.email || !targetUser.email.trim()) {
+                msg($('emailBroadcastMessage'), `User "${targetUsername}" has no registered email address.`, false);
+                return;
+            }
+            
+            searchTerm = '';
+            if ($('userSearchInput')) $('userSearchInput').value = '';
+            renderU();
+            
+            $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
+                cb.checked = false; 
+            });
+            
+            const targetCheckbox = $('userListContainer').querySelector(`.user-checkbox[data-username="${targetUsername}"]`);
+            if (targetCheckbox) {
+                targetCheckbox.checked = true;
+                updCnt();
+            } else {
+                msg($('emailBroadcastMessage'), `Failed to select user "${targetUsername}".`, false);
+                return;
+            }
+            
+            const subject = `SFSC Budget Variance Alert - ${maisonName} ${licenseType}`;
+            
+            let body = `Dear ${targetUsername},\n\n`;
+            body += `This is an automated alert regarding your SFSC budget variance for ${maisonName} - ${licenseType}.\n\n`;
+            body += `=== Summary ===\n`;
+            body += `Budget Annuel (${currentYear}): ${budget} €\n`;
+            body += `Forecast Annuel (Q1-Q4): ${forecast} €\n`;
+            body += `Variance: ${variance}%\n\n`;
+            
+            if (parseFloat(variance) < 0) {
+                body += `⚠️ Your forecast is BELOW the budget by ${Math.abs(parseFloat(variance)).toFixed(1)}%.\n`;
+            } else if (parseFloat(variance) > 0) {
+                body += `⚠️ Your forecast is ABOVE the budget by ${variance}%.\n`;
+            }
+            
+            body += `\nPlease review your forecast and adjust if necessary.\n`;
+            body += `\nIf you have any questions, please contact the BT team.\n\n`;
+            body += `Best regards,\nBT-admin`;
+            
+            $('emailSubjectInput').value = subject;
+            $('emailContentInput').value = body;
+            
+            $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
+            
+            return;
         }
 
+        // Monthly Tracking Alert 按钮
+        if (e.target.classList.contains('alert-button-table') && !e.target.classList.contains('forecast-alert')) {
+            const maisonName = e.target.dataset.maison;
+            const licenseType = e.target.dataset.licenseType;
+            const annualTarget = e.target.dataset.annualTarget;
+            const latestMonth = e.target.dataset.latestMonth;
+            const latestActual = e.target.dataset.latestActual;
+            const variance = e.target.dataset.variance;
+            
+            const isAlreadySent = e.target.disabled;
+            
+            if (isAlreadySent) {
+                const confirmMsg = `Alert has already been sent for ${maisonName} ${licenseType}\n` +
+                                 `(Month: ${latestMonth || 'N/A'}, Actual: ${latestActual || 'N/A'}).\n\n` +
+                                 `Do you want to prepare the email again?`;
                 
-                // 构造用户名：MaisonName-LicenseType
-                const targetUsername = `${maisonName}-${licenseType}`;
-                
-                // 确保用户列表已加载
-                if (!allUsers || !allUsers.length) {
-                    msg($('emailBroadcastMessage'), 'User list not loaded. Please wait and try again.', false);
+                if (!confirm(confirmMsg)) {
                     return;
                 }
-                
-                // 查找目标用户
-                const targetUser = allUsers.find(u => u.username === targetUsername);
-                
-                if (!targetUser) {
-                    msg($('emailBroadcastMessage'), `User "${targetUsername}" not found in the system.`, false);
-                    return;
-                }
-                
-                if (!targetUser.email || !targetUser.email.trim()) {
-                    msg($('emailBroadcastMessage'), `User "${targetUsername}" has no registered email address.`, false);
-                    return;
-                }
-                
-                // 清空搜索框和搜索词
-                searchTerm = '';
-                if ($('userSearchInput')) $('userSearchInput').value = '';
-                
-                // 重新渲染用户列表
-                renderU();
-                
-                // 取消所有选择
-                $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
-                    cb.checked = false; 
+            } else {
+                const recordRes = await api('recordAlertSent', {
+                    maisonName: maisonName,
+                    licenseType: licenseType,
+                    latestMonth: latestMonth || '',
+                    latestActualValue: latestActual !== null && latestActual !== '' ? latestActual : '',
+                    sentBy: currentUser.username
                 });
                 
-                // 选中目标用户
-                const targetCheckbox = $('userListContainer').querySelector(`.user-checkbox[data-username="${targetUsername}"]`);
-                if (targetCheckbox) {
-                    targetCheckbox.checked = true;
-                    updCnt();
-                } else {
-                    msg($('emailBroadcastMessage'), `Failed to select user "${targetUsername}".`, false);
+                if (!recordRes.success) {
+                    msg($('emailBroadcastMessage'), `Failed to record alert: ${recordRes.message}`, false);
                     return;
                 }
-                
-                            // 生成邮件主题和内容
+            }
+
+            const targetUsername = `${maisonName}-${licenseType}`;
+            
+            if (!allUsers || !allUsers.length) {
+                msg($('emailBroadcastMessage'), 'User list not loaded. Please wait and try again.', false);
+                return;
+            }
+            
+            const targetUser = allUsers.find(u => u.username === targetUsername);
+            
+            if (!targetUser) {
+                msg($('emailBroadcastMessage'), `User "${targetUsername}" not found in the system.`, false);
+                return;
+            }
+            
+            if (!targetUser.email || !targetUser.email.trim()) {
+                msg($('emailBroadcastMessage'), `User "${targetUsername}" has no registered email address.`, false);
+                return;
+            }
+            
+            searchTerm = '';
+            if ($('userSearchInput')) $('userSearchInput').value = '';
+            renderU();
+            
+            $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
+                cb.checked = false; 
+            });
+            
+            const targetCheckbox = $('userListContainer').querySelector(`.user-checkbox[data-username="${targetUsername}"]`);
+            if (targetCheckbox) {
+                targetCheckbox.checked = true;
+                updCnt();
+            } else {
+                msg($('emailBroadcastMessage'), `Failed to select user "${targetUsername}".`, false);
+                return;
+            }
+            
             const subject = `SFSC License Variance Alert - ${maisonName} ${licenseType}`;
             
             let body = `Dear ${targetUsername},\n\n`;
             body += `This is an automated alert regarding your SFSC license usage for ${maisonName} - ${licenseType}.\n\n`;
             body += `=== Summary ===\n`;
-            body += `Annual Target (2026 Forecast): ${annualTarget}\n`;
+            body += `Annual Target (${currentYear} Forecast): ${annualTarget}\n`;
             
             if (latestMonth && latestActual !== '') {
                 const monthNames = {
@@ -530,118 +651,61 @@ document.addEventListener('DOMContentLoaded', () => {
             body += `\nIf you have any questions, please contact the BT team.\n\n`;
             body += `Best regards,\nBT-admin`;
             
-            // 填充邮件表单
             $('emailSubjectInput').value = subject;
             $('emailContentInput').value = body;
             
-            // 滚动到邮件区域
             $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
             
-            // NEW: 如果是正常状态（刚记录了 Alert），重新加载表格以更新按钮状态
             if (!isAlreadySent) {
-                console.log('Reloading monthly tracking table...');
                 const currentYear = new Date().getFullYear();
                 await loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
-                console.log('Table reloaded.');
             }
             
             return;
-                }
+        }
 
+        // Approve/Reject 按钮
+        const id = e.target.dataset.id;
+        if (!id) return;
 
-    
-            const id = e.target.dataset.id;
-            if (!id) return;
-    
-            if (e.target.classList.contains('delete-button-table')) {
-                if (!confirm('Delete this record?')) return;
-                // NEW: 传递 actionBy 参数
-                const res = await api('deleteSfscData', { recordId: id, actionBy: currentUser.username });
-                msg($('maisonSubmitMessage'), res.success ? 'Deleted!' : 'Delete failed: ' + res.message, res.success);
-                if (res.success) {
-                    loadTable('maison', $('maisonHistoryTableContainer'), { submittedBy: currentUser.username });
-                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { submittedBy: currentUser.username }); // NEW: 重新加载历史日志
-                }
-            }
-             else if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
-                const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
-                if (!confirm(`Set to ${st}?`)) return;
+        if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
+            const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
+            
+            const submittedBy = e.target.dataset.submittedBy || '';
+            const maisonName = e.target.dataset.maisonName || '';
+            const quarter = e.target.dataset.quarter || '';
+            const licenseType = e.target.dataset.licenseType || '';
+            const licenseCount = e.target.dataset.licenseCount || '0';
+            const calculatedCost = e.target.dataset.cost || '0';
+            const timestamp = e.target.dataset.timestamp || '';
+            const maisonNotes = e.target.dataset.maisonNotes || '';
+            
+            // 弹出对话框让Admin输入备注
+            const adminNotes = prompt(`${st === 'Approved' ? 'Approve' : 'Reject'} this submission?\n\nYou can add optional notes below:`, '');
+            
+            if (adminNotes === null) return; // 用户取消
+            
+            const res = await api('updateApprovalStatus', { 
+                recordId: id, 
+                newStatus: st, 
+                actionBy: currentUser.username,
+                adminNotes: adminNotes
+            });
+            
+            msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
+            
+            if (res.success) {
+                loadTable('admin', $('adminDataTableContainer'));
+                loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
                 
-                // Get applicant information from button data attributes
-                const submittedBy = e.target.dataset.submittedBy || '';
-                const maisonName = e.target.dataset.maisonName || '';
-                const quarter = e.target.dataset.quarter || '';
-                const clientelingLicenses = e.target.dataset.clienteling || '0';
-                const fullLicenses = e.target.dataset.full || '0';
-                const calculatedCost = e.target.dataset.cost || '0';
-                const timestamp = e.target.dataset.timestamp || '';
-                
-                // NEW: 传递 actionBy 参数
-                const res = await api('updateApprovalStatus', { recordId: id, newStatus: st, actionBy: currentUser.username });
-                msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
-                
-                if (res.success) {
-                    loadTable('admin', $('adminDataTableContainer'));
-                    loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: 重新加载历史日志
-                    
-                    // Send notification email to applicant
-                    if (submittedBy) {
-                        sendApprovalNotification(submittedBy, st, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp);
-                    }
+                if (submittedBy) {
+                    sendApprovalNotification(submittedBy, st, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes);
                 }
             }
-        });
-    
-
-    // ===== 季度/月份选择器 =====
-    const popQ = async () => {
-        const res = await api('getQuarterList', { numberOfFutureQuarters: 4 });
-        if (res.success && res.data) $('quarterSelect').innerHTML = res.data.map(q => `<option value="${q}">${q}</option>`).join('');
-        else { console.error('Quarter failed:', res.message); msg($('maisonSubmitMessage'), 'Failed to load quarters.', false); }
-    };
-
-    const popM = () => {
-        $('calcMonthsSelect').innerHTML = Array.from({ length: 12 }, (_, i) => `<option value="${i + 1}">${i + 1}</option>`).join('');
-        $('calcMonthsSelect').value = 12;
-    };
-    
-    // ===== NEW: 填充年份和 Maison 选择器（月度跟踪用）=====
-    const popYearSelectors = () => {
-        const currentYear = new Date().getFullYear();
-        const years = [currentYear - 1, currentYear, currentYear + 1];
-        const yearOptions = years.map(y => `<option value="${y}">${y}</option>`).join('');
-        
-        if ($('targetYearSelect')) $('targetYearSelect').innerHTML = yearOptions;
-        if ($('actualYearSelect')) $('actualYearSelect').innerHTML = yearOptions;
-        
-        // 默认选中当前年份
-        if ($('targetYearSelect')) $('targetYearSelect').value = currentYear;
-        if ($('actualYearSelect')) $('actualYearSelect').value = currentYear;
-    };
-
-    const popMaisonSelectors = async () => {
-        const res = await api('getAllUsers');
-        if (!res.success || !res.data) return;
-        
-        // 提取唯一的 Maison 名称（排除 BT）
-        const maisons = [...new Set(res.data
-            .filter(u => u.maisonName && u.maisonName !== 'BT')
-            .map(u => u.maisonName))];
-        
-        const maisonOptions = maisons.map(m => `<option value="${m}">${m}</option>`).join('');
-        
-        if ($('targetMaisonSelect')) $('targetMaisonSelect').innerHTML = maisonOptions;
-        if ($('actualMaisonSelect')) $('actualMaisonSelect').innerHTML = maisonOptions;
-    };
-    // ===== END NEW =====
-
-
-
-    // ===== 成本计算 =====
-    const calc = (c, f, m) => ((c * (parseFloat(configPrices.ClientelingUnitPrice) || 16) + f * (parseFloat(configPrices.FullUnitPrice) || 52)) * m + (parseFloat(configPrices.FixedCost) || 0));
-
+        }
+    });
     // ===== Email 管理 =====
     const setEmailUI = (has, email = '') => {
         $('registeredEmailValue').textContent = email;
@@ -654,33 +718,43 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const initEmail = async () => {
-        if (!currentUser || currentUser.role !== 'maison') { $('emailManagementSection').classList.add('hidden'); return; }
+        if (!currentUser || currentUser.role !== 'maison') { 
+            $('emailManagementSection').classList.add('hidden'); 
+            return; 
+        }
         $('emailManagementSection').classList.remove('hidden');
         clr($('emailMessage'));
         const res = await api('getUserEmail', { username: currentUser.username });
         setEmailUI(res.success && res.email, res.email || '');
     };
 
-    // ===== Approval Notification Email (prepare in Email Broadcast; admin clicks "Open in Outlook" to send) =====
-    const buildNotificationBody = (submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp) => {
+    // ===== Approval Notification Email =====
+    const buildNotificationBody = (submittedBy, status, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes) => {
         const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
         const formattedTimestamp = timestamp ? fmt(timestamp) : (timestamp || '');
         return (
             `Dear ${submittedBy},\n\n` +
             `Your SFSC license application has been ${statusText.toLowerCase()}.\n\n` +
+            `Details:\n` +
             `Maison Name: ${maisonName || ''}\n` +
+            `License Type: ${licenseType || ''}\n` +
             `Quarter: ${quarter || ''}\n` +
-            `Clienteling Licenses: ${clientelingLicenses || '0'}\n` +
-            `Full Licenses: ${fullLicenses || '0'}\n` +
+            `Quantity: ${licenseCount || '0'}\n` +
             `Calculated Cost: ${calculatedCost || '0'} €\n` +
             `Submitted By: ${submittedBy || ''}\n` +
             `Submission Time: ${formattedTimestamp}\n` +
-            `Approval Status: ${statusText}\n\n` +
-            `Best regards,\nBT-admin`
+            `Approval Status: ${statusText}\n` +
+            (maisonNotes ? `\nYour Notes: ${maisonNotes}\n` : '') +
+            (adminNotes ? `\nAdmin Notes: ${adminNotes}\n` : '') +
+            `\n` +
+            (status === 'Approved' 
+              ? `Thank you for your submission. The data has been successfully approved.\n`
+              : `Please review your submission. If you have any questions or need to resubmit, please contact the administrator.\n`) +
+            `\nBest regards,\nBT-admin`
         );
     };
 
-    const sendApprovalNotification = async (submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp) => {
+    const sendApprovalNotification = async (submittedBy, status, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes) => {
         try {
             const emailRes = await api('getUserEmail', { username: submittedBy });
             if (!emailRes.success || !emailRes.email) {
@@ -689,30 +763,26 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const applicantEmail = emailRes.email.trim();
             const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
-            const subject = `SFSC License Application ${statusText} - ${quarter}`;
-            const body = buildNotificationBody(submittedBy, status, maisonName, quarter, clientelingLicenses, fullLicenses, calculatedCost, timestamp);
+            const subject = `SFSC License Application ${statusText} - ${maisonName} ${licenseType} (${quarter})`;
+            const body = buildNotificationBody(submittedBy, status, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes);
 
-            // Pre-fill Email Broadcast section
             $('emailSubjectInput').value = subject;
             $('emailContentInput').value = body;
 
-            // Ensure user list is loaded and select only the applicant
             if (!allUsers || !allUsers.length) {
                 const res = await api('getAllUsers');
                 if (res.success && res.data) allUsers = res.data.filter(u => u.email && u.email.trim());
             }
             
-            // **修改点1：通过username查找用户，而不是email**
             const hasApplicant = allUsers && allUsers.some(u => (u.username || '').trim() === submittedBy);
             if (!hasApplicant && allUsers) {
-                allUsers = [...allUsers, { username: submittedBy, email: applicantEmail, maisonName: '' }];
+                allUsers = [...allUsers, { username: submittedBy, email: applicantEmail, maisonName: '', licenseType: '' }];
             }
             if (allUsers && allUsers.length) {
                 searchTerm = '';
                 if ($('userSearchInput')) $('userSearchInput').value = '';
                 renderU();
                 
-                // **修改点2：通过username匹配checkbox，而不是email**
                 $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
                     cb.checked = (cb.dataset.username || '').trim() === submittedBy; 
                 });
@@ -731,18 +801,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const filtered = () => {
         if (!searchTerm) return allUsers;
         const t = searchTerm.toLowerCase();
-        return allUsers.filter(u => [(u.username || ''), (u.email || ''), (u.maisonName || '')].some(f => f.toLowerCase().includes(t)));
+        return allUsers.filter(u => [(u.username || ''), (u.email || ''), (u.maisonName || ''), (u.licenseType || '')].some(f => f.toLowerCase().includes(t)));
     };
 
     const selected = () => Array.from($('userListContainer').querySelectorAll('.user-checkbox:checked')).map(cb => cb.dataset.email).filter(e => e && valid(e));
 
-    // **修改点3：在渲染用户列表时，给checkbox添加data-username属性**
     const renderU = () => {
         const f = filtered();
-        if (!f.length) { $('userListContainer').innerHTML = '<p class="no-users-text">No users found.</p>'; return; }
+        if (!f.length) { 
+            $('userListContainer').innerHTML = '<p class="no-users-text">No users found.</p>'; 
+            return; 
+        }
         $('userListContainer').innerHTML = f.map((u, i) => {
-            const id = `user-${i}-${(u.email || '').replace(/[^a-zA-Z0-9]/g, '_')}`; // Ensure valid ID
-            return `<div class="user-checkbox-item"><input type="checkbox" id="${id}" class="user-checkbox" data-email="${u.email || ''}" data-username="${u.username || ''}" ${u.email ? '' : 'disabled'}><label for="${id}" class="user-checkbox-label"><span class="user-name">${u.username || 'N/A'}</span><span class="user-email">${u.email || 'No email'}</span>${u.maisonName ? `<span class="user-maison">${u.maisonName}</span>` : ''}</label></div>`;
+            const id = `user-${i}-${(u.email || '').replace(/[^a-zA-Z0-9]/g, '_')}`;
+            const displayText = u.licenseType && u.licenseType !== 'N/A' 
+                ? `${u.maisonName} - ${u.licenseType}` 
+                : u.maisonName;
+            return `<div class="user-checkbox-item">
+                <input type="checkbox" id="${id}" class="user-checkbox" data-email="${u.email || ''}" data-username="${u.username || ''}" ${u.email ? '' : 'disabled'}>
+                <label for="${id}" class="user-checkbox-label">
+                    <span class="user-name">${u.username || 'N/A'}</span>
+                    <span class="user-email">${u.email || 'No email'}</span>
+                    ${displayText ? `<span class="user-maison">${displayText}</span>` : ''}
+                </label>
+            </div>`;
         }).join('');
     };
 
@@ -753,18 +835,56 @@ document.addEventListener('DOMContentLoaded', () => {
         $('recipientCountDisplay').classList.remove('hidden');
     };
 
-    $('userListContainer').addEventListener('change', e => { if (e.target.classList.contains('user-checkbox')) updCnt(); });
+    $('userListContainer').addEventListener('change', e => { 
+        if (e.target.classList.contains('user-checkbox')) updCnt(); 
+    });
 
     const initBcast = async () => {
-        if (!currentUser || currentUser.role !== 'admin') { $('emailBroadcastSection').classList.add('hidden'); return; }
+        if (!currentUser || currentUser.role !== 'admin') { 
+            $('emailBroadcastSection').classList.add('hidden'); 
+            return; 
+        }
         $('emailBroadcastSection').classList.remove('hidden');
         $('userListContainer').innerHTML = '<p class="loading-text">Loading users...</p>';
         const res = await api('getAllUsers');
-        if (res.success && res.data) { allUsers = res.data.filter(u => u.email && u.email.trim()); renderU(); updCnt(); }
-        else $('userListContainer').innerHTML = `<p class="error-text">Failed to load users: ${res.message || 'Unknown'}</p>`;
+        if (res.success && res.data) { 
+            allUsers = res.data.filter(u => u.email && u.email.trim()); 
+            renderU(); 
+            updCnt(); 
+        } else {
+            $('userListContainer').innerHTML = `<p class="error-text">Failed to load users: ${res.message || 'Unknown'}</p>`;
+        }
     };
 
-    // ===== 事件监听器（优化：集中处理）=====
+    // ===== 填充选择器 =====
+    const popYearSelectors = () => {
+        const years = [currentYear - 1, currentYear, currentYear + 1];
+        const yearOptions = years.map(y => `<option value="${y}">${y}</option>`).join('');
+        
+        if ($('budgetYearSelect')) $('budgetYearSelect').innerHTML = yearOptions;
+        if ($('targetYearSelect')) $('targetYearSelect').innerHTML = yearOptions;
+        if ($('actualYearSelect')) $('actualYearSelect').innerHTML = yearOptions;
+        
+        if ($('budgetYearSelect')) $('budgetYearSelect').value = currentYear;
+        if ($('targetYearSelect')) $('targetYearSelect').value = currentYear;
+        if ($('actualYearSelect')) $('actualYearSelect').value = currentYear;
+    };
+
+    const popMaisonSelectors = async () => {
+        const res = await api('getAllUsers');
+        if (!res.success || !res.data) return;
+        
+        const maisons = [...new Set(res.data
+            .filter(u => u.maisonName && u.maisonName !== 'BT')
+            .map(u => u.maisonName))];
+        
+        const maisonOptions = maisons.map(m => `<option value="${m}">${m}</option>`).join('');
+        
+        if ($('budgetMaisonSelect')) $('budgetMaisonSelect').innerHTML = maisonOptions;
+        if ($('targetMaisonSelect')) $('targetMaisonSelect').innerHTML = maisonOptions;
+        if ($('actualMaisonSelect')) $('actualMaisonSelect').innerHTML = maisonOptions;
+    };
+    // ===== 事件处理器 =====
     const handlers = {
         loginButton: async () => {
             const u = $('username').value.trim(), p = $('password').value.trim();
@@ -772,362 +892,226 @@ document.addEventListener('DOMContentLoaded', () => {
             const res = await api('login', { username: u, password: p });
             if (!res.success) { msg($('loginMessage'), 'Login failed: ' + res.message, false); return; }
             msg($('loginMessage'), 'Login successful!', true);
-            currentUser = { username: u, role: res.role, maisonName: res.maisonName };
+            currentUser = { username: u, role: res.role, maisonName: res.maisonName, licenseType: res.licenseType };
+            
             const cfg = await api('getConfig');
-            if (cfg.success && cfg.data) Object.assign(configPrices, { ClientelingUnitPrice: parseFloat(cfg.data.ClientelingUnitPrice) || 16, FullUnitPrice: parseFloat(cfg.data.FullUnitPrice) || 52, FixedCost: parseFloat(cfg.data.FixedCost) || 0 });
-            setTimeout(() => {
-                showPage($('loginPage')); // Start on login page, then transition
+            if (cfg.success && cfg.data) {
+                Object.assign(configPrices, { 
+                    ClientelingUnitPrice: parseFloat(cfg.data.ClientelingUnitPrice) || 16, 
+                    FullUnitPrice: parseFloat(cfg.data.FullUnitPrice) || 52,
+                    VarianceThreshold: parseFloat(cfg.data.VarianceThreshold) || 15,
+                    BeautyTechEmail: cfg.data.BeautyTechEmail || 'beautytech@example.com'
+                });
+            }
+            
+            setTimeout(async () => {
                 showPage($('mainPage'));
                 $('welcomeMessage').textContent = `Welcome, ${currentUser.username} (${currentUser.role})!`;
+                
                 if (currentUser.role === 'maison') {
-                    $('maisonView').classList.remove('hidden'); $('adminView').classList.add('hidden');
-                    popQ(); popM();
-                    $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0';
-                    $('calculatedCostDisplay').textContent = 'Estimated Cost: 0.00 €';
-                    loadTable('maison', $('maisonHistoryTableContainer'), { submittedBy: currentUser.username }); // 修改：maisonName 改为 username
-                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { submittedBy: currentUser.username }); // 修改：maisonName 改为 username
+                    $('maisonView').classList.remove('hidden'); 
+                    $('adminView').classList.add('hidden');
+                    
+                    // 更新标题显示许可证类型
+                    $('maisonSubmitTitle').textContent = `Submit Quarterly Forecast (${currentUser.licenseType} Licenses)`;
+                    
+                    // 清空输入框
+                    $('q1Input').value = '';
+                    $('q2Input').value = '';
+                    $('q3Input').value = '';
+                    $('q4Input').value = '';
+                    $('maisonNotesInput').value = '';
+                    clr($('validationMessage'));
+                    clr($('maisonSubmitMessage'));
+                    
+                    // 清空计算器
+                    $('calcQ1Input').value = '0';
+                    $('calcQ2Input').value = '0';
+                    $('calcQ3Input').value = '0';
+                    $('calcQ4Input').value = '0';
+                    $('q1CostDisplay').textContent = '0.00';
+                    $('q2CostDisplay').textContent = '0.00';
+                    $('q3CostDisplay').textContent = '0.00';
+                    $('q4CostDisplay').textContent = '0.00';
+                    $('totalForecastDisplay').textContent = '0.00';
+                    
+                    loadTable('maison', $('maisonHistoryTableContainer'), { 
+                        submittedBy: currentUser.username,
+                        licenseType: currentUser.licenseType
+                    });
+                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { 
+                        submittedBy: currentUser.username,
+                        licenseType: currentUser.licenseType
+                    });
                     initEmail();
-                }
-                 else {
-                    $('adminView').classList.remove('hidden'); $('maisonView').classList.add('hidden');
-                    loadTable('admin', $('adminDataTableContainer')); // Load current data
-                    loadForecastTable($('forecastTableContainer')); // NEW: Load forecast table
-                    loadTable('adminActionsLog', $('adminActionsLogTableContainer')); // NEW: Load all historical actions log
+                } else {
+                    $('adminView').classList.remove('hidden'); 
+                    $('maisonView').classList.add('hidden');
+                    
+                    loadTable('admin', $('adminDataTableContainer'));
+                    loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
+                    loadForecastTable($('fullForecastTableContainer'), 'Full');
+                    loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
                     initBcast();
-                    // NEW: 初始化月度跟踪部分
+                    
                     popYearSelectors();
                     popMaisonSelectors();
-                    const currentYear = new Date().getFullYear();
                     loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
                 }
-
-
             }, 500);
         },
+
         logoutButton: () => {
             currentUser = null;
             $('username').value = $('password').value = '';
-            clr($('loginMessage')); clr($('maisonSubmitMessage')); clr($('emailMessage')); clr($('calculatorErrorMessage')); clr($('emailBroadcastMessage'));
+            clr($('loginMessage')); 
+            clr($('maisonSubmitMessage')); 
+            clr($('emailMessage')); 
+            clr($('calculatorErrorMessage')); 
+            clr($('emailBroadcastMessage'));
+            clr($('validationMessage'));
             showPage($('loginPage'));
         },
-        submitSfscDataButton: async () => {
-            if (!currentUser || currentUser.role !== 'maison') { msg($('maisonSubmitMessage'), 'Maison user only!', false); return; }
-            const q = $('quarterSelect').value, c = parseInt($('clientelingLicenseCount').value, 10), f = parseInt($('fullLicenseCount').value, 10);
-            if (!q || c < 0 || f < 0 || isNaN(c) || isNaN(f)) { msg($('maisonSubmitMessage'), 'Invalid inputs!', false); return; }
+
+        submitForecastButton: async () => {
+            if (!currentUser || currentUser.role !== 'maison') { 
+                msg($('maisonSubmitMessage'), 'Maison user only!', false); 
+                return; 
+            }
             
-            // Check for existing record
-            const chk = await api('checkExistingRecord', { maisonName: currentUser.maisonName, quarter: q, submittedBy: currentUser.username });        
-            let id = null;
-            if (chk.success && chk.exists) {
-                if (!confirm(`An existing record for ${q} will be updated. Do you want to proceed?`)) {
-                    msg($('maisonSubmitMessage'), 'Submission cancelled.', false);
-                    return;
-                }
-                id = chk.recordId;
-            }
-
-            const res = await api('submitSfscData', { 
-                maisonName: currentUser.maisonName, 
-                quarter: q, 
-                clientelingLicenseCount: c, 
-                fullLicenseCount: f, 
-                submittedBy: currentUser.username, 
-                recordIdToUpdate: id 
-            });
-
-            if (res.success) { 
-                msg($('maisonSubmitMessage'), `${id ? 'Updated' : 'Submitted'}! Cost: ${res.calculatedCost} €`, true); 
-                $('clientelingLicenseCount').value = $('fullLicenseCount').value = '0'; 
-                loadTable('maison', $('maisonHistoryTableContainer'), { submittedBy: currentUser.username }); 
-                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { submittedBy: currentUser.username }); // NEW: 重新加载历史日志
-            } else {            
-                msg($('maisonSubmitMessage'), 'Failed to submit/update: ' + res.message, false);
-            }
-        },
-        seeCostButton: () => {
-            clr($('calculatorErrorMessage'));
-            const c = parseInt($('calcClientelingLicenseCount').value, 10) || 0, f = parseInt($('calcFullLicenseCount').value, 10) || 0, m = parseInt($('calcMonthsSelect').value, 10) || 12;
-            if (c < 0 || f < 0 || m < 1 || m > 12) { msg($('calculatorErrorMessage'), 'Invalid input for licenses or months!', false); $('calculatedCostDisplay').textContent = 'Estimated Cost: NaN €'; return; }
-            $('calculatedCostDisplay').textContent = `Estimated Cost: ${calc(c, f, m).toFixed(2)} €`;
-            $('calculatedCostDisplay').classList.remove('error'); $('calculatedCostDisplay').classList.add('success');
-        },
-        exportDataButton: async () => {
-            if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-            const res = await api('getAllSfscData'); // Assuming export current data, not history
-            if (!res.success || !res.data || !res.data.length) { msg($('loginMessage'), 'Export failed: No data available.', false); return; }
-            const h = configs.admin.headers; // Use admin headers for SFSC_Data
-            let csv = h.map(x => x.label).join(',') + '\n';
-            res.data.forEach(r => { 
-                csv += h.map(x => { 
-                    let v = r[x.key]; 
-                    if (x.key === 'Timestamp') v = fmt(v); 
-                    // Handle values that might contain commas or quotes for CSV
-                    return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : v; 
-                }).join(',') + '\n'; 
-            });
-            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' }), l = document.createElement('a');
-            l.href = URL.createObjectURL(b); l.download = `SFSC_Data_Export_${new Date().toLocaleDateString('en-US')}.csv`;
-            document.body.appendChild(l); l.click(); document.body.removeChild(l);
-            msg($('loginMessage'), 'Data exported successfully!', true);
-        },
-        
-         // ← 新增：导出历史数据
-    exportHistoryDataButton: async () => {
-        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-        const res = await api('getAllSfscHistory');  // 调用历史数据API
-        if (!res.success || !res.data || !res.data.length) { 
-            msg($('loginMessage'), 'Export failed: No history data available.', false); 
-            return; 
-        }
-        
-        const h = configs.adminActionsLog.headers;  // 使用历史表格的headers
-        let csv = h.map(x => x.label).join(',') + '\n';
-        
-        res.data.forEach(r => { 
-            csv += h.map(x => { 
-                let v = r[x.key]; 
-                // 格式化时间戳
-                if (x.key === 'Timestamp' || x.key === 'ActionTimestamp') v = fmt(v);
-                // 处理包含逗号或引号的值
-                return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
-            }).join(',') + '\n'; 
-        });
-        
-        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const l = document.createElement('a');
-        l.href = URL.createObjectURL(b); 
-        l.download = `SFSC_History_Export_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
-        document.body.appendChild(l); 
-        l.click(); 
-        document.body.removeChild(l);
-        
-        msg($('loginMessage'), 'History data exported successfully!', true);
-    },
-    exportForecastButton: async () => {
-        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-        const res = await api('getForecastData');
-        if (!res.success || !res.data || !res.data.length) { 
-            msg($('loginMessage'), 'Export failed: No forecast data available.', false); 
-            return; 
-        }
-
-        const currentYear = new Date().getFullYear();
-        const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
-
-        // Build CSV header
-        let csv = 'Maison,License Type,';
-        quarters.forEach(q => {
-            csv += `${q} Qty,${q} Cost,`;
-        });
-        csv += 'Total Qty,Total Cost\n';
-
-        // Group data by Maison and LicenseType
-        const grouped = {};
-        res.data.forEach(row => {
-            const key = `${row.MaisonName}|${row.LicenseType}`;
-            if (!grouped[key]) {
-                grouped[key] = {
-                    maisonName: row.MaisonName,
-                    licenseType: row.LicenseType,
-                    quarters: {}
-                };
-            }
-            grouped[key].quarters[row.Quarter] = {
-                quantity: row.TotalQuantity || 0,
-                cost: row.TotalCost || 0
-            };
-        });
-
-        // Build CSV rows
-        Object.values(grouped).forEach(item => {
-            let totalQty = 0;
-            let totalCost = 0;
-            let row = `${item.maisonName},${item.licenseType},`;
-
-            quarters.forEach(q => {
-                const qData = item.quarters[q] || { quantity: 0, cost: 0 };
-                const qty = parseInt(qData.quantity) || 0;
-                const cost = parseFloat(qData.cost) || 0;
-
-                totalQty += qty;
-                totalCost += cost;
-
-                row += `${qty},${cost.toFixed(2)},`;
-            });
-
-            row += `${totalQty},${totalCost.toFixed(2)}\n`;
-            csv += row;
-        });
-
-        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const l = document.createElement('a');
-        l.href = URL.createObjectURL(b); 
-        l.download = `SFSC_Forecast_${currentYear}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
-        document.body.appendChild(l); 
-        l.click(); 
-        document.body.removeChild(l);
-
-        msg($('loginMessage'), 'Forecast data exported successfully!', true);
-    },
-    submitTargetButton: async () => {
-        if (!currentUser || currentUser.role !== 'admin') { msg($('targetSubmitMessage'), 'Admin only!', false); return; }
-        
-        const year = parseInt($('targetYearSelect').value);
-        const maison = $('targetMaisonSelect').value;
-        const clientelingTarget = parseInt($('targetClientelingInput').value) || 0;
-        const fullTarget = parseInt($('targetFullInput').value) || 0;
-        
-        if (!maison) { msg($('targetSubmitMessage'), 'Please select a Maison!', false); return; }
-        
-        clr($('targetSubmitMessage'));
-        msg($('targetSubmitMessage'), 'Submitting targets...', true);
-        
-        // 提交 Clienteling 目标
-        if (clientelingTarget >= 0) {
-            const resC = await api('setAnnualTarget', {
-                maisonName: maison,
-                licenseType: 'Clienteling',
-                year: year,
-                annualTarget: clientelingTarget,
-                updatedBy: currentUser.username
-            });
-            if (!resC.success) {
-                msg($('targetSubmitMessage'), 'Failed to set Clienteling target: ' + resC.message, false);
+            clr($('validationMessage'));
+            clr($('maisonSubmitMessage'));
+            
+            const q1 = $('q1Input').value.trim();
+            const q2 = $('q2Input').value.trim();
+            const q3 = $('q3Input').value.trim();
+            const q4 = $('q4Input').value.trim();
+            const maisonNotes = $('maisonNotesInput').value.trim();
+            
+            // 检查是否至少填写了一个季度
+            if (!q1 && !q2 && !q3 && !q4) {
+                msg($('maisonSubmitMessage'), 'Please fill in at least one quarter!', false);
                 return;
             }
-        }
-        
-        // 提交 Full 目标
-        if (fullTarget >= 0) {
-            const resF = await api('setAnnualTarget', {
-                maisonName: maison,
-                licenseType: 'Full',
-                year: year,
-                annualTarget: fullTarget,
-                updatedBy: currentUser.username
-            });
-            if (!resF.success) {
-                msg($('targetSubmitMessage'), 'Failed to set Full target: ' + resF.message, false);
-                return;
-            }
-        }
-        
-        msg($('targetSubmitMessage'), 'Annual targets set successfully!', true);
-        $('targetClientelingInput').value = '0';
-        $('targetFullInput').value = '0';
-        
-        // 重新加载月度跟踪表格
-        loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
-    },
-    submitActualButton: async () => {
-        if (!currentUser || currentUser.role !== 'admin') { msg($('actualSubmitMessage'), 'Admin only!', false); return; }
-        
-        const year = parseInt($('actualYearSelect').value);
-        const month = $('actualMonthSelect').value;
-        const maison = $('actualMaisonSelect').value;
-        const clientelingActual = parseInt($('actualClientelingInput').value) || 0;
-        const fullActual = parseInt($('actualFullInput').value) || 0;
-        
-        if (!maison) { msg($('actualSubmitMessage'), 'Please select a Maison!', false); return; }
-        
-        clr($('actualSubmitMessage'));
-        msg($('actualSubmitMessage'), 'Submitting actual data...', true);
-        
-        // 提交 Clienteling 实际数据
-        if (clientelingActual >= 0) {
-            const resC = await api('submitMonthlyActual', {
-                maisonName: maison,
-                licenseType: 'Clienteling',
-                year: year,
-                month: month,
-                actualQuantity: clientelingActual,
-                updatedBy: currentUser.username
-            });
-            if (!resC.success) {
-                msg($('actualSubmitMessage'), 'Failed to submit Clienteling actual: ' + resC.message, false);
-                return;
-            }
-        }
-        
-        // 提交 Full 实际数据
-        if (fullActual >= 0) {
-            const resF = await api('submitMonthlyActual', {
-                maisonName: maison,
-                licenseType: 'Full',
-                year: year,
-                month: month,
-                actualQuantity: fullActual,
-                updatedBy: currentUser.username
-            });
-            if (!resF.success) {
-                msg($('actualSubmitMessage'), 'Failed to submit Full actual: ' + resF.message, false);
-                return;
-            }
-        }
-        
-        msg($('actualSubmitMessage'), 'Monthly actual data submitted successfully!', true);
-        $('actualClientelingInput').value = '0';
-        $('actualFullInput').value = '0';
-        
-        // 重新加载月度跟踪表格
-        loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
-    },
-    exportMonthlyTrackingButton: async () => {
-        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-        
-        const year = parseInt($('actualYearSelect').value) || new Date().getFullYear();
-        const res = await api('getMonthlyTrackingData', { year: year });
-        
-        if (!res.success || !res.data || !res.data.length) {
-            msg($('loginMessage'), 'Export failed: No monthly tracking data available.', false);
-            return;
-        }
-        
-        // 构建 CSV
-        const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-        let csv = 'Maison,License Type,';
-        months.forEach(m => { csv += `${year}.${m},`; });
-        csv += `${year} Forecast,Variance\n`;
-        
-        res.data.forEach(row => {
-            csv += `${row.MaisonName},${row.LicenseType},`;
             
-            let latestActual = null;
-            months.forEach(m => {
-                const actualQty = row.MonthlyActuals[m];
-                csv += actualQty !== undefined && actualQty !== null ? `${actualQty},` : '-,';
-                if (actualQty !== undefined && actualQty !== null) {
-                    latestActual = actualQty;
-                }
+            // 验证递增规则
+            const warnings = validateQuarterData(q1, q2, q3, q4);
+            
+            if (warnings.length > 0) {
+                const beautyTechEmail = configPrices.BeautyTechEmail || 'beautytech@example.com';
+                const warningMsg = `⚠️ Warning: ${warnings.join('; ')}\n\n` +
+                    `Due to contract restrictions, license quantities should not decrease during the year.\n\n` +
+                    `If you need to reduce licenses, you MUST contact Beauty Tech at ${beautyTechEmail} ` +
+                    `to discuss and confirm your situation BEFORE submitting.\n\n` +
+                    `⚠️ IMPORTANT: Submissions without prior Beauty Tech confirmation will be REJECTED.\n\n` +
+                    `Note: Your submission will require special approval from Admin.`;
+                
+                msg($('validationMessage'), warningMsg, false);
+                $('validationMessage').className = 'message warning';
+            }
+            
+            // 自动填充空白季度
+            const filled = fillMissingQuarters(q1, q2, q3, q4);
+            
+            // 构建确认消息
+            let confirmMsg = 'You are about to submit the following quarterly forecast:\n\n';
+            const quarters = await getQuarters();
+            
+            filled.forEach((val, idx) => {
+                confirmMsg += `${quarters[idx]}: ${val} licenses\n`;
             });
             
-            const annualTarget = row.AnnualTarget || 0;
-            csv += `${annualTarget},`;
+            // 检查是否有自动填充
+            const hasAutoFill = filled.some((val, idx) => {
+                const original = [q1, q2, q3, q4][idx];
+                return original === '' && val !== 0;
+            });
             
-            if (latestActual !== null) {
-                const variance = latestActual - annualTarget;
-                csv += `${variance >= 0 ? '+' : ''}${variance}`;
+            if (hasAutoFill) {
+                confirmMsg += '\n⚠️ Note: Empty quarters have been automatically filled with previous quarter values.\n';
+            }
+            
+            if (maisonNotes) {
+                confirmMsg += `\nYour Notes: ${maisonNotes}\n`;
+            }
+            
+            confirmMsg += '\nDo you want to proceed?';
+            
+            if (!confirm(confirmMsg)) {
+                msg($('maisonSubmitMessage'), 'Submission cancelled.', false);
+                return;
+            }
+            
+            // 构建季度数据
+            const quarterData = filled.map((count, idx) => ({
+                quarter: quarters[idx],
+                count: parseInt(count) || 0
+            }));
+            
+            const res = await api('submitSfscData', {
+                maisonName: currentUser.maisonName,
+                licenseType: currentUser.licenseType,
+                quarterData: quarterData,
+                submittedBy: currentUser.username,
+                maisonNotes: maisonNotes
+            });
+            
+            if (res.success) {
+                msg($('maisonSubmitMessage'), `Forecast submitted successfully!`, true);
+                
+                // 清空表单
+                $('q1Input').value = '';
+                $('q2Input').value = '';
+                $('q3Input').value = '';
+                $('q4Input').value = '';
+                $('maisonNotesInput').value = '';
+                clr($('validationMessage'));
+                
+                // 重新加载表格
+                loadTable('maison', $('maisonHistoryTableContainer'), { 
+                    submittedBy: currentUser.username,
+                    licenseType: currentUser.licenseType
+                });
+                loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { 
+                    submittedBy: currentUser.username,
+                    licenseType: currentUser.licenseType
+                });
             } else {
-                csv += '-';
+                msg($('maisonSubmitMessage'), 'Failed to submit: ' + res.message, false);
             }
-            csv += '\n';
-        });
-        
-        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const l = document.createElement('a');
-        l.href = URL.createObjectURL(b);
-        l.download = `Monthly_Tracking_${year}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
-        document.body.appendChild(l);
-        l.click();
-        document.body.removeChild(l);
-        
-        msg($('loginMessage'), 'Monthly tracking data exported successfully!', true);
-    },
+        },
 
-
+        calculateCostButton: () => {
+            clr($('calculatorErrorMessage'));
+            
+            const q1 = parseInt($('calcQ1Input').value) || 0;
+            const q2 = parseInt($('calcQ2Input').value) || 0;
+            const q3 = parseInt($('calcQ3Input').value) || 0;
+            const q4 = parseInt($('calcQ4Input').value) || 0;
+            
+            if (q1 < 0 || q2 < 0 || q3 < 0 || q4 < 0) {
+                msg($('calculatorErrorMessage'), 'Invalid input: quantities cannot be negative!', false);
+                return;
+            }
+            
+            const q1Cost = calculateQuarterlyCost(q1, currentUser.licenseType);
+            const q2Cost = calculateQuarterlyCost(q2, currentUser.licenseType);
+            const q3Cost = calculateQuarterlyCost(q3, currentUser.licenseType);
+            const q4Cost = calculateQuarterlyCost(q4, currentUser.licenseType);
+            const totalCost = q1Cost + q2Cost + q3Cost + q4Cost;
+            
+            $('q1CostDisplay').textContent = q1Cost.toFixed(2);
+            $('q2CostDisplay').textContent = q2Cost.toFixed(2);
+            $('q3CostDisplay').textContent = q3Cost.toFixed(2);
+            $('q4CostDisplay').textContent = q4Cost.toFixed(2);
+            $('totalForecastDisplay').textContent = totalCost.toFixed(2);
+        },
 
         submitEmailButton: async () => {
-            if (!currentUser || currentUser.role !== 'maison') { msg($('emailMessage'), 'Maison only.', false); return; }
+            if (!currentUser || currentUser.role !== 'maison') { 
+                msg($('emailMessage'), 'Maison only.', false); 
+                return; 
+            }
             const e = $('userEmailInput').value.trim();
             if (!e) { msg($('emailMessage'), 'Email address cannot be empty!', false); return; }
             if (!valid(e)) { msg($('emailMessage'), 'Invalid email format!', false); return; }
@@ -1136,30 +1120,333 @@ document.addEventListener('DOMContentLoaded', () => {
             msg($('emailMessage'), res.success ? 'Email saved successfully!' : 'Failed to save email: ' + res.message, res.success);
             if (res.success) initEmail();
         },
+
         editEmailButton: () => {
-            $('emailDisplay').classList.add('hidden'); $('editEmailButton').classList.add('hidden');
-            $('emailForm').classList.remove('hidden'); $('userEmailInput').value = $('registeredEmailValue').textContent;
-            $('submitEmailButton').textContent = 'Save Changes'; $('cancelEditEmailButton').classList.remove('hidden');
+            $('emailDisplay').classList.add('hidden'); 
+            $('editEmailButton').classList.add('hidden');
+            $('emailForm').classList.remove('hidden'); 
+            $('userEmailInput').value = $('registeredEmailValue').textContent;
+            $('submitEmailButton').textContent = 'Save Changes'; 
+            $('cancelEditEmailButton').classList.remove('hidden');
             clr($('emailMessage'));
         },
-        cancelEditEmailButton: () => { initEmail(); clr($('emailMessage')); },
+
+        cancelEditEmailButton: () => { 
+            initEmail(); 
+            clr($('emailMessage')); 
+        },
+
+        submitBudgetButton: async () => {
+            if (!currentUser || currentUser.role !== 'admin') { 
+                msg($('budgetSubmitMessage'), 'Admin only!', false); 
+                return; 
+            }
+            
+            const year = parseInt($('budgetYearSelect').value);
+            const maison = $('budgetMaisonSelect').value;
+            const licenseType = $('budgetLicenseTypeSelect').value;
+            const budgetAnnuel = parseFloat($('budgetAnnuelInput').value) || 0;
+            
+            if (!maison) { 
+                msg($('budgetSubmitMessage'), 'Please select a Maison!', false); 
+                return; 
+            }
+            
+            if (budgetAnnuel < 0) {
+                msg($('budgetSubmitMessage'), 'Budget cannot be negative!', false);
+                return;
+            }
+            
+            clr($('budgetSubmitMessage'));
+            msg($('budgetSubmitMessage'), 'Submitting budget...', true);
+            
+            const res = await api('setAnnualBudget', {
+                maisonName: maison,
+                licenseType: licenseType,
+                year: year,
+                budgetAnnuel: budgetAnnuel,
+                updatedBy: currentUser.username
+            });
+            
+            msg($('budgetSubmitMessage'), res.success ? 'Budget set successfully!' : 'Failed: ' + res.message, res.success);
+            
+            if (res.success) {
+                $('budgetAnnuelInput').value = '0';
+                
+                // 重新加载 Forecast 表格
+                if ($('clientelingForecastTab').classList.contains('active')) {
+                    loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
+                } else {
+                    loadForecastTable($('fullForecastTableContainer'), 'Full');
+                }
+            }
+        },
+
+        clientelingForecastTab: () => {
+            $('clientelingForecastTab').classList.add('active');
+            $('fullForecastTab').classList.remove('active');
+            $('clientelingForecastContainer').classList.remove('hidden');
+            $('clientelingForecastContainer').classList.add('active');
+            $('fullForecastContainer').classList.add('hidden');
+            $('fullForecastContainer').classList.remove('active');
+            loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
+        },
+
+        fullForecastTab: () => {
+            $('fullForecastTab').classList.add('active');
+            $('clientelingForecastTab').classList.remove('active');
+            $('fullForecastContainer').classList.remove('hidden');
+            $('fullForecastContainer').classList.add('active');
+            $('clientelingForecastContainer').classList.add('hidden');
+            $('clientelingForecastContainer').classList.remove('active');
+            loadForecastTable($('fullForecastTableContainer'), 'Full');
+        },
+
+        exportDataButton: async () => {
+            if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+            const res = await api('getAllSfscData');
+            if (!res.success || !res.data || !res.data.length) { 
+                msg($('loginMessage'), 'Export failed: No data available.', false); 
+                return; 
+            }
+            const h = configs.admin.headers;
+            let csv = h.map(x => x.label).join(',') + '\n';
+            res.data.forEach(r => { 
+                csv += h.map(x => { 
+                    let v = r[x.key]; 
+                    if (x.key === 'Timestamp') v = fmt(v); 
+                    return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
+                }).join(',') + '\n'; 
+            });
+            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' }), l = document.createElement('a');
+            l.href = URL.createObjectURL(b); 
+            l.download = `SFSC_Data_Export_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+            document.body.appendChild(l); 
+            l.click(); 
+            document.body.removeChild(l);
+            msg($('loginMessage'), 'Data exported successfully!', true);
+        },
+
+        exportHistoryDataButton: async () => {
+            if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+            const res = await api('getAllSfscHistory');
+            if (!res.success || !res.data || !res.data.length) { 
+                msg($('loginMessage'), 'Export failed: No history data available.', false); 
+                return; 
+            }
+            
+            const h = configs.adminActionsLog.headers;
+            let csv = h.map(x => x.label).join(',') + '\n';
+            
+            res.data.forEach(r => { 
+                csv += h.map(x => { 
+                    let v = r[x.key]; 
+                    if (x.key === 'Timestamp' || x.key === 'ActionTimestamp') v = fmt(v);
+                    return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
+                }).join(',') + '\n'; 
+            });
+            
+            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const l = document.createElement('a');
+            l.href = URL.createObjectURL(b); 
+            l.download = `SFSC_History_Export_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+            document.body.appendChild(l); 
+            l.click(); 
+            document.body.removeChild(l);
+            
+            msg($('loginMessage'), 'History data exported successfully!', true);
+        },
+
+        exportClientelingForecastButton: async () => {
+            await exportForecastData('Clienteling');
+        },
+
+        exportFullForecastButton: async () => {
+            await exportForecastData('Full');
+        },
+        submitTargetButton: async () => {
+            if (!currentUser || currentUser.role !== 'admin') { 
+                msg($('targetSubmitMessage'), 'Admin only!', false); 
+                return; 
+            }
+            
+            const year = parseInt($('targetYearSelect').value);
+            const maison = $('targetMaisonSelect').value;
+            const clientelingTarget = parseInt($('targetClientelingInput').value) || 0;
+            const fullTarget = parseInt($('targetFullInput').value) || 0;
+            
+            if (!maison) { 
+                msg($('targetSubmitMessage'), 'Please select a Maison!', false); 
+                return; 
+            }
+            
+            clr($('targetSubmitMessage'));
+            msg($('targetSubmitMessage'), 'Submitting targets...', true);
+            
+            if (clientelingTarget >= 0) {
+                const resC = await api('setAnnualTarget', {
+                    maisonName: maison,
+                    licenseType: 'Clienteling',
+                    year: year,
+                    annualTarget: clientelingTarget,
+                    updatedBy: currentUser.username
+                });
+                if (!resC.success) {
+                    msg($('targetSubmitMessage'), 'Failed to set Clienteling target: ' + resC.message, false);
+                    return;
+                }
+            }
+            
+            if (fullTarget >= 0) {
+                const resF = await api('setAnnualTarget', {
+                    maisonName: maison,
+                    licenseType: 'Full',
+                    year: year,
+                    annualTarget: fullTarget,
+                    updatedBy: currentUser.username
+                });
+                if (!resF.success) {
+                    msg($('targetSubmitMessage'), 'Failed to set Full target: ' + resF.message, false);
+                    return;
+                }
+            }
+            
+            msg($('targetSubmitMessage'), 'Annual targets set successfully!', true);
+            $('targetClientelingInput').value = '0';
+            $('targetFullInput').value = '0';
+            
+            loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
+        },
+
+        submitActualButton: async () => {
+            if (!currentUser || currentUser.role !== 'admin') { 
+                msg($('actualSubmitMessage'), 'Admin only!', false); 
+                return; 
+            }
+            
+            const year = parseInt($('actualYearSelect').value);
+            const month = $('actualMonthSelect').value;
+            const maison = $('actualMaisonSelect').value;
+            const clientelingActual = parseInt($('actualClientelingInput').value) || 0;
+            const fullActual = parseInt($('actualFullInput').value) || 0;
+            
+            if (!maison) { 
+                msg($('actualSubmitMessage'), 'Please select a Maison!', false); 
+                return; 
+            }
+            
+            clr($('actualSubmitMessage'));
+            msg($('actualSubmitMessage'), 'Submitting actual data...', true);
+            
+            if (clientelingActual >= 0) {
+                const resC = await api('submitMonthlyActual', {
+                    maisonName: maison,
+                    licenseType: 'Clienteling',
+                    year: year,
+                    month: month,
+                    actualQuantity: clientelingActual,
+                    updatedBy: currentUser.username
+                });
+                if (!resC.success) {
+                    msg($('actualSubmitMessage'), 'Failed to submit Clienteling actual: ' + resC.message, false);
+                    return;
+                }
+            }
+            
+            if (fullActual >= 0) {
+                const resF = await api('submitMonthlyActual', {
+                    maisonName: maison,
+                    licenseType: 'Full',
+                    year: year,
+                    month: month,
+                    actualQuantity: fullActual,
+                    updatedBy: currentUser.username
+                });
+                if (!resF.success) {
+                    msg($('actualSubmitMessage'), 'Failed to submit Full actual: ' + resF.message, false);
+                    return;
+                }
+            }
+            
+            msg($('actualSubmitMessage'), 'Monthly actual data submitted successfully!', true);
+            $('actualClientelingInput').value = '0';
+            $('actualFullInput').value = '0';
+            
+            loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
+        },
+
+        exportMonthlyTrackingButton: async () => {
+            if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+            
+            const year = parseInt($('actualYearSelect').value) || currentYear;
+            const res = await api('getMonthlyTrackingData', { year: year });
+            
+            if (!res.success || !res.data || !res.data.length) {
+                msg($('loginMessage'), 'Export failed: No monthly tracking data available.', false);
+                return;
+            }
+            
+            const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
+            let csv = 'Maison,License Type,';
+            months.forEach(m => { csv += `${year}.${m},`; });
+            csv += `${year} Forecast,Variance\n`;
+            
+            res.data.forEach(row => {
+                csv += `${row.MaisonName},${row.LicenseType},`;
+                
+                let latestActual = null;
+                months.forEach(m => {
+                    const actualQty = row.MonthlyActuals[m];
+                    csv += actualQty !== undefined && actualQty !== null ? `${actualQty},` : '-,';
+                    if (actualQty !== undefined && actualQty !== null) {
+                        latestActual = actualQty;
+                    }
+                });
+                
+                const annualTarget = row.AnnualTarget || 0;
+                csv += `${annualTarget},`;
+                
+                if (latestActual !== null) {
+                    const variance = latestActual - annualTarget;
+                    csv += `${variance >= 0 ? '+' : ''}${variance}`;
+                } else {
+                    csv += '-';
+                }
+                csv += '\n';
+            });
+            
+            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const l = document.createElement('a');
+            l.href = URL.createObjectURL(b);
+            l.download = `Monthly_Tracking_${year}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+            document.body.appendChild(l);
+            l.click();
+            document.body.removeChild(l);
+            
+            msg($('loginMessage'), 'Monthly tracking data exported successfully!', true);
+        },
+
         selectAllButton: () => { 
             $('userListContainer').querySelectorAll('.user-checkbox:not(:disabled)').forEach(c => c.checked = true); 
             updCnt(); 
         },
+
         deselectAllButton: () => { 
             $('userListContainer').querySelectorAll('.user-checkbox').forEach(c => c.checked = false); 
             updCnt(); 
         },
+
         openOutlookButton: async () => {
             const em = selected();
-            if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to send email.', false); return; }
-            const s = encodeURIComponent($('emailSubjectInput').value.trim()), b = encodeURIComponent($('emailContentInput').value.trim());
+            if (!em.length) { 
+                msg($('emailBroadcastMessage'), 'No recipients selected to send email.', false); 
+                return; 
+            }
+            const s = encodeURIComponent($('emailSubjectInput').value.trim()), 
+                  b = encodeURIComponent($('emailContentInput').value.trim());
             const p = [s && `subject=${s}`, b && `body=${b}`].filter(Boolean);
             const mailtoLink = `mailto:${em.join(';')}${p.length ? '?' + p.join('&') : ''}`;
 
-            
-            // Use a temporary anchor element to trigger mailto: link (more reliable than window.location.href)
             const tempLink = document.createElement('a');
             tempLink.href = mailtoLink;
             tempLink.style.display = 'none';
@@ -1172,12 +1459,20 @@ document.addEventListener('DOMContentLoaded', () => {
 
         copyEmailsButton: () => {
             const em = selected();
-            if (!em.length) { msg($('emailBroadcastMessage'), 'No recipients selected to copy emails.', false); return; }
+            if (!em.length) { 
+                msg($('emailBroadcastMessage'), 'No recipients selected to copy emails.', false); 
+                return; 
+            }
             const list = em.join('; ');
-            navigator.clipboard.writeText(list).then(() => msg($('emailBroadcastMessage'), `Copied ${em.length} email(s) to clipboard!`, true)).catch(() => {
-                // Fallback for older browsers or if clipboard API is not allowed
-                const t = document.createElement('textarea'); t.value = list; t.style.position = 'fixed'; t.style.left = '-9999px';
-                document.body.appendChild(t); t.select();
+            navigator.clipboard.writeText(list).then(() => 
+                msg($('emailBroadcastMessage'), `Copied ${em.length} email(s) to clipboard!`, true)
+            ).catch(() => {
+                const t = document.createElement('textarea'); 
+                t.value = list; 
+                t.style.position = 'fixed'; 
+                t.style.left = '-9999px';
+                document.body.appendChild(t); 
+                t.select();
                 try { 
                     document.execCommand('copy'); 
                     msg($('emailBroadcastMessage'), `Copied ${em.length} email(s) to clipboard (fallback)!`, true); 
@@ -1188,12 +1483,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 document.body.removeChild(t);
             });
         },
+
         quickStartDataCollection: () => {
-            // Auto-fill email subject and content
             const subject = 'SFSC License Quantity Forecast Data Collection';
             const body = `Dear All,
 
-As part of our regular business forecast process, we kindly ask you to submit your forecasted SFSC license quantities for the period from Q1 2026 to Q4 2026. This information is essential for our upcoming budget planning cycle. Please complete the required details using the form below.
+As part of our regular business forecast process, we kindly ask you to submit your forecasted SFSC license quantities for the period from Q1 ${currentYear} to Q4 ${currentYear}. This information is essential for our upcoming budget planning cycle. Please complete the required details using the form below.
 
 Deadline: 
 Form Link: 
@@ -1208,30 +1503,103 @@ BT-admin`;
             $('emailSubjectInput').value = subject;
             $('emailContentInput').value = body;
             
-            // Select all users with email
             $('userListContainer').querySelectorAll('.user-checkbox:not(:disabled)').forEach(c => c.checked = true);
             updCnt();
             
-            // Show success message
             msg($('emailBroadcastMessage'), 'Data collection email template loaded and all users selected. Please review and click "Open in Outlook" to send.', true);
             
-            // Scroll to email content area for review
             $('emailSubjectInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+    };
 
+    // 导出 Forecast 数据的辅助函数
+    const exportForecastData = async (licenseType) => {
+        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+        
+        const budgetRes = await api('getAnnualBudgets', { year: currentYear });
+        const forecastRes = await api('getForecastData', { licenseType: licenseType });
+        
+        if (!forecastRes.success || !forecastRes.data || !forecastRes.data.length) {
+            msg($('loginMessage'), `Export failed: No ${licenseType} forecast data available.`, false);
+            return;
+        }
+
+        const budgets = {};
+        if (budgetRes.success && budgetRes.data) {
+            budgetRes.data.forEach(b => {
+                const key = `${b.MaisonName}|${b.LicenseType}`;
+                budgets[key] = parseFloat(b.AnnualTarget) || 0;
+            });
+        }
+
+        const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
+
+        let csv = 'Maison,Budget Annuel,';
+        quarters.forEach(q => {
+            csv += `${q} Qty,${q} Cost,`;
+        });
+        csv += 'Forecast Annuel,Variance %\n';
+
+        const grouped = {};
+        forecastRes.data.forEach(row => {
+            const key = row.MaisonName;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    maisonName: row.MaisonName,
+                    quarters: {}
+                };
+            }
+            grouped[key].quarters[row.Quarter] = {
+                quantity: row.TotalQuantity || 0,
+                cost: row.TotalCost || 0
+            };
+        });
+
+        Object.values(grouped).forEach(item => {
+            const budgetKey = `${item.maisonName}|${licenseType}`;
+            const budget = budgets[budgetKey] || 0;
+            let totalForecast = 0;
+            let row = `${item.maisonName},${budget.toFixed(2)},`;
+
+            quarters.forEach(q => {
+                const qData = item.quarters[q];
+                if (qData) {
+                    const qty = parseInt(qData.quantity) || 0;
+                    const cost = parseFloat(qData.cost) || 0;
+                    totalForecast += cost;
+                    row += `${qty},${cost.toFixed(2)},`;
+                } else {
+                    row += '-,-,';
+                }
+            });
+
+            const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
+            row += `${totalForecast.toFixed(2)},${variance >= 0 ? '+' : ''}${variance.toFixed(1)}%\n`;
+            csv += row;
+        });
+
+        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const l = document.createElement('a');
+        l.href = URL.createObjectURL(b);
+        l.download = `SFSC_${licenseType}_Forecast_${currentYear}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+        document.body.appendChild(l);
+        l.click();
+        document.body.removeChild(l);
+
+        msg($('loginMessage'), `${licenseType} forecast data exported successfully!`, true);
     };
 
     // 统一绑定事件
     Object.keys(handlers).forEach(id => {
         const element = $(id);
-        if (element) { // Check if element exists before adding listener
+        if (element) {
             element.addEventListener('click', handlers[id]);
         } else {
             console.warn(`Element with ID "${id}" not found. Skipping event listener.`);
         }
     });
     
-    // Ensure search input exists before adding listener
+    // 搜索输入框事件
     const userSearchInput = $('userSearchInput');
     if (userSearchInput) {
         userSearchInput.addEventListener('input', () => { 
@@ -1239,9 +1607,22 @@ BT-admin`;
             renderU(); 
             updCnt(); 
         });
-    } else {
-        console.warn('Element with ID "userSearchInput" not found. Skipping event listener.');
     }
 
+    // Notes 字符计数
+    const maisonNotesInput = $('maisonNotesInput');
+    if (maisonNotesInput) {
+        maisonNotesInput.addEventListener('input', () => {
+            const count = maisonNotesInput.value.length;
+            $('notesCharCount').textContent = `${count}/200`;
+            if (count >= 200) {
+                $('notesCharCount').style.color = '#d32f2f';
+            } else {
+                $('notesCharCount').style.color = '#666';
+            }
+        });
+    }
+
+    // 初始化
     showPage($('loginPage'));
 });

@@ -28,18 +28,16 @@
             <!-- Maison User View -->
             <div id="maisonView" class="user-view hidden">
                 
-                <!-- NEW: Email Management Section -->
+                <!-- Email Management Section -->
                 <div id="emailManagementSection" class="email-management-section">
                     <h3>Manage Your Email</h3>
                     <p id="emailDisplay" class="hidden">Your registered email: <span id="registeredEmailValue"></span></p>
                     <div id="emailForm" class="email-form hidden">
-                        <!-- NEW: Wrap label and input in a div for easier styling -->
                         <div class="email-input-group">
                             <label for="userEmailInput">Email Address:</label>
                             <input type="email" id="userEmailInput" class="form-control" placeholder="Enter your email address">
                         </div>
-                        <!-- END NEW -->
-                        <div class="email-buttons"> <!-- NEW: A container for buttons -->
+                        <div class="email-buttons">
                             <button id="submitEmailButton" class="email-action-button">Register Email</button>
                             <button id="cancelEditEmailButton" class="email-action-button hidden">Cancel</button>
                         </div>
@@ -47,88 +45,152 @@
                     <button id="editEmailButton" class="email-action-button hidden">Edit Email</button>
                     <p id="emailMessage" class="message"></p>
                 </div>
-                <!-- END NEW: Email Management Section -->
 
                 <button id="logoutButton">Logout</button> 
                 
-                <h3>Submit SFSC License Quantities</h3>
-                <label for="quarterSelect">Select Quarter:</label>
-                <!-- 季度下拉选择器 -->
-                <select id="quarterSelect" class="form-control">
-                    <!-- 选项将通过 JavaScript 动态填充 -->
-                </select>
-
-                <label for="clientelingLicenseCount">Number of Clienteling Licenses:</label>
-                <input type="number" id="clientelingLicenseCount" class="form-control" placeholder="Enter Clienteling quantity" min="0" value="0">
+                <!-- Submit Quarterly Forecast Section -->
+                <h3 id="maisonSubmitTitle">Submit Quarterly Forecast</h3>
                 
-                <label for="fullLicenseCount">Number of Full Licenses:</label>
-                <input type="number" id="fullLicenseCount" class="form-control" placeholder="Enter Full quantity" min="0" value="0">
-                
-                <button id="submitSfscDataButton">Submit Data</button>
-                <p id="maisonSubmitMessage" class="message"></p>
-
-                <!-- 成本计算工具 -->
-                <div class="cost-calculator-section">
-                    <h3>Cost Calculation Tool</h3>
-                    <p>Get an estimate of the cost based on license numbers and months.</p>
+                <div class="quarterly-forecast-section">
+                    <div class="quarters-input-container">
+                        <div class="quarter-input-item">
+                            <label for="q1Input">Q1:</label>
+                            <input type="number" id="q1Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                        </div>
+                        <div class="quarter-input-item">
+                            <label for="q2Input">Q2:</label>
+                            <input type="number" id="q2Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                        </div>
+                        <div class="quarter-input-item">
+                            <label for="q3Input">Q3:</label>
+                            <input type="number" id="q3Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                        </div>
+                        <div class="quarter-input-item">
+                            <label for="q4Input">Q4:</label>
+                            <input type="number" id="q4Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                        </div>
+                    </div>
                     
-                    <label for="calcClientelingLicenseCount">Clienteling Licenses:</label>
-                    <input type="number" id="calcClientelingLicenseCount" class="form-control" min="0" value="0">
+                    <p id="validationMessage" class="message"></p>
+                    
+                    <label for="maisonNotesInput">Notes (optional, max 200 characters):</label>
+                    <textarea id="maisonNotesInput" class="form-control notes-textarea" placeholder="Add any notes about your forecast..." maxlength="200" rows="3"></textarea>
+                    <p id="notesCharCount" class="char-count">0/200</p>
+                    
+                    <button id="submitForecastButton">Submit Forecast</button>
+                    <p id="maisonSubmitMessage" class="message"></p>
+                </div>
 
-                    <label for="calcFullLicenseCount">Full Licenses:</label>
-                    <input type="number" id="calcFullLicenseCount" class="form-control" min="0" value="0">
+                <!-- Cost Estimation Tool -->
+                <div class="cost-calculator-section">
+                    <h3>Cost Estimation Tool</h3>
+                    <p>Use this tool to estimate your annual cost before submitting.</p>
+                    
+                    <div class="quarters-input-container">
+                        <div class="quarter-input-item">
+                            <label for="calcQ1Input">Q1:</label>
+                            <input type="number" id="calcQ1Input" class="form-control quarter-input" min="0" value="0">
+                        </div>
+                        <div class="quarter-input-item">
+                            <label for="calcQ2Input">Q2:</label>
+                            <input type="number" id="calcQ2Input" class="form-control quarter-input" min="0" value="0">
+                        </div>
+                        <div class="quarter-input-item">
+                            <label for="calcQ3Input">Q3:</label>
+                            <input type="number" id="calcQ3Input" class="form-control quarter-input" min="0" value="0">
+                        </div>
+                        <div class="quarter-input-item">
+                            <label for="calcQ4Input">Q4:</label>
+                            <input type="number" id="calcQ4Input" class="form-control quarter-input" min="0" value="0">
+                        </div>
+                    </div>
 
-                    <label for="calcMonthsSelect">Months:</label>
-                    <select id="calcMonthsSelect" class="form-control">
-                        <!-- 月份选项将通过 JavaScript 填充 -->
-                    </select>
-
-                    <button id="seeCostButton" class="cost-calculator-button">See Cost</button>
-                    <p id="calculatedCostDisplay" class="message success">Estimated Cost: 0.00 €</p>
+                    <button id="calculateCostButton" class="cost-calculator-button">Calculate Cost</button>
+                    <div id="costBreakdownDisplay" class="cost-breakdown">
+                        <p>Estimated Cost Breakdown:</p>
+                        <p>Q1: <span id="q1CostDisplay">0.00</span>€ | Q2: <span id="q2CostDisplay">0.00</span>€ | Q3: <span id="q3CostDisplay">0.00</span>€ | Q4: <span id="q4CostDisplay">0.00</span>€</p>
+                        <p class="total-forecast">Total Forecast Annuel: <span id="totalForecastDisplay">0.00</span>€</p>
+                    </div>
                     <p id="calculatorErrorMessage" class="message"></p>
                 </div>
-                <!-- 成本计算工具结束 -->
 
                 <h3>My Current Data</h3>
                 <div id="maisonHistoryTableContainer" class="table-container">
                     <!-- Maison current data will be displayed here -->
                 </div>
 
-                <!-- NEW: Maison Historical Actions Log -->
                 <h3>My Historical Actions</h3>
                 <div id="maisonActionsLogTableContainer" class="table-container">
                     <!-- Maison historical actions log will be displayed here -->
                 </div>
-                <!-- END NEW -->
             </div>
 
-                        <!-- Admin View -->
-                        <div id="adminView" class="user-view hidden">
-                            <!-- NEW: Forecast Table Section -->
-                            <h3>Annual Forecast (Active & Approved Records)</h3>
-                            <div id="forecastTableContainer" class="table-container forecast-table-container">
-                                <!-- Forecast table will be displayed here -->
-                            </div>
-                            <button id="exportForecastButton">Export Forecast (CSV)</button>
-                            <!-- END NEW: Forecast Table Section -->
-                            
-                            <h3>Overview of SFSC Costs for All Maisons</h3>
-                            <div id="adminDataTableContainer" class="table-container">
-                                <!-- Admin data will be displayed here -->
-                            </div>
-                            <button id="exportDataButton">Export Data (CSV)</button>
-            
+            <!-- Admin View -->
+            <div id="adminView" class="user-view hidden">
+                
+                <!-- Budget Management Section -->
+                <div class="budget-management-section">
+                    <h3>Set Annual Budget</h3>
+                    <label for="budgetYearSelect">Year:</label>
+                    <select id="budgetYearSelect" class="form-control">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+
+                    <label for="budgetMaisonSelect">Maison:</label>
+                    <select id="budgetMaisonSelect" class="form-control">
+                        <!-- Options will be populated by JavaScript -->
+                    </select>
+
+                    <label for="budgetLicenseTypeSelect">License Type:</label>
+                    <select id="budgetLicenseTypeSelect" class="form-control">
+                        <option value="Clienteling">Clienteling</option>
+                        <option value="Full">Full</option>
+                    </select>
+
+                    <label for="budgetAnnuelInput">Budget Annuel (€):</label>
+                    <input type="number" id="budgetAnnuelInput" class="form-control" placeholder="Enter budget amount" min="0" value="0">
+
+                    <button id="submitBudgetButton">Submit Budget</button>
+                    <p id="budgetSubmitMessage" class="message"></p>
+                </div>
+
+                <!-- Forecast Table with Tabs -->
+                <h3>Annual Forecast</h3>
+                <div class="forecast-tabs">
+                    <button id="clientelingForecastTab" class="tab-button active">Clienteling Licenses</button>
+                    <button id="fullForecastTab" class="tab-button">Full Licenses</button>
+                </div>
+                
+                <div id="clientelingForecastContainer" class="forecast-container active">
+                    <div id="clientelingForecastTableContainer" class="table-container forecast-table-container">
+                        <!-- Clienteling forecast table will be displayed here -->
+                    </div>
+                    <button id="exportClientelingForecastButton">Export Clienteling Forecast (CSV)</button>
+                </div>
+                
+                <div id="fullForecastContainer" class="forecast-container hidden">
+                    <div id="fullForecastTableContainer" class="table-container forecast-table-container">
+                        <!-- Full forecast table will be displayed here -->
+                    </div>
+                    <button id="exportFullForecastButton">Export Full Forecast (CSV)</button>
+                </div>
+
+                <h3>Overview of SFSC Costs for All Maisons</h3>
+                <div id="adminDataTableContainer" class="table-container">
+                    <!-- Admin data will be displayed here -->
+                </div>
+                <button id="exportDataButton">Export Data (CSV)</button>
 
                 <!-- Email Broadcast Section -->
                 <div id="emailBroadcastSection" class="email-broadcast-section">
                     <h3>Send Email to Users via Outlook</h3>
                     <p>Select users from the list below and compose email in Outlook.</p>
+                    
                     <!-- Quick Actions Section -->
-<div class="quick-actions-section">
-    <label>Quick Actions:</label>
-    <button id="quickStartDataCollection" class="quick-action-button">Start Data Collection</button>
-</div>
-<!-- End Quick Actions Section -->
+                    <div class="quick-actions-section">
+                        <label>Quick Actions:</label>
+                        <button id="quickStartDataCollection" class="quick-action-button">Start Data Collection</button>
+                    </div>
 
                     <!-- User Selection -->
                     <div class="user-selection-header">
@@ -141,7 +203,6 @@
                     </div>
                     
                     <div id="userListContainer" class="user-list-container">
-                        <!-- User list will be dynamically populated -->
                         <p class="loading-text">Loading users...</p>
                     </div>
                     
@@ -158,21 +219,16 @@
                     <p id="emailBroadcastMessage" class="message"></p>
                     <p id="recipientCountDisplay" class="recipient-count"></p>
                 </div>
-                
-                                <!-- NEW: Monthly Tracking Section -->
-                                                <!-- NEW: Monthly Tracking Section -->
+
+                <!-- Monthly Tracking Section (保留) -->
                 <div class="monthly-tracking-forms-container">
                     <div class="monthly-tracking-form-section">
                         <h3 style="margin-top: 0;">Set Annual Target</h3>
                         <label for="targetYearSelect">Select Year:</label>
-                        <select id="targetYearSelect" class="form-control">
-                            <!-- 年份选项将通过 JavaScript 动态填充 -->
-                        </select>
+                        <select id="targetYearSelect" class="form-control"></select>
 
                         <label for="targetMaisonSelect">Select Maison:</label>
-                        <select id="targetMaisonSelect" class="form-control">
-                            <!-- Maison 选项将通过 JavaScript 动态填充 -->
-                        </select>
+                        <select id="targetMaisonSelect" class="form-control"></select>
 
                         <label for="targetClientelingInput">Clienteling Annual Target:</label>
                         <input type="number" id="targetClientelingInput" class="form-control" placeholder="Enter Clienteling annual target" min="0" value="0">
@@ -187,9 +243,7 @@
                     <div class="monthly-tracking-form-section">
                         <h3 style="margin-top: 0;">Submit Monthly Actual</h3>
                         <label for="actualYearSelect">Select Year:</label>
-                        <select id="actualYearSelect" class="form-control">
-                            <!-- 年份选项将通过 JavaScript 动态填充 -->
-                        </select>
+                        <select id="actualYearSelect" class="form-control"></select>
 
                         <label for="actualMonthSelect">Select Month:</label>
                         <select id="actualMonthSelect" class="form-control">
@@ -208,9 +262,7 @@
                         </select>
 
                         <label for="actualMaisonSelect">Select Maison:</label>
-                        <select id="actualMaisonSelect" class="form-control">
-                            <!-- Maison 选项将通过 JavaScript 动态填充 -->
-                        </select>
+                        <select id="actualMaisonSelect" class="form-control"></select>
 
                         <label for="actualClientelingInput">Clienteling Actual Quantity:</label>
                         <input type="number" id="actualClientelingInput" class="form-control" placeholder="Enter Clienteling actual quantity" min="0" value="0">
@@ -223,22 +275,17 @@
                     </div>
                 </div>
 
-                
-                                <h3>Monthly Actual Tracking</h3>
-                                <div id="monthlyTrackingTableContainer" class="table-container">
-                                    <!-- Monthly tracking table will be displayed here -->
-                                </div>
-                                <button id="exportMonthlyTrackingButton">Export Monthly Tracking (CSV)</button>
-                                <!-- END NEW: Monthly Tracking Section -->
-                
-                
-                <!-- NEW: Admin Historical Actions Log -->
+                <h3>Monthly Actual Tracking</h3>
+                <div id="monthlyTrackingTableContainer" class="table-container">
+                    <!-- Monthly tracking table will be displayed here -->
+                </div>
+                <button id="exportMonthlyTrackingButton">Export Monthly Tracking (CSV)</button>
+
                 <h3>All Historical Actions Log</h3>
                 <div id="adminActionsLogTableContainer" class="table-container">
                     <!-- Admin historical actions log will be displayed here -->
                 </div>
                 <button id="exportHistoryDataButton">Export History Data (CSV)</button>
-                <!-- END NEW -->
             </div>
         </div>
     </div>

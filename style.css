@@ -38,7 +38,7 @@ body {
     border-radius: 12px;
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
     width: 90%;
-    max-width: 1000px;
+    max-width: 1200px;
     text-align: center;
 }
 
@@ -67,7 +67,13 @@ h3 { margin: 30px 0 15px; font-size: 1.4em; border-bottom: 1px solid var(--borde
     background-color: #f8f8f8;
 }
 
-.form-control-login { width: calc(100% - 20px); padding: 10px; margin: 8px 0; font-size: 0.95em; border-color: #bdbdbd; }
+.form-control-login { 
+    width: calc(100% - 20px); 
+    padding: 10px; 
+    margin: 8px 0; 
+    font-size: 0.95em; 
+    border-color: #bdbdbd; 
+}
 
 select.form-control {
     background: #f8f8f8 url('data:image/svg+xml;utf8,<svg fill="#000000" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg"><path d="M7 10l5 5 5-5z"/></svg>') no-repeat right 10px center;
@@ -75,7 +81,67 @@ select.form-control {
     padding-right: 30px;
 }
 
-input[readonly].form-control { background-color: #e0e0e0; cursor: not-allowed; }
+input[readonly].form-control { 
+    background-color: #e0e0e0; 
+    cursor: not-allowed; 
+}
+
+/* === 季度输入框容器 === */
+.quarters-input-container {
+    display: flex;
+    gap: 15px;
+    margin: 20px 0;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.quarter-input-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 120px;
+    max-width: 200px;
+}
+
+.quarter-input-item label {
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 5px;
+    font-size: 1.1em;
+}
+
+.quarter-input {
+    width: 100%;
+    padding: 10px;
+    text-align: center;
+    font-size: 1.1em;
+    font-weight: bold;
+    border: 2px solid var(--primary-color);
+    border-radius: var(--border-radius);
+}
+
+.quarter-input:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* === Notes Textarea === */
+.notes-textarea {
+    resize: vertical;
+    min-height: 80px;
+    font-family: inherit;
+    width: calc(100% - 24px);
+}
+
+.char-count {
+    text-align: right;
+    font-size: 0.85em;
+    color: #666;
+    margin-top: -5px;
+    margin-bottom: 10px;
+}
 
 /* === 按钮样式 === */
 button {
@@ -90,44 +156,115 @@ button {
     transition: background-color var(--transition);
 }
 
-button:hover { background-color: var(--primary-dark); }
+button:hover { 
+    background-color: var(--primary-dark); 
+}
 
-#logoutButton { background-color: #d32f2f; margin-bottom: 20px; }
-#logoutButton:hover { background-color: #b71c1c; }
+#logoutButton { 
+    background-color: #d32f2f; 
+    margin-bottom: 20px; 
+}
 
-.login-button, .cost-calculator-button, .email-broadcast-button { width: 100%; }
-.cost-calculator-button, .email-broadcast-button { background-color: var(--secondary-color); }
-.cost-calculator-button:hover, .email-broadcast-button:hover { background-color: var(--secondary-dark); }
-.email-broadcast-button:disabled { background-color: #ccc; cursor: not-allowed; }
-.email-broadcast-button-secondary { background-color: var(--gray-color); }
-.email-broadcast-button-secondary:hover { background-color: var(--gray-dark); }
+#logoutButton:hover { 
+    background-color: #b71c1c; 
+}
+
+.login-button, 
+.cost-calculator-button, 
+.email-broadcast-button { 
+    width: 100%; 
+}
+
+.cost-calculator-button, 
+.email-broadcast-button { 
+    background-color: var(--secondary-color); 
+}
+
+.cost-calculator-button:hover, 
+.email-broadcast-button:hover { 
+    background-color: var(--secondary-dark); 
+}
+
+.email-broadcast-button:disabled { 
+    background-color: #ccc; 
+    cursor: not-allowed; 
+}
+
+.email-broadcast-button-secondary { 
+    background-color: var(--gray-color); 
+}
+
+.email-broadcast-button-secondary:hover { 
+    background-color: var(--gray-dark); 
+}
 
 /* 表格内按钮 */
-.delete-button-table, .approve-button-table, .reject-button-table {
+.delete-button-table, 
+.approve-button-table, 
+.reject-button-table {
     padding: 5px 10px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
     font-size: 0.85em;
-    margin: 0;
+    margin: 0 2px;
     transition: background-color 0.2s;
     display: inline-block;
     vertical-align: middle;
 }
 
-.delete-button-table { background-color: var(--danger-color); color: white; }
-.delete-button-table:hover { background-color: var(--danger-dark); }
-.approve-button-table { background-color: var(--success-color); color: white; margin: -3px 5px 0 0; }
-.approve-button-table:hover { background-color: var(--success-dark); }
-.reject-button-table { background-color: var(--warning-color); color: var(--text-color); margin-top: -3px; }
-.reject-button-table:hover { background-color: #e0a800; }
+.delete-button-table { 
+    background-color: var(--danger-color); 
+    color: white; 
+}
+
+.delete-button-table:hover { 
+    background-color: var(--danger-dark); 
+}
+
+.approve-button-table { 
+    background-color: var(--success-color); 
+    color: white; 
+}
+
+.approve-button-table:hover { 
+    background-color: var(--success-dark); 
+}
+
+.reject-button-table { 
+    background-color: var(--warning-color); 
+    color: var(--text-color); 
+}
+
+.reject-button-table:hover { 
+    background-color: #e0a800; 
+}
 
 /* === 消息提示 === */
-.message { margin-top: 10px; font-weight: bold; color: #e53935; }
-.message.success { color: #43a047; }
+.message { 
+    margin-top: 10px; 
+    font-weight: bold; 
+    color: #e53935; 
+}
+
+.message.success { 
+    color: #43a047; 
+}
+
+.message.warning {
+    color: var(--warning-color);
+    background-color: #fff3cd;
+    padding: 10px;
+    border-radius: var(--border-radius);
+    border: 1px solid var(--warning-color);
+}
 
 /* === 通用区块 === */
-.user-view { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--border-color); }
+.user-view { 
+    margin-top: 20px; 
+    padding-top: 20px; 
+    border-top: 1px solid var(--border-color); 
+}
 
 label {
     display: block;
@@ -138,7 +275,8 @@ label {
 }
 
 /* === 表格样式 === */
-.table-container, .forecast-table-container {
+.table-container, 
+.forecast-table-container {
     margin-top: 20px;
     overflow: auto;
     max-height: 400px;
@@ -148,13 +286,15 @@ label {
     background-color: var(--light-bg);
 }
 
-.forecast-table-container { max-height: 500px; }
+.forecast-table-container { 
+    max-height: 500px; 
+}
 
 table {
     width: 100%;
     border-collapse: collapse;
     margin-bottom: 15px;
-    table-layout: fixed;
+    table-layout: auto;
 }
 
 table th, table td {
@@ -162,21 +302,20 @@ table th, table td {
     padding: 10px;
     text-align: left;
     vertical-align: middle;
-    width: 70px;
 }
 
 table td {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    font-size: 0.8em;
+    font-size: 0.85em;
 }
 
 table th {
     background-color: #e0f2f7;
     color: #004d40;
     font-weight: bold;
-    font-size: 0.75em;
+    font-size: 0.8em;
     position: sticky;
     top: -10px;
     z-index: 1;
@@ -185,77 +324,23 @@ table th {
     line-height: 1.3;
 }
 
-table tr:nth-child(even) { background-color: #f5f5f5; }
-table tr:hover { background-color: #e0e0e0; }
-
-/* 表格列宽（7列表格） */
-table:not(:has(th:nth-child(8))) th:nth-child(-n+5),
-table:not(:has(th:nth-child(8))) td:nth-child(-n+5) { width: 100px; }
-
-table:not(:has(th:nth-child(8))) th:nth-child(7),
-table:not(:has(th:nth-child(8))) td:nth-child(7) { width: 100px; }
-
-table th:nth-child(6), table td:nth-child(6) { width: calc(100% - 600px); }
-
-/* 表格列宽（9列表格 - Admin） */
-table:has(th:nth-child(9)) th:nth-child(n+1):nth-child(-n+6),
-table:has(th:nth-child(9)) td:nth-child(n+1):nth-child(-n+6),
-table:has(th:nth-child(9)) th:nth-child(8),
-table:has(th:nth-child(9)) td:nth-child(8) { width: calc((100% - 300px) / 7); }
-
-table:has(th:nth-child(9)) th:nth-child(7),
-table:has(th:nth-child(9)) td:nth-child(7),
-table th:nth-child(9), table td:nth-child(9) { width: 150px; }
-
-/* Admin历史记录表格 */
-#adminActionsLogTableContainer table th:nth-child(-n+6),
-#adminActionsLogTableContainer table td:nth-child(-n+6),
-#adminActionsLogTableContainer table th:nth-child(n+8):nth-child(-n+11),
-#adminActionsLogTableContainer table td:nth-child(n+8):nth-child(-n+11) { width: calc((100% - 280px) / 9); }
-
-#adminActionsLogTableContainer table th:nth-child(7),
-#adminActionsLogTableContainer table td:nth-child(7),
-#adminActionsLogTableContainer table th:nth-child(9),
-#adminActionsLogTableContainer table td:nth-child(9) { width: 140px; }
-
-/* Maison历史记录表格 */
-#maisonActionsLogTableContainer table th:nth-child(2),
-#maisonActionsLogTableContainer table td:nth-child(2) { width: 60px; } /* Quarter 列加宽 */
-
-#maisonActionsLogTableContainer table th:nth-child(7),
-#maisonActionsLogTableContainer table td:nth-child(7),
-#maisonActionsLogTableContainer table th:nth-child(10),
-#maisonActionsLogTableContainer table td:nth-child(10) { width: 130px; } /* Submission Time 和 Action Time 缩小 */
-#maisonActionsLogTableContainer table th:nth-child(10), /* 对应你实际的第10列：Action By */
-#maisonActionsLogTableContainer table td:nth-child(10) {
-    width: 80px; /* Action By 列变窄 */
+table tr:nth-child(even) { 
+    background-color: #f5f5f5; 
 }
-/* Forecast表格 */
-#forecastTableContainer table { table-layout: auto; min-width: 100%; }
-#forecastTableContainer table th, #forecastTableContainer table td { padding: 8px; text-align: center; font-size: 0.85em; }
-#forecastTableContainer table th:nth-child(1), #forecastTableContainer table td:nth-child(1) { width: 100px; text-align: left; }
-#forecastTableContainer table th:nth-child(2), #forecastTableContainer table td:nth-child(2) { width: 110px; text-align: left; }
-#forecastTableContainer table th:nth-child(3), #forecastTableContainer table td:nth-child(3),
-#forecastTableContainer table th:nth-child(5), #forecastTableContainer table td:nth-child(5),
-#forecastTableContainer table th:nth-child(7), #forecastTableContainer table td:nth-child(7),
-#forecastTableContainer table th:nth-child(9), #forecastTableContainer table td:nth-child(9) { width: 70px; }
-#forecastTableContainer table th:nth-child(4), #forecastTableContainer table td:nth-child(4),
-#forecastTableContainer table th:nth-child(6), #forecastTableContainer table td:nth-child(6),
-#forecastTableContainer table th:nth-child(8), #forecastTableContainer table td:nth-child(8),
-#forecastTableContainer table th:nth-child(10), #forecastTableContainer table td:nth-child(10) { width: 80px; }
-#forecastTableContainer table th:nth-child(11), #forecastTableContainer table td:nth-child(11) { width: 80px; font-weight: bold; }
-#forecastTableContainer table th:nth-child(12), #forecastTableContainer table td:nth-child(12) { width: 90px; font-weight: bold; color: var(--primary-color); }
-#forecastTableContainer table td:nth-child(n+11) { background-color: #fffacd; }
 
-/* Monthly Tracking表格 */
-#monthlyTrackingTableContainer table { table-layout: auto; min-width: 100%; }
-#monthlyTrackingTableContainer table th, #monthlyTrackingTableContainer table td { padding: 8px; text-align: center; font-size: 0.85em; }
-#monthlyTrackingTableContainer table th:nth-child(1), #monthlyTrackingTableContainer table td:nth-child(1) { width: 100px; text-align: left; }
-#monthlyTrackingTableContainer table th:nth-child(2), #monthlyTrackingTableContainer table td:nth-child(2) { width: 110px; text-align: left; }
-#monthlyTrackingTableContainer table th:nth-child(n+3):nth-child(-n+14),
-#monthlyTrackingTableContainer table td:nth-child(n+3):nth-child(-n+14) { width: 70px; }
-#monthlyTrackingTableContainer table th:nth-child(15), #monthlyTrackingTableContainer table td:nth-child(15) { width: 90px; background-color: #fffacd; font-weight: bold; }
-#monthlyTrackingTableContainer table th:nth-child(16), #monthlyTrackingTableContainer table td:nth-child(16) { width: 80px; font-weight: bold; }
+table tr:hover { 
+    background-color: #e0e0e0; 
+}
+
+/* 高亮有减少数量的行 */
+table tr.warning-row {
+    background-color: #fff3cd !important;
+    border-left: 4px solid var(--warning-color);
+}
+
+table tr.warning-row:hover {
+    background-color: #ffe69c !important;
+}
 
 /* === 状态标记 === */
 .status-badge {
@@ -269,13 +354,38 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     white-space: nowrap;
 }
 
-.status-pending { background-color: var(--gray-color); }
-.status-approved { background-color: var(--success-color); }
-.status-rejected { background-color: var(--danger-color); }
+.status-pending { 
+    background-color: var(--gray-color); 
+}
 
-.variance-good { color: var(--success-color); background-color: #d4edda; }
-.variance-warning { color: #856404; background-color: #fff3cd; }
-.variance-danger { color: #721c24; background-color: #f8d7da; }
+.status-approved { 
+    background-color: var(--success-color); 
+}
+
+.status-rejected { 
+    background-color: var(--danger-color); 
+}
+
+.variance-good { 
+    color: var(--success-color); 
+    background-color: #d4edda; 
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.variance-warning { 
+    color: #856404; 
+    background-color: #fff3cd; 
+    padding: 3px 8px;
+    border-radius: 4px;
+}
+
+.variance-danger { 
+    color: #721c24; 
+    background-color: #f8d7da; 
+    padding: 3px 8px;
+    border-radius: 4px;
+}
 
 /* === 特定区块样式 === */
 .login-form-container {
@@ -290,19 +400,30 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.05);
 }
 
-.login-form-container h2 { margin: 10px 0 20px; font-size: 1.5em; color: var(--text-color); }
-
-.cost-calculator-section, .email-broadcast-section, .monthly-tracking-form-section {
-    border-radius: 8px;
-    padding: 20px;
-    margin-top: 20px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+.login-form-container h2 { 
+    margin: 10px 0 20px; 
+    font-size: 1.5em; 
+    color: var(--text-color); 
 }
 
+/* === Quarterly Forecast Section === */
+.quarterly-forecast-section {
+    background-color: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+}
+
+/* === Cost Calculator Section === */
 .cost-calculator-section {
     background-color: var(--light-blue-bg);
     border: 1px solid #b3e0ff;
     margin-top: 30px;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .cost-calculator-section h3 {
@@ -312,22 +433,46 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     padding-bottom: 10px;
 }
 
-.cost-calculator-section p, .email-broadcast-section p { color: #555; font-size: 0.9em; margin-bottom: 20px; }
-.cost-calculator-section .form-control { background-color: #e6f7ff; border-color: #99d6ff; }
-
-#calculatedCostDisplay {
-    font-size: 1.2em;
-    font-weight: bold;
-    color: var(--secondary-color);
-    background-color: #e6f7ff;
-    padding: 10px;
-    border-radius: 5px;
-    margin-top: 20px;
-    border: 1px solid #b3e0ff;
+.cost-calculator-section p { 
+    color: #555; 
+    font-size: 0.9em; 
+    margin-bottom: 20px; 
 }
 
-#calculatorErrorMessage { color: var(--danger-color); }
+.cost-calculator-section .form-control { 
+    background-color: #e6f7ff; 
+    border-color: #99d6ff; 
+}
 
+.cost-breakdown {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #e6f7ff;
+    border: 1px solid #b3e0ff;
+    border-radius: var(--border-radius);
+}
+
+.cost-breakdown p {
+    margin: 5px 0;
+    font-size: 0.95em;
+    color: var(--text-color);
+}
+
+.cost-breakdown .total-forecast {
+    font-size: 1.1em;
+    font-weight: bold;
+    color: var(--secondary-color);
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px solid #99d6ff;
+}
+
+.cost-breakdown span {
+    font-weight: bold;
+    color: var(--secondary-dark);
+}
+
+/* === Email Management Section === */
 .email-management-section {
     background-color: var(--light-bg);
     border: 1px solid var(--border-color);
@@ -362,7 +507,9 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     min-height: 18px;
 }
 
-#registeredEmailValue { color: var(--primary-color); }
+#registeredEmailValue { 
+    color: var(--primary-color); 
+}
 
 .email-form {
     display: flex;
@@ -383,7 +530,11 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     min-width: 180px;
 }
 
-.email-input-group label { margin: 0; white-space: nowrap; flex-shrink: 0; }
+.email-input-group label { 
+    margin: 0; 
+    white-space: nowrap; 
+    flex-shrink: 0; 
+}
 
 .email-management-section .form-control {
     width: 100%;
@@ -416,10 +567,17 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     min-width: 50px;
 }
 
-.email-action-button:hover { background-color: var(--primary-dark); }
+.email-action-button:hover { 
+    background-color: var(--primary-dark); 
+}
 
-#cancelEditEmailButton { background-color: var(--gray-color); }
-#cancelEditEmailButton:hover { background-color: var(--gray-dark); }
+#cancelEditEmailButton { 
+    background-color: var(--gray-color); 
+}
+
+#cancelEditEmailButton:hover { 
+    background-color: var(--gray-dark); 
+}
 
 #emailMessage {
     margin-top: 3px;
@@ -439,11 +597,73 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     font-size: 0.75em;
 }
 
+/* === Budget Management Section === */
+.budget-management-section {
+    background-color: var(--light-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+}
+
+.budget-management-section h3 {
+    color: var(--primary-color);
+    margin-top: 0;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+}
+
+/* === Forecast Tabs === */
+.forecast-tabs {
+    display: flex;
+    gap: 0;
+    margin: 20px 0 0 0;
+    border-bottom: 2px solid var(--border-color);
+}
+
+.tab-button {
+    flex: 1;
+    padding: 12px 20px;
+    background-color: #f0f0f0;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-size: 1em;
+    font-weight: bold;
+    color: #666;
+    transition: all 0.3s ease;
+    margin: 0;
+    border-radius: 0;
+}
+
+.tab-button:hover {
+    background-color: #e0e0e0;
+}
+
+.tab-button.active {
+    background-color: white;
+    color: var(--primary-color);
+    border-bottom: 3px solid var(--primary-color);
+}
+
+.forecast-container {
+    display: none;
+}
+
+.forecast-container.active {
+    display: block;
+}
+
+/* === Email Broadcast Section === */
 .email-broadcast-section {
     background-color: var(--light-blue-bg);
     border: 1px solid #b3e0ff;
     margin-top: 30px;
     text-align: left;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
 .email-broadcast-section h3 {
@@ -453,7 +673,7 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     padding-bottom: 10px;
     text-align: center;
 }
-/* Quick Actions Section */
+
 .quick-actions-section {
     display: flex;
     align-items: center;
@@ -489,8 +709,10 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     background-color: var(--secondary-dark);
 }
 
-
-.email-broadcast-section .form-control { background-color: #e6f7ff; border-color: #99d6ff; }
+.email-broadcast-section .form-control { 
+    background-color: #e6f7ff; 
+    border-color: #99d6ff; 
+}
 
 .email-textarea {
     resize: vertical;
@@ -498,7 +720,7 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     font-family: inherit;
 }
 
-.checkbox-container, .user-list-container {
+.user-list-container {
     background-color: var(--light-bg);
     border: 1px solid #ddd;
     border-radius: var(--border-radius);
@@ -506,58 +728,52 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     margin: 10px 0;
     max-height: 400px;
     overflow-y: auto;
-}
-
-.checkbox-container { max-height: 200px; }
-.user-list-container { min-height: 100px; }
-
-.maison-checkbox-item, .user-checkbox-item {
-    display: flex;
-    align-items: center;
-    padding: 5px;
-    margin: 8px 0;
+    min-height: 100px;
 }
 
 .user-checkbox-item {
+    display: flex;
+    align-items: center;
     padding: 10px;
+    margin: 8px 0;
     background-color: white;
     border: 1px solid var(--border-color);
     border-radius: 4px;
     transition: background-color 0.2s ease;
 }
 
-.user-checkbox-item:hover { background-color: #f5f5f5; }
-
-.maison-checkbox, .user-checkbox {
-    margin-right: 8px;
-    cursor: pointer;
-    width: 18px;
-    height: 18px;
+.user-checkbox-item:hover { 
+    background-color: #f5f5f5; 
 }
 
 .user-checkbox {
     margin-right: 12px;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
     flex-shrink: 0;
 }
 
-.user-checkbox:disabled { cursor: not-allowed; opacity: 0.5; }
+.user-checkbox:disabled { 
+    cursor: not-allowed; 
+    opacity: 0.5; 
+}
 
-.maison-checkbox-label, .user-checkbox-label {
+.user-checkbox-label {
     cursor: pointer;
     font-weight: normal;
     color: var(--text-color);
     margin: 0;
     user-select: none;
-}
-
-.user-checkbox-label {
     display: flex;
     flex-direction: column;
     gap: 4px;
     flex: 1;
 }
 
-.maison-checkbox-label:hover, .user-checkbox-label:hover { color: var(--primary-color); }
+.user-checkbox-label:hover { 
+    color: var(--primary-color); 
+}
 
 .user-name {
     font-weight: bold;
@@ -588,7 +804,8 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     flex-wrap: wrap;
 }
 
-.email-broadcast-button, .email-broadcast-button-secondary {
+.email-broadcast-button, 
+.email-broadcast-button-secondary {
     padding: 12px 25px;
     border: none;
     border-radius: var(--border-radius);
@@ -613,7 +830,9 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     font-style: italic;
 }
 
-.user-selection-header { margin-bottom: 15px; }
+.user-selection-header { 
+    margin-bottom: 15px; 
+}
 
 .user-selection-header > label {
     display: block;
@@ -641,7 +860,9 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     transition: background-color var(--transition);
 }
 
-.selection-button:hover { background-color: var(--gray-dark); }
+.selection-button:hover { 
+    background-color: var(--gray-dark); 
+}
 
 .user-search-input {
     flex: 1;
@@ -652,15 +873,20 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     font-size: 0.9em;
 }
 
-.loading-text, .error-text, .no-users-text {
+.loading-text, 
+.error-text, 
+.no-users-text {
     text-align: center;
     padding: 20px;
     color: #666;
     font-style: italic;
 }
 
-.error-text { color: #d32f2f; }
+.error-text { 
+    color: #d32f2f; 
+}
 
+/* === Monthly Tracking Section === */
 .monthly-tracking-forms-container {
     display: flex;
     gap: 20px;
@@ -671,14 +897,30 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
     background-color: var(--light-bg);
     border: 1px solid var(--border-color);
     flex: 1;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
 }
 
-.monthly-tracking-form-section .form-control { background-color: white; border-color: #ccc; }
-.monthly-tracking-form-section button { margin-top: 15px; }
+.monthly-tracking-form-section .form-control { 
+    background-color: white; 
+    border-color: #ccc; 
+}
 
-#targetSubmitMessage, #actualSubmitMessage { margin-top: 10px; min-height: 20px; }
-#exportMonthlyTrackingButton { margin: 15px 0 20px; }
-/* Alert button style for Monthly Tracking table */
+.monthly-tracking-form-section button { 
+    margin-top: 15px; 
+}
+
+#targetSubmitMessage, 
+#actualSubmitMessage { 
+    margin-top: 10px; 
+    min-height: 20px; 
+}
+
+#exportMonthlyTrackingButton { 
+    margin: 15px 0 20px; 
+}
+
 .alert-button-table {
     padding: 5px 10px;
     border: none;
@@ -699,6 +941,6 @@ table th:nth-child(9), table td:nth-child(9) { width: 150px; }
 
 .alert-button-table:disabled {
     background-color: #ccc;
-    cursor: pointer;  /* 修改这一行：从 not-allowed 改为 pointer */
+    cursor: pointer;
     color: #666;
 }
