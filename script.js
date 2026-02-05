@@ -1,6 +1,6 @@
 document.addEventListener('DOMContentLoaded', () => {
     // 请替换为您的 Apps Script Web App URL
-    const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIVoYBQtqkFB52frxB8e81899ISf_pDwJ_Fj3f9blb7mI2c3QhT4pHoz3sQuG1l6EDVQ/exec';
+    const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw8C8Dwnx4P5OjwoOhblQeQYaMDqFN7l6NpFJpfetHW7oH8vLMI4XW32karj_yzdwZ_/exec';
 
     const $ = id => document.getElementById(id);
     
