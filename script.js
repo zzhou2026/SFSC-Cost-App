@@ -1064,14 +1064,31 @@ document.addEventListener('DOMContentLoaded', () => {
             const warnings = validateQuarterData(filledData);
             
             // ⭐ 检测哪些季度有递减问题，并记录详细信息
-            const decreaseInfo = {}; // {索引: {previousQuarter: 'Q2', previousValue: 2}}
+            const decreaseInfo = {};
             for (let i = 1; i < filledData.length; i++) {
                 if (filledData[i] !== null && filledData[i - 1] !== null) {
                     if (filledData[i] < filledData[i - 1]) {
                         decreaseInfo[i] = {
-                            previousQuarter: `Q${i}`, // Q1索引0, Q2索引1...所以i就是前一个季度号
+                            previousQuarter: `Q${i}`,
                             previousValue: filledData[i - 1]
                         };
+                    }
+                }
+            }
+            
+            // ⭐ 找到每个季度"继承自"哪个用户填写的季度
+            const sourceQuarter = new Array(4).fill(null); // 记录每个季度的数据来源
+            for (let i = 0; i < 4; i++) {
+                if (userInput[i] !== '' && userInput[i] !== null) {
+                    // 用户填写的季度
+                    sourceQuarter[i] = i; // 来源是自己
+                } else {
+                    // 用户未填写，向前查找最近的用户填写季度
+                    for (let j = i - 1; j >= 0; j--) {
+                        if (userInput[j] !== '' && userInput[j] !== null) {
+                            sourceQuarter[i] = j; // 来源是前面的Qj
+                            break;
+                        }
                     }
                 }
             }
@@ -1096,13 +1113,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const isUserFilled = userInput[idx] !== '' && userInput[idx] !== null;
                 const isChanged = existingData && existingData[idx] !== null && val !== existingData[idx];
                 const isNew = !existingData || existingData[idx] === null;
-                const decreaseDetail = decreaseInfo[idx]; // ⭐ 获取递减详情
+                const decreaseDetail = decreaseInfo[idx];
+                const source = sourceQuarter[idx]; // ⭐ 数据来源季度
                 
                 let marker = '';
                 if (isUserFilled) {
                     // 用户手动填写
                     if (decreaseDetail) {
-                        // ⭐ 用户填的值导致递减，显示具体信息
                         const prevQ = decreaseDetail.previousQuarter;
                         const prevVal = decreaseDetail.previousValue;
                         marker = isNew 
@@ -1112,15 +1129,20 @@ document.addEventListener('DOMContentLoaded', () => {
                         marker = isNew ? ' (new)' : isChanged ? ' (updated)' : ' (no change)';
                     }
                 } else {
-                    // 自动填充
-                    if (isNew) {
-                        // 从前一个季度传播过来的（首次）
-                        marker = ' (auto-filled from previous quarter)';
-                    } else if (isChanged) {
-                        // 因为前面季度更新，这个也跟着变了
-                        marker = ' (auto-updated from previous quarter)';
+                    // ⭐ 自动填充 - 重写逻辑
+                    if (source !== null) {
+                        // 有来源季度（被用户填写影响）
+                        const sourceQ = `Q${source + 1}`;
+                        if (isNew) {
+                            marker = ` (auto-filled from ${sourceQ})`;
+                        } else if (isChanged) {
+                            marker = ` (auto-updated from ${sourceQ})`;
+                        } else {
+                            // 值没变，但逻辑上还是被source季度"确认"了
+                            marker = ` (auto-confirmed from ${sourceQ})`;
+                        }
                     } else {
-                        // 真正保持原值
+                        // 没有来源季度（用户一个都没填，完全保持原值）
                         marker = ' (kept existing)';
                     }
                 }
@@ -1188,9 +1210,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg($('maisonSubmitMessage'), 'Failed to submit: ' + res.message, false);
             }
         },
-        
-        
-
 
         calculateCostButton: () => {
             clr($('calculatorErrorMessage'));
