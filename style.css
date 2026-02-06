@@ -419,29 +419,28 @@ table tr.warning-row:hover {
 /* ========== 在这里添加年份选择器样式 ========== */
 /* === Year Selection Container === */
 .year-selection-container {
-    margin: 0 0 20px 0;
-    padding: 15px;
-    background-color: #e6f7ff;
-    border: 1px solid #b3e0ff;
-    border-radius: var(--border-radius);
+    margin: 0 0 10px 0;
+    padding: 0;
+    background-color: transparent;
+    border: none;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 15px;
+    gap: 10px;
 }
 
 .year-selection-container label {
     margin: 0;
     font-weight: bold;
     color: var(--primary-color);
-    font-size: 1.1em;
+    font-size: 1em;
 }
 
 .year-select {
-    max-width: 150px;
-    font-size: 1.1em;
+    max-width: 120px;
+    font-size: 1em;
     font-weight: bold;
-    padding: 10px;
+    padding: 8px;
     border: 2px solid var(--primary-color);
 }
 
@@ -450,6 +449,7 @@ table tr.warning-row:hover {
     border-color: var(--secondary-color);
     box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
 }
+
 /* ========== 添加结束 ========== */
 
 
