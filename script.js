@@ -562,7 +562,33 @@ document.addEventListener('DOMContentLoaded', () => {
             const budget = e.target.dataset.budget;
             const forecast = e.target.dataset.forecast;
             const variance = e.target.dataset.variance;
+            const isAlreadySent = e.target.disabled;
             
+            if (isAlreadySent) {
+                const confirmMsg = `Alert has already been sent for ${maisonName} ${licenseType}\n` +
+                                 `(Budget: ${budget}€, Forecast: ${forecast}€).\n\n` +
+                                 `Do you want to prepare the email again?`;
+                
+                if (!confirm(confirmMsg)) {
+                    return;
+                }
+            } else {
+                // 记录 Alert 发送
+                const latestActualValue = `${budget}|${forecast}`;
+                
+                const recordRes = await api('recordAlertSent', {
+                    maisonName: maisonName,
+                    licenseType: licenseType,
+                    latestMonth: 'Annual',
+                    latestActualValue: latestActualValue,
+                    sentBy: currentUser.username
+                });
+                
+                if (!recordRes.success) {
+                    msg($('emailBroadcastMessage'), `Failed to record alert: ${recordRes.message}`, false);
+                    return;
+                }
+            }
             const targetUsername = `${maisonName}-${licenseType}`;
             
             if (!allUsers || !allUsers.length) {
@@ -624,7 +650,14 @@ document.addEventListener('DOMContentLoaded', () => {
             $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
-            
+            if (!isAlreadySent) {
+                // 刷新对应的 Forecast 表格
+                if ($('clientelingForecastTab').classList.contains('active')) {
+                    await loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
+                } else {
+                    await loadForecastTable($('fullForecastTableContainer'), 'Full');
+                }
+            }
             return;
         }
 
