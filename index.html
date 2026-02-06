@@ -88,22 +88,39 @@
                     
                     <div class="quarters-input-container">
                         <div class="quarter-input-item">
-                            <label for="calcQ1Input">Q1:</label>
-                            <input type="number" id="calcQ1Input" class="form-control quarter-input" min="0" value="0">
+                            <label for="q1Input">Q1:</label>
+                            <input type="number" id="q1Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                            <div class="quarter-buttons">
+                                <button type="button" id="copyQ1" class="quarter-copy-btn">Copy</button>
+                                <button type="button" id="pasteQ1" class="quarter-paste-btn">Paste</button>
+                            </div>
                         </div>
                         <div class="quarter-input-item">
-                            <label for="calcQ2Input">Q2:</label>
-                            <input type="number" id="calcQ2Input" class="form-control quarter-input" min="0" value="0">
+                            <label for="q2Input">Q2:</label>
+                            <input type="number" id="q2Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                            <div class="quarter-buttons">
+                                <button type="button" id="copyQ2" class="quarter-copy-btn">Copy</button>
+                                <button type="button" id="pasteQ2" class="quarter-paste-btn">Paste</button>
+                            </div>
                         </div>
                         <div class="quarter-input-item">
-                            <label for="calcQ3Input">Q3:</label>
-                            <input type="number" id="calcQ3Input" class="form-control quarter-input" min="0" value="0">
+                            <label for="q3Input">Q3:</label>
+                            <input type="number" id="q3Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                            <div class="quarter-buttons">
+                                <button type="button" id="copyQ3" class="quarter-copy-btn">Copy</button>
+                                <button type="button" id="pasteQ3" class="quarter-paste-btn">Paste</button>
+                            </div>
                         </div>
                         <div class="quarter-input-item">
-                            <label for="calcQ4Input">Q4:</label>
-                            <input type="number" id="calcQ4Input" class="form-control quarter-input" min="0" value="0">
+                            <label for="q4Input">Q4:</label>
+                            <input type="number" id="q4Input" class="form-control quarter-input" placeholder="Quantity" min="0" value="">
+                            <div class="quarter-buttons">
+                                <button type="button" id="copyQ4" class="quarter-copy-btn">Copy</button>
+                                <button type="button" id="pasteQ4" class="quarter-paste-btn">Paste</button>
+                            </div>
                         </div>
                     </div>
+                    
 
                     <button id="calculateCostButton" class="cost-calculator-button">Calculate Cost</button>
                     <div id="costBreakdownDisplay" class="cost-breakdown">
