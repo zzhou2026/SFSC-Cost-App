@@ -81,47 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
         };
     
 
-        // ===== 智能填充季度数据 =====
-        const fillMissingQuarters = (userInput, existingData = null) => {
-            // userInput: [q1, q2, q3, q4] - 用户填写的值（空字符串表示未填写）
-            // existingData: [q1, q2, q3, q4] - 数据库现有值（null 表示没有数据）
-            
-            const values = userInput.map(v => v === '' || v === null ? null : parseInt(v));
-            const existing = existingData || [null, null, null, null];
-            const filled = [...existing]; // 从现有数据开始
-            
-            // 找到用户填写的第一个季度
-            let firstFilledIndex = -1;
-            for (let i = 0; i < 4; i++) {
-                if (values[i] !== null) {
-                    firstFilledIndex = i;
-                    break;
-                }
-            }
-            
-            // 如果用户什么都没填，返回现有数据
-            if (firstFilledIndex === -1) {
-                return filled;
-            }
-            
-            // 从用户填写的第一个季度开始，向后更新
-            let lastFilledValue = null;
-            for (let i = firstFilledIndex; i < 4; i++) {
-                if (values[i] !== null) {
-                    // 用户填写了这个季度
-                    filled[i] = values[i];
-                    lastFilledValue = values[i];
-                } else {
-                    // 用户没填写，用上一个填写的值（向后传播）
-                    if (lastFilledValue !== null) {
-                        filled[i] = lastFilledValue;
-                    }
-                }
-            }
-            
-            return filled;
-        };
-    
+        
 
     // ===== 获取当前季度列表 =====
     const getQuarters = async () => {
@@ -133,50 +93,68 @@ document.addEventListener('DOMContentLoaded', () => {
         return [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
     };  // ← getQuarters 函数的结束
 
-    // ===== 获取现有季度数据 =====
-    const getExistingQuarterlyData = async () => {
-        if (!currentUser || currentUser.role !== 'maison') return null;
-        
-        const quarters = await getQuarters();
-        const res = await api('getMaisonSfscData', { 
-            submittedBy: currentUser.username,
-            licenseType: currentUser.licenseType
-        });
-        
-        if (!res.success || !res.data || res.data.length === 0) {
-            return null; // 没有现有数据
-        }
-        
-        // 构建现有数据映射 {quarter: count}
-        const existingMap = {};
-        res.data.forEach(record => {
-            if (record.Quarter && record.LicenseCount !== undefined) {
-                existingMap[record.Quarter] = parseInt(record.LicenseCount) || 0;
-            }
-        });
-        
-        // 返回 Q1-Q4 的数组形式
-        return quarters.slice(0, 4).map(q => existingMap[q] || null);
-    };
-    // ← 新函数结束
+    // ===== 获取现有年度数据 =====
+const getExistingYearlyData = async () => {
+    if (!currentUser || currentUser.role !== 'maison') return null;
+    
+    const res = await api('getMaisonSfscData', { 
+        submittedBy: currentUser.username,
+        licenseType: currentUser.licenseType
+    });
+    
+    if (!res.success || !res.data || res.data.length === 0) {
+        return null; // 没有现有数据
+    }
+    
+    // 获取当前年份的记录
+    const currentYear = new Date().getFullYear();
+    const currentRecord = res.data.find(record => record.Year == currentYear);
+    
+    if (!currentRecord) {
+        return null;
+    }
+    
+    // 返回 Q1-Q4 的数组形式
+    return [
+        parseInt(currentRecord.Q1Count) || 0,
+        parseInt(currentRecord.Q2Count) || 0,
+        parseInt(currentRecord.Q3Count) || 0,
+        parseInt(currentRecord.Q4Count) || 0
+    ];
+};
+
 
     // ===== 表格配置和渲染 =====  ← 下一个部分开始
 
     // ===== 表格配置和渲染 =====
     const baseHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
-        { key: 'Quarter', label: 'Quarter' },
         { key: 'LicenseType', label: 'License Type' },
-        { key: 'LicenseCount', label: 'Quantity' },
-        { key: 'CalculatedCost', label: 'Cost (\u20AC)' }
+        { key: 'Year', label: 'Year' },
+        { key: 'Q1Count', label: 'Q1 Qty' },
+        { key: 'Q1Cost', label: 'Q1 Cost' },
+        { key: 'Q2Count', label: 'Q2 Qty' },
+        { key: 'Q2Cost', label: 'Q2 Cost' },
+        { key: 'Q3Count', label: 'Q3 Qty' },
+        { key: 'Q3Cost', label: 'Q3 Cost' },
+        { key: 'Q4Count', label: 'Q4 Qty' },
+        { key: 'Q4Cost', label: 'Q4 Cost' },
+        { key: 'TotalCost', label: 'Total Cost' }
     ];
-
+    
     const baseHistoryHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
-        { key: 'Quarter', label: 'Quarter' },
         { key: 'LicenseType', label: 'License Type' },
-        { key: 'LicenseCount', label: 'Quantity' },
-        { key: 'CalculatedCost', label: 'Cost(\u20AC)' },
+        { key: 'Year', label: 'Year' },
+        { key: 'Q1Count', label: 'Q1 Qty' },
+        { key: 'Q1Cost', label: 'Q1 Cost' },
+        { key: 'Q2Count', label: 'Q2 Qty' },
+        { key: 'Q2Cost', label: 'Q2 Cost' },
+        { key: 'Q3Count', label: 'Q3 Qty' },
+        { key: 'Q3Cost', label: 'Q3 Cost' },
+        { key: 'Q4Count', label: 'Q4 Qty' },
+        { key: 'Q4Cost', label: 'Q4 Cost' },
+        { key: 'TotalCost', label: 'Total Cost' },
         { key: 'SubmittedBy', label: 'Submitted By' },
         { key: 'Timestamp', label: 'Submission Time' },
         { key: 'ApprovalStatus', label: 'Approval Status' },
@@ -184,6 +162,7 @@ document.addEventListener('DOMContentLoaded', () => {
         { key: 'ActionTimestamp', label: 'Action Time' },
         { key: 'ActionBy', label: 'Action By' }
     ];
+    
 
     const configs = {
         maison: {
@@ -254,9 +233,9 @@ document.addEventListener('DOMContentLoaded', () => {
         html += '</tr></thead><tbody>';
 
         dataToRender.forEach(row => {
-            // 检查是否有减少数量的情况（仅针对admin表格）
-            const hasDecrease = type === 'admin' && checkForDecrease(row, dataToRender);
-
+            // 检查是否有减少数量的情况
+            const hasDecrease = (type.includes('admin') || type === 'maison') && checkForDecrease(row);
+        
             const rowClass = hasDecrease ? 'warning-row' : '';
             
             html += `<tr class="${rowClass}">` + cfg.headers.map(h => {
@@ -273,6 +252,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     }
                 }
                 
+                // 格式化成本字段（保留2位小数）
+                if (h.key.includes('Cost')) {
+                    const num = parseFloat(v);
+                    v = isNaN(num) ? '0.00' : num.toFixed(2);
+                }
+                
                 // 限制Notes显示长度
                 if ((h.key === 'MaisonNotes' || h.key === 'AdminNotes') && v && v.length > 50) {
                     v = `<span title="${v}">${v.substring(0, 50)}...</span>`;
@@ -280,41 +265,49 @@ document.addEventListener('DOMContentLoaded', () => {
                 
                 return `<td>${v ?? ''}</td>`;
             }).join('');
+        
 
             if (cfg.actionColumn === 'approve') {
                 const submittedBy = row.SubmittedBy || '';
                 const maisonName = row.MaisonName || '';
-                const quarter = row.Quarter || '';
+                const year = row.Year || '';
                 const licenseType = row.LicenseType || '';
-                const licenseCount = row.LicenseCount || '0';
-                const calculatedCost = row.CalculatedCost || '0';
+                const totalCost = row.TotalCost || '0';
                 const timestamp = row.Timestamp || '';
                 const maisonNotes = row.MaisonNotes || '';
                 const recordId = row.RecordId || '';
+                
+                // 构建四个季度的详情（用于邮件通知）
+                const q1Data = `Q1: ${row.Q1Count || 0} (${row.Q1Cost || 0}€)`;
+                const q2Data = `Q2: ${row.Q2Count || 0} (${row.Q2Cost || 0}€)`;
+                const q3Data = `Q3: ${row.Q3Count || 0} (${row.Q3Cost || 0}€)`;
+                const q4Data = `Q4: ${row.Q4Count || 0} (${row.Q4Cost || 0}€)`;
+                const quarterDetails = `${q1Data}, ${q2Data}, ${q3Data}, ${q4Data}`;
                 
                 html += `<td>
                     <button class="approve-button-table" 
                         data-id="${recordId}" 
                         data-submitted-by="${submittedBy}" 
                         data-maison-name="${maisonName}" 
-                        data-quarter="${quarter}"
+                        data-year="${year}"
                         data-license-type="${licenseType}"
-                        data-license-count="${licenseCount}" 
-                        data-cost="${calculatedCost}" 
+                        data-total-cost="${totalCost}" 
                         data-timestamp="${timestamp}"
-                        data-maison-notes="${maisonNotes}">Approve</button>
+                        data-maison-notes="${maisonNotes}"
+                        data-quarter-details="${quarterDetails}">Approve</button>
                     <button class="reject-button-table" 
                         data-id="${recordId}" 
                         data-submitted-by="${submittedBy}" 
                         data-maison-name="${maisonName}" 
-                        data-quarter="${quarter}"
+                        data-year="${year}"
                         data-license-type="${licenseType}"
-                        data-license-count="${licenseCount}" 
-                        data-cost="${calculatedCost}" 
+                        data-total-cost="${totalCost}" 
                         data-timestamp="${timestamp}"
-                        data-maison-notes="${maisonNotes}">Reject</button>
+                        data-maison-notes="${maisonNotes}"
+                        data-quarter-details="${quarterDetails}">Reject</button>
                 </td>`;
             }
+            
             html += '</tr>';
         });
 
@@ -347,28 +340,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     };
+// 检查同一条记录内是否有季度递减
+const checkForDecrease = (row) => {
+    const q1 = parseInt(row.Q1Count) || 0;
+    const q2 = parseInt(row.Q2Count) || 0;
+    const q3 = parseInt(row.Q3Count) || 0;
+    const q4 = parseInt(row.Q4Count) || 0;
+    
+    // 检查是否有递减
+    return q2 < q1 || q3 < q2 || q4 < q3;
+};
 
-    // 检查是否有减少数量的情况
-    const checkForDecrease = (currentRow, allData) => {
-        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-        const currentQuarterIndex = quarters.findIndex(q => currentRow.Quarter && currentRow.Quarter.includes(q));
-        
-        if (currentQuarterIndex <= 0) return false; // Q1 或无效季度不检查
-        
-        const previousQuarter = quarters[currentQuarterIndex - 1];
-        const previousRow = allData.find(r => 
-            r.MaisonName === currentRow.MaisonName &&
-            r.LicenseType === currentRow.LicenseType &&
-            r.Quarter && r.Quarter.includes(previousQuarter) &&
-            r.SubmittedBy === currentRow.SubmittedBy
-        );
-        
-        if (previousRow) {
-            return parseInt(currentRow.LicenseCount) < parseInt(previousRow.LicenseCount);
-        }
-        
-        return false;
-    };
 
     // ===== Forecast 表格渲染 =====
     const loadForecastTable = async (container, licenseType) => {
@@ -808,49 +790,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // Approve/Reject 按钮
-        const id = e.target.dataset.id;
-        if (!id) return;
+const id = e.target.dataset.id;
+if (!id) return;
 
-        if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
-            const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
-            
-            const submittedBy = e.target.dataset.submittedBy || '';
-            const maisonName = e.target.dataset.maisonName || '';
-            const quarter = e.target.dataset.quarter || '';
-            const licenseType = e.target.dataset.licenseType || '';
-            const licenseCount = e.target.dataset.licenseCount || '0';
-            const calculatedCost = e.target.dataset.cost || '0';
-            const timestamp = e.target.dataset.timestamp || '';
-            const maisonNotes = e.target.dataset.maisonNotes || '';
-            
-            // 弹出对话框让Admin输入备注
-            const adminNotes = prompt(`${st === 'Approved' ? 'Approve' : 'Reject'} this submission?\n\nYou can add optional notes below:`, '');
-            
-            if (adminNotes === null) return; // 用户取消
-            
-            const res = await api('updateApprovalStatus', { 
-                recordId: id, 
-                newStatus: st, 
-                actionBy: currentUser.username,
-                adminNotes: adminNotes
-            });
-            
-            msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
-            
-            if (res.success) {
-                // 刷新 Overview 的两个 Tab
-                loadTable('adminClienteling', $('overviewClientelingTableContainer'));
-                loadTable('adminFull', $('overviewFullTableContainer'));
-                
-                // 刷新历史记录
-                loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
-                
-                if (submittedBy) {
-                    sendApprovalNotification(submittedBy, st, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes);
-                }
-            }
-
+if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
+    const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
+    
+    const submittedBy = e.target.dataset.submittedBy || '';
+    const maisonName = e.target.dataset.maisonName || '';
+    const year = e.target.dataset.year || '';
+    const licenseType = e.target.dataset.licenseType || '';
+    const totalCost = e.target.dataset.totalCost || '0';
+    const timestamp = e.target.dataset.timestamp || '';
+    const maisonNotes = e.target.dataset.maisonNotes || '';
+    const quarterDetails = e.target.dataset.quarterDetails || '';
+    
+    // 弹出对话框让Admin输入备注
+    const adminNotes = prompt(`${st === 'Approved' ? 'Approve' : 'Reject'} this submission?\n\nYear: ${year}\nMaison: ${maisonName}\nLicense Type: ${licenseType}\nTotal Cost: ${totalCost}€\n\nYou can add optional notes below:`, '');
+    
+    if (adminNotes === null) return; // 用户取消
+    
+    const res = await api('updateApprovalStatus', { 
+        recordId: id, 
+        newStatus: st, 
+        actionBy: currentUser.username,
+        adminNotes: adminNotes
+    });
+    
+    msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
+    
+    if (res.success) {
+        // 刷新 Overview 的两个 Tab
+        loadTable('adminClienteling', $('overviewClientelingTableContainer'));
+        loadTable('adminFull', $('overviewFullTableContainer'));
+        
+        // 刷新历史记录
+        loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
+        
+        if (submittedBy) {
+            sendApprovalNotification(submittedBy, st, maisonName, year, licenseType, quarterDetails, totalCost, timestamp, maisonNotes, adminNotes);
         }
+    }
+}
+
     });
     // ===== Email 管理 =====
     const setEmailUI = (has, email = '') => {
@@ -874,8 +856,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setEmailUI(res.success && res.email, res.email || '');
     };
 
-    // ===== Approval Notification Email =====
-    const buildNotificationBody = (submittedBy, status, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes) => {
+    const buildNotificationBody = (submittedBy, status, maisonName, year, licenseType, quarterDetails, totalCost, timestamp, maisonNotes, adminNotes) => {
         const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
         const formattedTimestamp = timestamp ? fmt(timestamp) : (timestamp || '');
         return (
@@ -884,9 +865,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `Details:\n` +
             `Maison Name: ${maisonName || ''}\n` +
             `License Type: ${licenseType || ''}\n` +
-            `Quarter: ${quarter || ''}\n` +
-            `Quantity: ${licenseCount || '0'}\n` +
-            `Calculated Cost: ${calculatedCost || '0'} €\n` +
+            `Year: ${year || ''}\n` +
+            `Quarterly Data: ${quarterDetails || ''}\n` +
+            `Total Cost: ${totalCost || '0'} €\n` +
             `Submitted By: ${submittedBy || ''}\n` +
             `Submission Time: ${formattedTimestamp}\n` +
             `Approval Status: ${statusText}\n` +
@@ -899,8 +880,9 @@ document.addEventListener('DOMContentLoaded', () => {
             `\nBest regards,\nBT-admin`
         );
     };
+    
 
-    const sendApprovalNotification = async (submittedBy, status, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes) => {
+    const sendApprovalNotification = async (submittedBy, status, maisonName, year, licenseType, quarterDetails, totalCost, timestamp, maisonNotes, adminNotes) => {
         try {
             const emailRes = await api('getUserEmail', { username: submittedBy });
             if (!emailRes.success || !emailRes.email) {
@@ -909,12 +891,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
             const applicantEmail = emailRes.email.trim();
             const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
-            const subject = `SFSC License Application ${statusText} - ${maisonName} ${licenseType} (${quarter})`;
-            const body = buildNotificationBody(submittedBy, status, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes);
-
+            const subject = `SFSC License Application ${statusText} - ${maisonName} ${licenseType} (${year})`;
+            const body = buildNotificationBody(submittedBy, status, maisonName, year, licenseType, quarterDetails, totalCost, timestamp, maisonNotes, adminNotes);
+    
             $('emailSubjectInput').value = subject;
             $('emailContentInput').value = body;
-
+    
             if (!allUsers || !allUsers.length) {
                 const res = await api('getAllUsers');
                 if (res.success && res.data) allUsers = res.data.filter(u => u.email && u.email.trim());
@@ -934,7 +916,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
                 updCnt();
             }
-
+    
             $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
             msg($('emailBroadcastMessage'), 'Notification email prepared for applicant. Click "Open in Outlook" to open and send.', true);
         } catch (error) {
@@ -942,6 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
             msg($('emailBroadcastMessage'), 'Failed to prepare notification: ' + (error.message || 'Unknown error'), false);
         }
     };
+    
 
     // ===== Email Broadcast =====
     const filtered = () => {
@@ -1135,60 +1118,45 @@ document.addEventListener('DOMContentLoaded', () => {
             const q4 = $('q4Input').value.trim();
             const maisonNotes = $('maisonNotesInput').value.trim();
             
-            const userInput = [q1, q2, q3, q4];
-            
-            // 检查是否至少填写了一个季度
-            if (!q1 && !q2 && !q3 && !q4) {
-                msg($('maisonSubmitMessage'), 'Please fill in at least one quarter!', false);
+            // ===== 强制验证：所有四个季度都必须填写 =====
+            if (!q1 || !q2 || !q3 || !q4) {
+                msg($('maisonSubmitMessage'), 'Please fill in all four quarters! If the quantity remains unchanged, please re-enter the original value.', false);
                 return;
             }
             
-            // 获取数据库现有数据
-            msg($('maisonSubmitMessage'), 'Loading existing data...', true);
-            const existingData = await getExistingQuarterlyData();
-            clr($('maisonSubmitMessage'));
+            // 验证输入是否为有效数字
+            const q1Num = parseInt(q1);
+            const q2Num = parseInt(q2);
+            const q3Num = parseInt(q3);
+            const q4Num = parseInt(q4);
             
-            // 智能填充：合并用户输入和现有数据
-            const filledData = fillMissingQuarters(userInput, existingData);
+            if (isNaN(q1Num) || isNaN(q2Num) || isNaN(q3Num) || isNaN(q4Num)) {
+                msg($('maisonSubmitMessage'), 'All quarters must be valid numbers!', false);
+                return;
+            }
             
-            // 验证递增规则（基于合并后的数据）
-            const warnings = validateQuarterData(filledData);
+            if (q1Num < 0 || q2Num < 0 || q3Num < 0 || q4Num < 0) {
+                msg($('maisonSubmitMessage'), 'Quantities cannot be negative!', false);
+                return;
+            }
             
-            // ⭐ 检测哪些季度有递减问题，并记录详细信息
-            const decreaseInfo = {};
-            for (let i = 1; i < filledData.length; i++) {
-                if (filledData[i] !== null && filledData[i - 1] !== null) {
-                    if (filledData[i] < filledData[i - 1]) {
-                        decreaseInfo[i] = {
-                            previousQuarter: `Q${i}`,
-                            previousValue: filledData[i - 1]
-                        };
-                    }
+            // 验证递增规则
+            const values = [q1Num, q2Num, q3Num, q4Num];
+            const warnings = [];
+            
+            for (let i = 1; i < values.length; i++) {
+                if (values[i] < values[i - 1]) {
+                    warnings.push(`Q${i + 1} (${values[i]}) is less than Q${i} (${values[i - 1]})`);
                 }
             }
             
-            // ⭐ 找到每个季度"继承自"哪个用户填写的季度
-            const sourceQuarter = new Array(4).fill(null); // 记录每个季度的数据来源
-            for (let i = 0; i < 4; i++) {
-                if (userInput[i] !== '' && userInput[i] !== null) {
-                    // 用户填写的季度
-                    sourceQuarter[i] = i; // 来源是自己
-                } else {
-                    // 用户未填写，向前查找最近的用户填写季度
-                    for (let j = i - 1; j >= 0; j--) {
-                        if (userInput[j] !== '' && userInput[j] !== null) {
-                            sourceQuarter[i] = j; // 来源是前面的Qj
-                            break;
-                        }
-                    }
-                }
-            }
-            
-            // 构建确认消息（包含Warning）
+            // 获取季度列表（用于生成 "2026Q1" 格式）
             const quarters = await getQuarters();
+            
+            // 构建确认消息
             let confirmMsg = '';
             
-            // ⭐ 如果有Warning，先显示在弹窗顶部
+            // 如果有 Warning，先显示
             if (warnings.length > 0) {
                 const beautyTechEmail = configPrices.BeautyTechEmail || 'beautytech@example.com';
                 confirmMsg += '⚠️ WARNING ⚠️\n';
@@ -1198,47 +1166,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 confirmMsg += '═'.repeat(50) + '\n\n';
             }
             
-            confirmMsg += 'You are about to submit the following quarterly forecast:\n\n';
+            // 检查是否有现有数据
+            const existingData = await getExistingYearlyData();
+            const isUpdate = existingData !== null;
             
-            filledData.forEach((val, idx) => {
-                const isUserFilled = userInput[idx] !== '' && userInput[idx] !== null;
-                const isChanged = existingData && existingData[idx] !== null && val !== existingData[idx];
-                const isNew = !existingData || existingData[idx] === null;
-                const decreaseDetail = decreaseInfo[idx];
-                const source = sourceQuarter[idx]; // ⭐ 数据来源季度
-                
-                let marker = '';
-                if (isUserFilled) {
-                    // 用户手动填写
-                    if (decreaseDetail) {
-                        const prevQ = decreaseDetail.previousQuarter;
-                        const prevVal = decreaseDetail.previousValue;
-                        marker = isNew 
-                            ? ` (new - WARNING: less than ${prevQ} (${prevVal}))`
-                            : ` (updated - WARNING: less than ${prevQ} (${prevVal}))`;
-                    } else {
-                        marker = isNew ? ' (new)' : isChanged ? ' (updated)' : ' (no change)';
-                    }
-                } else {
-                    // ⭐ 自动填充 - 重写逻辑
-                    if (source !== null) {
-                        // 有来源季度（被用户填写影响）
-                        const sourceQ = `Q${source + 1}`;
-                        if (isNew) {
-                            marker = ` (auto-filled from ${sourceQ})`;
-                        } else if (isChanged) {
-                            marker = ` (auto-updated from ${sourceQ})`;
-                        } else {
-                            // 值没变，但逻辑上还是被source季度"确认"了
-                            marker = ` (auto-confirmed from ${sourceQ})`;
-                        }
-                    } else {
-                        // 没有来源季度（用户一个都没填，完全保持原值）
-                        marker = ' (kept existing)';
-                    }
-                }
-                
-                confirmMsg += `${quarters[idx]}: ${val}${marker}\n`;
+            confirmMsg += `You are about to ${isUpdate ? 'UPDATE' : 'SUBMIT'} the following yearly forecast:\n\n`;
+            confirmMsg += `Year: ${new Date().getFullYear()}\n`;
+            confirmMsg += `License Type: ${currentUser.licenseType}\n\n`;
+            
+            values.forEach((val, idx) => {
+                const marker = isUpdate && existingData[idx] !== val 
+                    ? ` (changed from ${existingData[idx]})` 
+                    : isUpdate 
+                    ? ' (no change)' 
+                    : ' (new)';
+                confirmMsg += `Q${idx + 1}: ${val}${marker}\n`;
             });
             
             if (maisonNotes) {
@@ -1252,23 +1194,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            // 构建季度数据（只提交需要更新的季度）
-            const quarterData = [];
-            filledData.forEach((count, idx) => {
-                const hasChange = !existingData || existingData[idx] === null || existingData[idx] !== count;
-                if (hasChange && count !== null) {
-                    quarterData.push({
-                        quarter: quarters[idx],
-                        count: count
-                    });
-                }
-            });
+            // 构建季度数据（使用 "2026Q1" 格式）
+            const quarterData = quarters.slice(0, 4).map((q, idx) => ({
+                quarter: q,
+                count: values[idx]
+            }));
             
-            if (quarterData.length === 0) {
-                msg($('maisonSubmitMessage'), 'No changes to submit.', false);
-                return;
-            }
-            
+            // 提交数据
             const res = await api('submitSfscData', {
                 maisonName: currentUser.maisonName,
                 licenseType: currentUser.licenseType,
@@ -1278,7 +1210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             
             if (res.success) {
-                msg($('maisonSubmitMessage'), `Forecast submitted successfully!`, true);
+                msg($('maisonSubmitMessage'), `Forecast ${isUpdate ? 'updated' : 'submitted'} successfully! Total Cost: ${res.totalCost}€`, true);
                 
                 // 清空表单
                 $('q1Input').value = '';
@@ -1301,6 +1233,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 msg($('maisonSubmitMessage'), 'Failed to submit: ' + res.message, false);
             }
         },
+        
 
         calculateCostButton: () => {
             clr($('calculatorErrorMessage'));
