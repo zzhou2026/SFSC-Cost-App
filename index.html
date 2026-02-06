@@ -176,10 +176,25 @@
                 </div>
 
                 <h3>Overview of SFSC Costs for All Maisons</h3>
-                <div id="adminDataTableContainer" class="table-container">
-                    <!-- Admin data will be displayed here -->
-                </div>
-                <button id="exportDataButton">Export Data (CSV)</button>
+<div class="forecast-tabs">
+    <button id="overviewClientelingTab" class="tab-button active">Clienteling Licenses</button>
+    <button id="overviewFullTab" class="tab-button">Full Licenses</button>
+</div>
+
+<div id="overviewClientelingContainer" class="forecast-container active">
+    <div id="overviewClientelingTableContainer" class="table-container forecast-table-container">
+        <!-- Clienteling overview data will be displayed here -->
+    </div>
+    <button id="exportClientelingDataButton">Export Clienteling Data (CSV)</button>
+</div>
+
+<div id="overviewFullContainer" class="forecast-container hidden">
+    <div id="overviewFullTableContainer" class="table-container forecast-table-container">
+        <!-- Full overview data will be displayed here -->
+    </div>
+    <button id="exportFullDataButton">Export Full Data (CSV)</button>
+</div>
+
 
                 <!-- Email Broadcast Section -->
                 <div id="emailBroadcastSection" class="email-broadcast-section">

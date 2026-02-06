@@ -196,7 +196,20 @@ document.addEventListener('DOMContentLoaded', () => {
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
             actionColumn: 'approve'
         },
+        adminClienteling: {
+            action: 'getAllSfscData',
+            headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
+            actionColumn: null,
+            filterLicenseType: 'Clienteling'
+        },
+        adminFull: {
+            action: 'getAllSfscData',
+            headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
+            actionColumn: null,
+            filterLicenseType: 'Full'
+        },
         maisonActionsLog: {
+    
             action: 'getMaisonSfscHistory',
             headers: [...baseHistoryHeaders, { key: 'MaisonNotes', label: 'Notes' }],
             renderStatusBadge: false,
@@ -225,14 +238,24 @@ document.addEventListener('DOMContentLoaded', () => {
             container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No data available.' : 'Failed to load data: ' + (res.message || 'Unknown error')}</p>`;
             return;
         }
+        // 根据配置过滤 License Type
+        let dataToRender = res.data;
+        if (cfg.filterLicenseType) {
+            dataToRender = res.data.filter(row => row.LicenseType === cfg.filterLicenseType);
+            if (dataToRender.length === 0) {
+                container.innerHTML = `<p>No ${cfg.filterLicenseType} license data available.</p>`;
+                return;
+            }
+        }
 
         let html = '<table><thead><tr>' + cfg.headers.map(h => `<th>${h.label}</th>`).join('');
         if (cfg.actionColumn) html += `<th>${cfg.actionColumn === 'delete' ? 'Action' : 'Approval Action'}</th>`;
         html += '</tr></thead><tbody>';
 
-        res.data.forEach(row => {
+        dataToRender.forEach(row => {
             // 检查是否有减少数量的情况（仅针对admin表格）
-            const hasDecrease = type === 'admin' && checkForDecrease(row, res.data);
+            const hasDecrease = type === 'admin' && checkForDecrease(row, dataToRender);
+
             const rowClass = hasDecrease ? 'warning-row' : '';
             
             html += `<tr class="${rowClass}">` + cfg.headers.map(h => {
@@ -1004,7 +1027,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     $('adminView').classList.remove('hidden'); 
                     $('maisonView').classList.add('hidden');
                     
-                    loadTable('admin', $('adminDataTableContainer'));
+                    loadTable('adminClienteling', $('overviewClientelingTableContainer'));
+                    loadTable('adminFull', $('overviewFullTableContainer'));
                     loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
                     loadForecastTable($('fullForecastTableContainer'), 'Full');
                     loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
@@ -1331,31 +1355,33 @@ document.addEventListener('DOMContentLoaded', () => {
             $('clientelingForecastContainer').classList.remove('active');
             loadForecastTable($('fullForecastTableContainer'), 'Full');
         },
-
-        exportDataButton: async () => {
-            if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-            const res = await api('getAllSfscData');
-            if (!res.success || !res.data || !res.data.length) { 
-                msg($('loginMessage'), 'Export failed: No data available.', false); 
-                return; 
-            }
-            const h = configs.admin.headers;
-            let csv = h.map(x => x.label).join(',') + '\n';
-            res.data.forEach(r => { 
-                csv += h.map(x => { 
-                    let v = r[x.key]; 
-                    if (x.key === 'Timestamp') v = fmt(v); 
-                    return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
-                }).join(',') + '\n'; 
-            });
-            const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' }), l = document.createElement('a');
-            l.href = URL.createObjectURL(b); 
-            l.download = `SFSC_Data_Export_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
-            document.body.appendChild(l); 
-            l.click(); 
-            document.body.removeChild(l);
-            msg($('loginMessage'), 'Data exported successfully!', true);
+        overviewClientelingTab: () => {
+            $('overviewClientelingTab').classList.add('active');
+            $('overviewFullTab').classList.remove('active');
+            $('overviewClientelingContainer').classList.remove('hidden');
+            $('overviewClientelingContainer').classList.add('active');
+            $('overviewFullContainer').classList.add('hidden');
+            $('overviewFullContainer').classList.remove('active');
         },
+
+        overviewFullTab: () => {
+            $('overviewFullTab').classList.add('active');
+            $('overviewClientelingTab').classList.remove('active');
+            $('overviewFullContainer').classList.remove('hidden');
+            $('overviewFullContainer').classList.add('active');
+            $('overviewClientelingContainer').classList.add('hidden');
+            $('overviewClientelingContainer').classList.remove('active');
+        },
+
+        exportClientelingDataButton: async () => {
+            await exportOverviewData('Clienteling');
+        },
+
+        exportFullDataButton: async () => {
+            await exportOverviewData('Full');
+        },
+
+
 
         exportHistoryDataButton: async () => {
             if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
@@ -1718,6 +1744,49 @@ BT-admin`;
 
         msg($('loginMessage'), `${licenseType} forecast data exported successfully!`, true);
     };
+    // 导出 Overview 数据的辅助函数
+    const exportOverviewData = async (licenseType) => {
+        if (!currentUser || currentUser.role !== 'admin') { 
+            alert('Admin only!'); 
+            return; 
+        }
+        
+        const res = await api('getAllSfscData');
+        if (!res.success || !res.data || !res.data.length) { 
+            msg($('loginMessage'), `Export failed: No ${licenseType} data available.`, false); 
+            return; 
+        }
+        
+        // 过滤指定 License Type 的数据
+        const filteredData = res.data.filter(row => row.LicenseType === licenseType);
+        
+        if (filteredData.length === 0) {
+            msg($('loginMessage'), `Export failed: No ${licenseType} data available.`, false);
+            return;
+        }
+        
+        const h = configs.admin.headers;
+        let csv = h.map(x => x.label).join(',') + '\n';
+        
+        filteredData.forEach(r => { 
+            csv += h.map(x => { 
+                let v = r[x.key]; 
+                if (x.key === 'Timestamp') v = fmt(v); 
+                return typeof v === 'string' ? `"${v.replace(/"/g, '""')}"` : (v ?? ''); 
+            }).join(',') + '\n'; 
+        });
+        
+        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const l = document.createElement('a');
+        l.href = URL.createObjectURL(b); 
+        l.download = `SFSC_${licenseType}_Overview_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+        document.body.appendChild(l); 
+        l.click(); 
+        document.body.removeChild(l);
+        
+        msg($('loginMessage'), `${licenseType} overview data exported successfully!`, true);
+    };
+
 
     // 统一绑定事件
     Object.keys(handlers).forEach(id => {
