@@ -419,7 +419,7 @@ table tr.warning-row:hover {
 /* ========== 在这里添加年份选择器样式 ========== */
 /* === Year Selection Container === */
 .year-selection-container {
-    margin: 0 0 15px 0;  /* ← 减少下边距 从 20px 改为 15px */
+    margin: 0 0 0 0;  /* ← 减少下边距 从 20px 改为 15px */
     padding: 0;  /* ← 去掉内边距 从 15px 改为 0 */
     background-color: transparent;  /* ← 去掉背景色 */
     border: none;  /* ← 去掉边框 */
