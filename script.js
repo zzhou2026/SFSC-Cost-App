@@ -199,15 +199,16 @@ document.addEventListener('DOMContentLoaded', () => {
         adminClienteling: {
             action: 'getAllSfscData',
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
-            actionColumn: null,
+            actionColumn: 'approve',  // ← 改成 'approve'
             filterLicenseType: 'Clienteling'
         },
         adminFull: {
             action: 'getAllSfscData',
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
-            actionColumn: null,
+            actionColumn: 'approve',  // ← 改成 'approve'
             filterLicenseType: 'Full'
         },
+        
         maisonActionsLog: {
     
             action: 'getMaisonSfscHistory',
