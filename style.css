@@ -416,6 +416,43 @@ table tr.warning-row:hover {
     margin: 20px 0;
 }
 
+/* ========== 在这里添加年份选择器样式 ========== */
+/* === Year Selection Container === */
+.year-selection-container {
+    margin: 0 0 20px 0;
+    padding: 15px;
+    background-color: #e6f7ff;
+    border: 1px solid #b3e0ff;
+    border-radius: var(--border-radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+}
+
+.year-selection-container label {
+    margin: 0;
+    font-weight: bold;
+    color: var(--primary-color);
+    font-size: 1.1em;
+}
+
+.year-select {
+    max-width: 150px;
+    font-size: 1.1em;
+    font-weight: bold;
+    padding: 10px;
+    border: 2px solid var(--primary-color);
+}
+
+.year-select:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+/* ========== 添加结束 ========== */
+
+
 /* === Cost Calculator Section === */
 .cost-calculator-section {
     background-color: var(--light-blue-bg);

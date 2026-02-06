@@ -93,35 +93,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
     };  // ← getQuarters 函数的结束
 
-    // ===== 获取现有年度数据 =====
-const getExistingYearlyData = async () => {
-    if (!currentUser || currentUser.role !== 'maison') return null;
-    
-    const res = await api('getMaisonSfscData', { 
-        submittedBy: currentUser.username,
-        licenseType: currentUser.licenseType
-    });
-    
-    if (!res.success || !res.data || res.data.length === 0) {
-        return null; // 没有现有数据
-    }
-    
-    // 获取当前年份的记录
-    const currentYear = new Date().getFullYear();
-    const currentRecord = res.data.find(record => record.Year == currentYear);
-    
-    if (!currentRecord) {
-        return null;
-    }
-    
-    // 返回 Q1-Q4 的数组形式
-    return [
-        parseInt(currentRecord.Q1Count) || 0,
-        parseInt(currentRecord.Q2Count) || 0,
-        parseInt(currentRecord.Q3Count) || 0,
-        parseInt(currentRecord.Q4Count) || 0
-    ];
-};
 
 
     // ===== 表格配置和渲染 =====  ← 下一个部分开始
@@ -1043,7 +1014,14 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     
                     // 更新标题显示许可证类型
                     $('maisonSubmitTitle').textContent = `Submit Quarterly Forecast (${currentUser.licenseType} Licenses)`;
-                    
+                      // ========== 在这里添加年份选择器初始化 ==========
+    const currentYear = new Date().getFullYear();
+    const yearOptions = [currentYear, currentYear + 1, currentYear + 2]
+        .map(y => `<option value="${y}">${y}</option>`)
+        .join('');
+    $('forecastYearSelect').innerHTML = yearOptions;
+    $('forecastYearSelect').value = currentYear;
+    // ========== 添加结束 ==========
                     // 清空输入框
                     $('q1Input').value = '';
                     $('q2Input').value = '';
@@ -1117,7 +1095,7 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
             const q3 = $('q3Input').value.trim();
             const q4 = $('q4Input').value.trim();
             const maisonNotes = $('maisonNotesInput').value.trim();
-            
+            const selectedYear = parseInt($('forecastYearSelect').value);
             // ===== 强制验证：所有四个季度都必须填写 =====
             if (!q1 || !q2 || !q3 || !q4) {
                 msg($('maisonSubmitMessage'), 'Please fill in all four quarters! If the quantity remains unchanged, please re-enter the original value.', false);
@@ -1151,7 +1129,7 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
             }
             
             // 获取季度列表（用于生成 "2026Q1" 格式）
-            const quarters = await getQuarters();
+            const quarters = [`${selectedYear}Q1`, `${selectedYear}Q2`, `${selectedYear}Q3`, `${selectedYear}Q4`];
             
             // 构建确认消息
             let confirmMsg = '';
@@ -1167,21 +1145,36 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
             }
             
             // 检查是否有现有数据
-            const existingData = await getExistingYearlyData();
-            const isUpdate = existingData !== null;
+            const checkRes = await api('checkExistingRecord', {
+                maisonName: currentUser.maisonName,
+                year: selectedYear,
+                submittedBy: currentUser.username,
+                licenseType: currentUser.licenseType
+            });
+            
+            const isUpdate = checkRes.success && checkRes.exists;
+            const existingData = isUpdate ? [
+                parseInt(checkRes.q1Count) || 0,
+                parseInt(checkRes.q2Count) || 0,
+                parseInt(checkRes.q3Count) || 0,
+                parseInt(checkRes.q4Count) || 0
+            ] : null;
             
             confirmMsg += `You are about to ${isUpdate ? 'UPDATE' : 'SUBMIT'} the following yearly forecast:\n\n`;
             confirmMsg += `Year: ${new Date().getFullYear()}\n`;
             confirmMsg += `License Type: ${currentUser.licenseType}\n\n`;
             
-            values.forEach((val, idx) => {
-                const marker = isUpdate && existingData[idx] !== val 
-                    ? ` (changed from ${existingData[idx]})` 
-                    : isUpdate 
-                    ? ' (no change)' 
-                    : ' (new)';
-                confirmMsg += `Q${idx + 1}: ${val}${marker}\n`;
-            });
+            // ========== 修改显示逻辑 ==========
+values.forEach((val, idx) => {
+    const marker = isUpdate && existingData && existingData[idx] !== val 
+        ? ` (changed from ${existingData[idx]})` 
+        : isUpdate 
+        ? ' (no change)' 
+        : ' (new)';
+    confirmMsg += `Q${idx + 1}: ${val}${marker}\n`;
+});
+// ========== 修改结束 ==========
+
             
             if (maisonNotes) {
                 confirmMsg += `\nYour Notes: ${maisonNotes}\n`;
