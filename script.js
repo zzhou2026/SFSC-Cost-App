@@ -318,6 +318,33 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         container.innerHTML = html + '</tbody></table>';
+        await checkForecastAlertStatuses(container);
+    };
+    // 检查 Forecast Alert 按钮状态
+    const checkForecastAlertStatuses = async (container) => {
+        const alertButtons = container.querySelectorAll('.forecast-alert');
+        
+        for (const button of alertButtons) {
+            const maisonName = button.dataset.maison;
+            const licenseType = button.dataset.licenseType;
+            const budget = button.dataset.budget;
+            const forecast = button.dataset.forecast;
+            
+            // 用 'Annual' 作为 latestMonth，用 'budget|forecast' 作为 latestActualValue
+            const latestActualValue = `${budget}|${forecast}`;
+            
+            const checkRes = await api('checkAlertStatus', {
+                maisonName: maisonName,
+                licenseType: licenseType,
+                latestMonth: 'Annual',
+                latestActualValue: latestActualValue
+            });
+            
+            if (checkRes.success && checkRes.alreadySent) {
+                button.disabled = true;
+                button.textContent = 'Alert Sent';
+            }
+        }
     };
 
     // 检查是否有减少数量的情况
