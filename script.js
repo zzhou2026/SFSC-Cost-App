@@ -200,15 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
             action: 'getAllSfscData',
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
             actionColumn: 'approve',  // ← 改成 'approve'
-            filterLicenseType: 'Clienteling',
-    groupByBatch: true
+            filterLicenseType: 'Clienteling'
         },
         adminFull: {
             action: 'getAllSfscData',
             headers: [...baseHeaders, { key: 'SubmittedBy', label: 'Submitted By' }, { key: 'Timestamp', label: 'Submission Time' }, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
             actionColumn: 'approve',  // ← 改成 'approve'
-            filterLicenseType: 'Full',
-    groupByBatch: true
+            filterLicenseType: 'Full'
         },
         
         maisonActionsLog: {
@@ -227,225 +225,102 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     // ===== 表格渲染 =====
-const loadTable = async (type, container, params = {}) => {
-    const cfg = configs[type];
-    if (!cfg) {
-        console.error('Invalid table configuration type:', type);
-        container.innerHTML = '<p class="error-text">Invalid table configuration.</p>';
-        return;
-    }
-
-    const res = await api(cfg.action, params);
-
-    if (!res.success || !res.data || !res.data.length) {
-        container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No data available.' : 'Failed to load data: ' + (res.message || 'Unknown error')}</p>`;
-        return;
-    }
-    
-    // 根据配置过滤 License Type
-    let dataToRender = res.data;
-    if (cfg.filterLicenseType) {
-        dataToRender = res.data.filter(row => row.LicenseType === cfg.filterLicenseType);
-        if (dataToRender.length === 0) {
-            container.innerHTML = `<p>No ${cfg.filterLicenseType} license data available.</p>`;
+    const loadTable = async (type, container, params = {}) => {
+        const cfg = configs[type];
+        if (!cfg) {
+            console.error('Invalid table configuration type:', type);
+            container.innerHTML = '<p class="error-text">Invalid table configuration.</p>';
             return;
         }
-    }
 
-    // 如果需要按批次分组显示
-    if (cfg.groupByBatch) {
-        renderBatchTable(cfg, dataToRender, container);
-    } else {
-        renderNormalTable(cfg, dataToRender, container, type);
-    }
-};
+        const res = await api(cfg.action, params);
 
-// 渲染普通表格（原有逻辑）
-const renderNormalTable = (cfg, dataToRender, container, type) => {
-    let html = '<table><thead><tr>' + cfg.headers.map(h => `<th>${h.label}</th>`).join('');
-    if (cfg.actionColumn) html += `<th>${cfg.actionColumn === 'delete' ? 'Action' : 'Approval Action'}</th>`;
-    html += '</tr></thead><tbody>';
+        if (!res.success || !res.data || !res.data.length) {
+            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No data available.' : 'Failed to load data: ' + (res.message || 'Unknown error')}</p>`;
+            return;
+        }
+        // 根据配置过滤 License Type
+        let dataToRender = res.data;
+        if (cfg.filterLicenseType) {
+            dataToRender = res.data.filter(row => row.LicenseType === cfg.filterLicenseType);
+            if (dataToRender.length === 0) {
+                container.innerHTML = `<p>No ${cfg.filterLicenseType} license data available.</p>`;
+                return;
+            }
+        }
 
-    dataToRender.forEach(row => {
-        const hasDecrease = type === 'admin' && checkForDecrease(row, dataToRender);
-        const rowClass = hasDecrease ? 'warning-row' : '';
-        
-        html += `<tr class="${rowClass}">` + cfg.headers.map(h => {
-            let v = row[h.key];
+        let html = '<table><thead><tr>' + cfg.headers.map(h => `<th>${h.label}</th>`).join('');
+        if (cfg.actionColumn) html += `<th>${cfg.actionColumn === 'delete' ? 'Action' : 'Approval Action'}</th>`;
+        html += '</tr></thead><tbody>';
+
+        dataToRender.forEach(row => {
+            // 检查是否有减少数量的情况（仅针对admin表格）
+            const hasDecrease = type === 'admin' && checkForDecrease(row, dataToRender);
+
+            const rowClass = hasDecrease ? 'warning-row' : '';
             
-            if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v);
-            
-            if (h.key === 'ApprovalStatus') {
-                if (cfg.renderStatusBadge === false) {
-                    v = v ?? '';
-                } else {
-                    const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
-                    v = `<span class="status-badge ${sc}">${v}</span>`;
+            html += `<tr class="${rowClass}">` + cfg.headers.map(h => {
+                let v = row[h.key];
+                
+                if (h.key === 'Timestamp' || h.key === 'ActionTimestamp') v = fmt(v);
+                
+                if (h.key === 'ApprovalStatus') {
+                    if (cfg.renderStatusBadge === false) {
+                        v = v ?? '';
+                    } else {
+                        const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[v] || 'status-pending';
+                        v = `<span class="status-badge ${sc}">${v}</span>`;
+                    }
                 }
+                
+                // 限制Notes显示长度
+                if ((h.key === 'MaisonNotes' || h.key === 'AdminNotes') && v && v.length > 50) {
+                    v = `<span title="${v}">${v.substring(0, 50)}...</span>`;
+                }
+                
+                return `<td>${v ?? ''}</td>`;
+            }).join('');
+
+            if (cfg.actionColumn === 'approve') {
+                const submittedBy = row.SubmittedBy || '';
+                const maisonName = row.MaisonName || '';
+                const quarter = row.Quarter || '';
+                const licenseType = row.LicenseType || '';
+                const licenseCount = row.LicenseCount || '0';
+                const calculatedCost = row.CalculatedCost || '0';
+                const timestamp = row.Timestamp || '';
+                const maisonNotes = row.MaisonNotes || '';
+                const recordId = row.RecordId || '';
+                
+                html += `<td>
+                    <button class="approve-button-table" 
+                        data-id="${recordId}" 
+                        data-submitted-by="${submittedBy}" 
+                        data-maison-name="${maisonName}" 
+                        data-quarter="${quarter}"
+                        data-license-type="${licenseType}"
+                        data-license-count="${licenseCount}" 
+                        data-cost="${calculatedCost}" 
+                        data-timestamp="${timestamp}"
+                        data-maison-notes="${maisonNotes}">Approve</button>
+                    <button class="reject-button-table" 
+                        data-id="${recordId}" 
+                        data-submitted-by="${submittedBy}" 
+                        data-maison-name="${maisonName}" 
+                        data-quarter="${quarter}"
+                        data-license-type="${licenseType}"
+                        data-license-count="${licenseCount}" 
+                        data-cost="${calculatedCost}" 
+                        data-timestamp="${timestamp}"
+                        data-maison-notes="${maisonNotes}">Reject</button>
+                </td>`;
             }
-            
-            if ((h.key === 'MaisonNotes' || h.key === 'AdminNotes') && v && v.length > 50) {
-                v = `<span title="${v}">${v.substring(0, 50)}...</span>`;
-            }
-            
-            return `<td>${v ?? ''}</td>`;
-        }).join('');
-
-        if (cfg.actionColumn === 'approve') {
-            const submittedBy = row.SubmittedBy || '';
-            const maisonName = row.MaisonName || '';
-            const quarter = row.Quarter || '';
-            const licenseType = row.LicenseType || '';
-            const licenseCount = row.LicenseCount || '0';
-            const calculatedCost = row.CalculatedCost || '0';
-            const timestamp = row.Timestamp || '';
-            const maisonNotes = row.MaisonNotes || '';
-            const recordId = row.RecordId || '';
-            
-            html += `<td>
-                <button class="approve-button-table" 
-                    data-id="${recordId}" 
-                    data-submitted-by="${submittedBy}" 
-                    data-maison-name="${maisonName}" 
-                    data-quarter="${quarter}"
-                    data-license-type="${licenseType}"
-                    data-license-count="${licenseCount}" 
-                    data-cost="${calculatedCost}" 
-                    data-timestamp="${timestamp}"
-                    data-maison-notes="${maisonNotes}">Approve</button>
-                <button class="reject-button-table" 
-                    data-id="${recordId}" 
-                    data-submitted-by="${submittedBy}" 
-                    data-maison-name="${maisonName}" 
-                    data-quarter="${quarter}"
-                    data-license-type="${licenseType}"
-                    data-license-count="${licenseCount}" 
-                    data-cost="${calculatedCost}" 
-                    data-timestamp="${timestamp}"
-                    data-maison-notes="${maisonNotes}">Reject</button>
-            </td>`;
-        }
-        html += '</tr>';
-    });
-
-    container.innerHTML = html + '</tbody></table>';
-};
-
-// 渲染批次表格（新逻辑）
-const renderBatchTable = (cfg, dataToRender, container) => {
-    // 按 BatchId 分组
-    const batches = {};
-    dataToRender.forEach(row => {
-        const batchId = row.BatchId || 'no-batch';
-        if (!batches[batchId]) {
-            batches[batchId] = [];
-        }
-        batches[batchId].push(row);
-    });
-
-    // 构建表格
-    let html = '<table><thead><tr>';
-    html += '<th>Maison</th>';
-    html += '<th>Submitted By</th>';
-    html += '<th>Submission Time</th>';
-    html += '<th>2026 Q1</th>';
-    html += '<th>2026 Q2</th>';
-    html += '<th>2026 Q3</th>';
-    html += '<th>2026 Q4</th>';
-    html += '<th>Total Cost (€)</th>';
-    html += '<th>Approval Status</th>';
-    html += '<th>Maison Notes</th>';
-    if (cfg.actionColumn === 'approve') {
-        html += '<th>Approval Action</th>';
-    }
-    html += '</tr></thead><tbody>';
-
-    // 遍历每个批次
-    Object.keys(batches).sort((a, b) => {
-        const timeA = batches[a][0].Timestamp;
-        const timeB = batches[b][0].Timestamp;
-        return new Date(timeB) - new Date(timeA); // 最新的在前
-    }).forEach(batchId => {
-        const batchRows = batches[batchId];
-        
-        // 获取批次基本信息
-        const firstRow = batchRows[0];
-        const maisonName = firstRow.MaisonName;
-        const submittedBy = firstRow.SubmittedBy;
-        const timestamp = fmt(firstRow.Timestamp);
-        const approvalStatus = firstRow.ApprovalStatus;
-        const maisonNotes = firstRow.MaisonNotes || '';
-        
-        // 按季度组织数据
-        const quarterData = { Q1: null, Q2: null, Q3: null, Q4: null };
-        let totalCost = 0;
-        
-        batchRows.forEach(row => {
-            const quarter = row.Quarter;
-            if (quarter && quarter.includes('Q')) {
-                const qNum = quarter.match(/Q(\d)/)[1];
-                quarterData[`Q${qNum}`] = {
-                    count: row.LicenseCount,
-                    changeType: row.ChangeType || '',
-                    cost: parseFloat(row.CalculatedCost) || 0
-                };
-                totalCost += parseFloat(row.CalculatedCost) || 0;
-            }
+            html += '</tr>';
         });
-        
-        html += '<tr>';
-        html += `<td>${maisonName}</td>`;
-        html += `<td>${submittedBy}</td>`;
-        html += `<td>${timestamp}</td>`;
-        
-        // 显示 Q1-Q4
-        ['Q1', 'Q2', 'Q3', 'Q4'].forEach(q => {
-            if (quarterData[q]) {
-                const count = quarterData[q].count;
-                const changeType = quarterData[q].changeType;
-                html += `<td>${count} <span style="color:#666;font-size:0.85em;">(${changeType})</span></td>`;
-            } else {
-                html += `<td>-</td>`;
-            }
-        });
-        
-        html += `<td><strong>${totalCost.toFixed(2)}</strong></td>`;
-        
-        // Approval Status
-        const sc = { Pending: 'status-pending', Approved: 'status-approved', Rejected: 'status-rejected' }[approvalStatus] || 'status-pending';
-        html += `<td><span class="status-badge ${sc}">${approvalStatus}</span></td>`;
-        
-        // Maison Notes
-        const displayNotes = maisonNotes.length > 30 ? `<span title="${maisonNotes}">${maisonNotes.substring(0, 30)}...</span>` : maisonNotes;
-        html += `<td>${displayNotes}</td>`;
-        
-        // Action buttons
-        if (cfg.actionColumn === 'approve') {
-            html += `<td>
-                <button class="approve-button-table batch-approve" 
-                    data-batch-id="${batchId}"
-                    data-submitted-by="${submittedBy}"
-                    data-maison-name="${maisonName}"
-                    data-license-type="${firstRow.LicenseType}"
-                    data-timestamp="${firstRow.Timestamp}"
-                    data-maison-notes="${maisonNotes}">Approve</button>
-                <button class="reject-button-table batch-reject" 
-                    data-batch-id="${batchId}"
-                    data-submitted-by="${submittedBy}"
-                    data-maison-name="${maisonName}"
-                    data-license-type="${firstRow.LicenseType}"
-                    data-timestamp="${firstRow.Timestamp}"
-                    data-maison-notes="${maisonNotes}">Reject</button>
-            </td>`;
-        }
-        
-        html += '</tr>';
-    });
 
-    html += '</tbody></table>';
-    container.innerHTML = html;
-};
-
+        container.innerHTML = html + '</tbody></table>';
+        container.innerHTML = html + '</tbody></table>';
+    };
     // 检查 Forecast Alert 按钮状态
     const checkForecastAlertStatuses = async (container) => {
         const alertButtons = container.querySelectorAll('.forecast-alert');
@@ -933,87 +808,49 @@ const renderBatchTable = (cfg, dataToRender, container) => {
         }
 
         // Approve/Reject 按钮
-if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
-    const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
-    
-    // 检查是批次审核还是单条审核
-    const isBatchApproval = e.target.classList.contains('batch-approve') || e.target.classList.contains('batch-reject');
-    
-    if (isBatchApproval) {
-        // 批次审核
-        const batchId = e.target.dataset.batchId;
-        const submittedBy = e.target.dataset.submittedBy || '';
-        const maisonName = e.target.dataset.maisonName || '';
-        const licenseType = e.target.dataset.licenseType || '';
-        const timestamp = e.target.dataset.timestamp || '';
-        const maisonNotes = e.target.dataset.maisonNotes || '';
-        
-        if (!batchId) {
-            msg($('loginMessage'), 'Batch ID not found.', false);
-            return;
-        }
-        
-        const adminNotes = prompt(`${st === 'Approved' ? 'Approve' : 'Reject'} this batch submission (Q1-Q4)?\n\nYou can add optional notes below:`, '');
-        
-        if (adminNotes === null) return;
-        
-        const res = await api('updateBatchApprovalStatus', { 
-            batchId: batchId, 
-            newStatus: st, 
-            actionBy: currentUser.username,
-            adminNotes: adminNotes
-        });
-        
-        msg($('loginMessage'), res.success ? `Batch ${st}` : 'Update failed: ' + res.message, res.success);
-        
-        if (res.success) {
-            loadTable('adminClienteling', $('overviewClientelingTableContainer'));
-            loadTable('adminFull', $('overviewFullTableContainer'));
-            loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
-            
-            if (submittedBy) {
-                sendBatchApprovalNotification(submittedBy, st, maisonName, licenseType, timestamp, maisonNotes, adminNotes, batchId);
-            }
-        }
-    } else {
-        // 单条审核（保留原有逻辑）
         const id = e.target.dataset.id;
         if (!id) return;
-        
-        const submittedBy = e.target.dataset.submittedBy || '';
-        const maisonName = e.target.dataset.maisonName || '';
-        const quarter = e.target.dataset.quarter || '';
-        const licenseType = e.target.dataset.licenseType || '';
-        const licenseCount = e.target.dataset.licenseCount || '0';
-        const calculatedCost = e.target.dataset.cost || '0';
-        const timestamp = e.target.dataset.timestamp || '';
-        const maisonNotes = e.target.dataset.maisonNotes || '';
-        
-        const adminNotes = prompt(`${st === 'Approved' ? 'Approve' : 'Reject'} this submission?\n\nYou can add optional notes below:`, '');
-        
-        if (adminNotes === null) return;
-        
-        const res = await api('updateApprovalStatus', { 
-            recordId: id, 
-            newStatus: st, 
-            actionBy: currentUser.username,
-            adminNotes: adminNotes
-        });
-        
-        msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
-        
-        if (res.success) {
-            loadTable('adminClienteling', $('overviewClientelingTableContainer'));
-            loadTable('adminFull', $('overviewFullTableContainer'));
-            loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
-            
-            if (submittedBy) {
-                sendApprovalNotification(submittedBy, st, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes);
-            }
-        }
-    }
-}
 
+        if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
+            const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
+            
+            const submittedBy = e.target.dataset.submittedBy || '';
+            const maisonName = e.target.dataset.maisonName || '';
+            const quarter = e.target.dataset.quarter || '';
+            const licenseType = e.target.dataset.licenseType || '';
+            const licenseCount = e.target.dataset.licenseCount || '0';
+            const calculatedCost = e.target.dataset.cost || '0';
+            const timestamp = e.target.dataset.timestamp || '';
+            const maisonNotes = e.target.dataset.maisonNotes || '';
+            
+            // 弹出对话框让Admin输入备注
+            const adminNotes = prompt(`${st === 'Approved' ? 'Approve' : 'Reject'} this submission?\n\nYou can add optional notes below:`, '');
+            
+            if (adminNotes === null) return; // 用户取消
+            
+            const res = await api('updateApprovalStatus', { 
+                recordId: id, 
+                newStatus: st, 
+                actionBy: currentUser.username,
+                adminNotes: adminNotes
+            });
+            
+            msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
+            
+            if (res.success) {
+                // 刷新 Overview 的两个 Tab
+                loadTable('adminClienteling', $('overviewClientelingTableContainer'));
+                loadTable('adminFull', $('overviewFullTableContainer'));
+                
+                // 刷新历史记录
+                loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
+                
+                if (submittedBy) {
+                    sendApprovalNotification(submittedBy, st, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes);
+                }
+            }
+
+        }
     });
     // ===== Email 管理 =====
     const setEmailUI = (has, email = '') => {
@@ -1105,72 +942,6 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
             msg($('emailBroadcastMessage'), 'Failed to prepare notification: ' + (error.message || 'Unknown error'), false);
         }
     };
-// ===== Batch Approval Notification Email =====
-const sendBatchApprovalNotification = async (submittedBy, status, maisonName, licenseType, timestamp, maisonNotes, adminNotes, batchId) => {
-    try {
-        const emailRes = await api('getUserEmail', { username: submittedBy });
-        if (!emailRes.success || !emailRes.email) {
-            msg($('emailBroadcastMessage'), `Applicant "${submittedBy}" has no registered email. Notification not prepared.`, false);
-            return;
-        }
-        const applicantEmail = emailRes.email.trim();
-        const statusText = status === 'Approved' ? 'Approved' : 'Rejected';
-        const subject = `SFSC Batch Submission ${statusText} - ${maisonName} ${licenseType}`;
-        
-        const formattedTimestamp = timestamp ? fmt(timestamp) : (timestamp || '');
-        
-        let body = `Dear ${submittedBy},\n\n`;
-        body += `Your SFSC quarterly forecast batch submission has been ${statusText.toLowerCase()}.\n\n`;
-        body += `Details:\n`;
-        body += `Maison Name: ${maisonName}\n`;
-        body += `License Type: ${licenseType}\n`;
-        body += `Submission Time: ${formattedTimestamp}\n`;
-        body += `Approval Status: ${statusText}\n`;
-        
-        if (maisonNotes) {
-            body += `\nYour Notes: ${maisonNotes}\n`;
-        }
-        
-        if (adminNotes) {
-            body += `\nAdmin Notes: ${adminNotes}\n`;
-        }
-        
-        body += `\n`;
-        body += (status === 'Approved' 
-          ? `Thank you for your submission. The quarterly forecast (Q1-Q4) has been successfully approved.\n`
-          : `Please review your submission. If you have any questions or need to resubmit, please contact the administrator.\n`);
-        body += `\nBest regards,\nBT-admin`;
-
-        $('emailSubjectInput').value = subject;
-        $('emailContentInput').value = body;
-
-        if (!allUsers || !allUsers.length) {
-            const res = await api('getAllUsers');
-            if (res.success && res.data) allUsers = res.data.filter(u => u.email && u.email.trim());
-        }
-        
-        const hasApplicant = allUsers && allUsers.some(u => (u.username || '').trim() === submittedBy);
-        if (!hasApplicant && allUsers) {
-            allUsers = [...allUsers, { username: submittedBy, email: applicantEmail, maisonName: '', licenseType: '' }];
-        }
-        if (allUsers && allUsers.length) {
-            searchTerm = '';
-            if ($('userSearchInput')) $('userSearchInput').value = '';
-            renderU();
-            
-            $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
-                cb.checked = (cb.dataset.username || '').trim() === submittedBy; 
-            });
-            updCnt();
-        }
-
-        $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-        msg($('emailBroadcastMessage'), 'Batch approval notification email prepared for applicant. Click "Open in Outlook" to open and send.', true);
-    } catch (error) {
-        console.error('Error preparing batch approval notification:', error);
-        msg($('emailBroadcastMessage'), 'Failed to prepare notification: ' + (error.message || 'Unknown error'), false);
-    }
-};
 
     // ===== Email Broadcast =====
     const filtered = () => {
@@ -1481,58 +1252,22 @@ const sendBatchApprovalNotification = async (submittedBy, status, maisonName, li
                 return;
             }
             
-            // 构建季度数据（提交所有 Q1-Q4，包括状态信息）
-const quarterData = [];
-const batchId = `${currentUser.username}_${new Date().getTime()}`; // 生成唯一的批次ID
-
-filledData.forEach((count, idx) => {
-    if (count === null) return; // 跳过空值
-    
-    const isUserFilled = userInput[idx] !== '' && userInput[idx] !== null;
-    const isChanged = existingData && existingData[idx] !== null && count !== existingData[idx];
-    const isNew = !existingData || existingData[idx] === null;
-    const source = sourceQuarter[idx];
-    
-    let changeType = '';
-    
-    if (isUserFilled) {
-        // 用户手动填写
-        if (isNew) {
-            changeType = 'new';
-        } else if (isChanged) {
-            changeType = 'updated';
-        } else {
-            changeType = 'no-change';
-        }
-    } else {
-        // 自动填充
-        if (source !== null) {
-            const sourceQ = `Q${source + 1}`;
-            if (isNew) {
-                changeType = `auto-filled from ${sourceQ}`;
-            } else if (isChanged) {
-                changeType = `auto-updated from ${sourceQ}`;
-            } else {
-                changeType = `auto-confirmed from ${sourceQ}`;
+            // 构建季度数据（只提交需要更新的季度）
+            const quarterData = [];
+            filledData.forEach((count, idx) => {
+                const hasChange = !existingData || existingData[idx] === null || existingData[idx] !== count;
+                if (hasChange && count !== null) {
+                    quarterData.push({
+                        quarter: quarters[idx],
+                        count: count
+                    });
+                }
+            });
+            
+            if (quarterData.length === 0) {
+                msg($('maisonSubmitMessage'), 'No changes to submit.', false);
+                return;
             }
-        } else {
-            changeType = 'kept-existing';
-        }
-    }
-    
-    quarterData.push({
-        quarter: quarters[idx],
-        count: count,
-        changeType: changeType,
-        batchId: batchId
-    });
-});
-
-if (quarterData.length === 0) {
-    msg($('maisonSubmitMessage'), 'No data to submit.', false);
-    return;
-}
-
             
             const res = await api('submitSfscData', {
                 maisonName: currentUser.maisonName,
