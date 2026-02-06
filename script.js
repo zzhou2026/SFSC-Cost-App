@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let allUsers = [];
     let searchTerm = '';
     let currentYear = new Date().getFullYear();
-    let quarterClipboard = null; // 用于存储复制的季度值
 
     // ===== 工具函数 =====
     const showPage = page => {
@@ -1666,91 +1665,7 @@ BT-admin`;
             msg($('emailBroadcastMessage'), 'Data collection email template loaded and all users selected. Please review and click "Open in Outlook" to send.', true);
             
             $('emailSubjectInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
-        },
-        // === Quarter Copy/Paste 按钮 ===
-copyQ1: () => {
-    const value = $('q1Input').value.trim();
-    if (value === '') {
-        msg($('validationMessage'), 'Q1 is empty, nothing to copy!', false);
-        return;
-    }
-    quarterClipboard = value;
-    msg($('validationMessage'), `Q1 value (${value}) copied!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-},
-
-pasteQ1: () => {
-    if (quarterClipboard === null) {
-        msg($('validationMessage'), 'Clipboard is empty! Please copy a value first.', false);
-        return;
-    }
-    $('q1Input').value = quarterClipboard;
-    msg($('validationMessage'), `Pasted ${quarterClipboard} to Q1!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-},
-
-copyQ2: () => {
-    const value = $('q2Input').value.trim();
-    if (value === '') {
-        msg($('validationMessage'), 'Q2 is empty, nothing to copy!', false);
-        return;
-    }
-    quarterClipboard = value;
-    msg($('validationMessage'), `Q2 value (${value}) copied!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-},
-
-pasteQ2: () => {
-    if (quarterClipboard === null) {
-        msg($('validationMessage'), 'Clipboard is empty! Please copy a value first.', false);
-        return;
-    }
-    $('q2Input').value = quarterClipboard;
-    msg($('validationMessage'), `Pasted ${quarterClipboard} to Q2!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-},
-
-copyQ3: () => {
-    const value = $('q3Input').value.trim();
-    if (value === '') {
-        msg($('validationMessage'), 'Q3 is empty, nothing to copy!', false);
-        return;
-    }
-    quarterClipboard = value;
-    msg($('validationMessage'), `Q3 value (${value}) copied!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-},
-
-pasteQ3: () => {
-    if (quarterClipboard === null) {
-        msg($('validationMessage'), 'Clipboard is empty! Please copy a value first.', false);
-        return;
-    }
-    $('q3Input').value = quarterClipboard;
-    msg($('validationMessage'), `Pasted ${quarterClipboard} to Q3!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-},
-
-copyQ4: () => {
-    const value = $('q4Input').value.trim();
-    if (value === '') {
-        msg($('validationMessage'), 'Q4 is empty, nothing to copy!', false);
-        return;
-    }
-    quarterClipboard = value;
-    msg($('validationMessage'), `Q4 value (${value}) copied!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-},
-
-pasteQ4: () => {
-    if (quarterClipboard === null) {
-        msg($('validationMessage'), 'Clipboard is empty! Please copy a value first.', false);
-        return;
-    }
-    $('q4Input').value = quarterClipboard;
-    msg($('validationMessage'), `Pasted ${quarterClipboard} to Q4!`, true);
-    setTimeout(() => clr($('validationMessage')), 2000);
-} 
+        }
     };
 
     // 导出 Forecast 数据的辅助函数
