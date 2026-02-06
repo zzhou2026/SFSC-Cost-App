@@ -1053,15 +1053,7 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     $('maisonNotesInput').value = '';
                     clr($('validationMessage'));
                     clr($('maisonSubmitMessage'));
-                    // 绑定 Copy/Paste 按钮
-['copyQ1', 'pasteQ1', 'copyQ2', 'pasteQ2', 'copyQ3', 'pasteQ3', 'copyQ4', 'pasteQ4'].forEach(btnId => {
-    const btn = $(btnId);
-    if (btn && !btn.dataset.bound) {
-        btn.addEventListener('click', handlers[btnId]);
-        btn.dataset.bound = 'true';
-    }
-});
-
+                    
                     // 清空计算器
                     $('calcQ1Input').value = '0';
                     $('calcQ2Input').value = '0';
