@@ -419,28 +419,30 @@ table tr.warning-row:hover {
 /* ========== 在这里添加年份选择器样式 ========== */
 /* === Year Selection Container === */
 .year-selection-container {
-    margin: 0 0 10px 0;
-    padding: 0;
-    background-color: transparent;
-    border: none;
+    margin: 0 0 15px 0;  /* ← 减少下边距 从 20px 改为 15px */
+    padding: 0;  /* ← 去掉内边距 从 15px 改为 0 */
+    background-color: transparent;  /* ← 去掉背景色 */
+    border: none;  /* ← 去掉边框 */
+    border-radius: 0;
     display: flex;
     align-items: center;
     justify-content: center;
-    gap: 10px;
+    gap: 15px;
 }
+
 
 .year-selection-container label {
     margin: 0;
     font-weight: bold;
     color: var(--primary-color);
-    font-size: 1em;
+    font-size: 1.1em;
 }
 
 .year-select {
-    max-width: 120px;
-    font-size: 1em;
+    max-width: 150px;
+    font-size: 1.1em;
     font-weight: bold;
-    padding: 8px;
+    padding: 10px;
     border: 2px solid var(--primary-color);
 }
 
@@ -449,6 +451,7 @@ table tr.warning-row:hover {
     border-color: var(--secondary-color);
     box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
 }
+
 
 /* ========== 添加结束 ========== */
 
