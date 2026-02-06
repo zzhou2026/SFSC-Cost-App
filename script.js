@@ -838,13 +838,18 @@ document.addEventListener('DOMContentLoaded', () => {
             msg($('loginMessage'), res.success ? `Status: ${st}` : 'Update failed: ' + res.message, res.success);
             
             if (res.success) {
-                loadTable('admin', $('adminDataTableContainer'));
+                // 刷新 Overview 的两个 Tab
+                loadTable('adminClienteling', $('overviewClientelingTableContainer'));
+                loadTable('adminFull', $('overviewFullTableContainer'));
+                
+                // 刷新历史记录
                 loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
                 
                 if (submittedBy) {
                     sendApprovalNotification(submittedBy, st, maisonName, quarter, licenseType, licenseCount, calculatedCost, timestamp, maisonNotes, adminNotes);
                 }
             }
+
         }
     });
     // ===== Email 管理 =====
