@@ -1161,8 +1161,9 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
             ] : null;
             
             confirmMsg += `You are about to ${isUpdate ? 'UPDATE' : 'SUBMIT'} the following yearly forecast:\n\n`;
-            confirmMsg += `Year: ${new Date().getFullYear()}\n`;
-            confirmMsg += `License Type: ${currentUser.licenseType}\n\n`;
+confirmMsg += `Year: ${selectedYear}\n`;  // ← 把 new Date().getFullYear() 改为 selectedYear
+confirmMsg += `License Type: ${currentUser.licenseType}\n\n`;
+
             
             // ========== 修改显示逻辑 ==========
 values.forEach((val, idx) => {
