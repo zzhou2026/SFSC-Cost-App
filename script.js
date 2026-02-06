@@ -318,7 +318,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         container.innerHTML = html + '</tbody></table>';
-        await checkForecastAlertStatuses(container);
+        container.innerHTML = html + '</tbody></table>';
     };
     // 检查 Forecast Alert 按钮状态
     const checkForecastAlertStatuses = async (container) => {
@@ -474,6 +474,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         container.innerHTML = html + '</tbody></table>';
+        await checkForecastAlertStatuses(container);
     };
     // ===== Monthly Tracking 表格渲染 =====
     const loadMonthlyTrackingTable = async (container, year) => {
