@@ -325,14 +325,46 @@ const checkForDecrease = (row) => {
 
     // ===== Forecast 表格渲染 =====
     const loadForecastTable = async (container, licenseType) => {
-        const budgetRes = await api('getAnnualBudgets', { year: currentYear });
-        const forecastRes = await api('getForecastData', { licenseType: licenseType });
-
-        if (!forecastRes.success || !forecastRes.data) {
-            container.innerHTML = `<p>Failed to load forecast data: ${forecastRes.message || 'Unknown error'}</p>`;
-            return;
+        const selectedYear = $('forecastYearFilter') ? $('forecastYearFilter').value : new Date().getFullYear();
+        const isAllYears = selectedYear === 'all';
+        
+        if (isAllYears) {
+            // 显示所有年份（堆叠显示）
+            const currentYear = new Date().getFullYear();
+            const years = [currentYear, currentYear + 1, currentYear + 2];
+            
+            let allTablesHtml = '';
+            
+            for (const year of years) {
+                const tableHtml = await generateForecastTableForYear(year, licenseType);
+                allTablesHtml += `
+                    <div class="year-forecast-section">
+                        <h4 style="color: var(--primary-color); margin: 20px 0 10px 0; text-align: center;">${year} Annual Forecast</h4>
+                        ${tableHtml}
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = allTablesHtml;
+            await checkForecastAlertStatuses(container);
+        } else {
+            // 显示单个年份
+            const year = parseInt(selectedYear);
+            const tableHtml = await generateForecastTableForYear(year, licenseType);
+            container.innerHTML = tableHtml;
+            await checkForecastAlertStatuses(container);
         }
-
+    };
+    
+    // 新增：生成单个年份的 Forecast 表格
+    const generateForecastTableForYear = async (year, licenseType) => {
+        const budgetRes = await api('getAnnualBudgets', { year: year });
+        const forecastRes = await api('getForecastData', { licenseType: licenseType });
+    
+        if (!forecastRes.success || !forecastRes.data) {
+            return `<p>Failed to load forecast data: ${forecastRes.message || 'Unknown error'}</p>`;
+        }
+    
         const budgets = {};
         if (budgetRes.success && budgetRes.data) {
             budgetRes.data.forEach(b => {
@@ -340,9 +372,9 @@ const checkForDecrease = (row) => {
                 budgets[key] = parseFloat(b.AnnualTarget) || 0;
             });
         }
-
-        const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
-
+    
+        const quarters = [`${year}Q1`, `${year}Q2`, `${year}Q3`, `${year}Q4`];
+    
         let html = '<table><thead><tr>';
         html += '<th>Maison</th>';
         html += '<th>Budget Annuel</th>';
@@ -354,10 +386,14 @@ const checkForDecrease = (row) => {
         html += '<th>Variance</th>';
         html += '<th>Alert</th>';
         html += '</tr></thead><tbody>';
-
-        // 按 Maison 分组
+    
+        // 按 Maison 分组，并过滤该年份的数据
         const grouped = {};
         forecastRes.data.forEach(row => {
+            // 检查季度是否属于当前年份
+            const quarterYear = parseInt(row.Quarter.substring(0, 4));
+            if (quarterYear !== year) return;
+            
             const key = row.MaisonName;
             if (!grouped[key]) {
                 grouped[key] = {
@@ -370,17 +406,24 @@ const checkForDecrease = (row) => {
                 cost: row.TotalCost || 0
             };
         });
-
+    
+        // 如果没有数据
+        if (Object.keys(grouped).length === 0) {
+            html += '<tr><td colspan="100%" style="text-align: center; padding: 20px; color: #666;">No forecast data available for this year.</td></tr>';
+            html += '</tbody></table>';
+            return html;
+        }
+    
         Object.values(grouped).forEach(item => {
             html += '<tr>';
             html += `<td>${item.maisonName}</td>`;
-
+    
             const budgetKey = `${item.maisonName}|${licenseType}`;
             const budget = budgets[budgetKey] || 0;
             html += `<td>${budget.toFixed(2)}</td>`;
-
+    
             let totalForecast = 0;
-
+    
             quarters.forEach(q => {
                 const qData = item.quarters[q];
                 if (qData) {
@@ -394,9 +437,9 @@ const checkForDecrease = (row) => {
                     html += `<td>-</td>`;
                 }
             });
-
+    
             html += `<td><strong>${totalForecast.toFixed(2)}</strong></td>`;
-
+    
             // 计算 Variance
             const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
             const varianceThreshold = parseFloat(configPrices.VarianceThreshold) || 15;
@@ -410,7 +453,7 @@ const checkForDecrease = (row) => {
             
             const varianceSign = variance >= 0 ? '+' : '';
             html += `<td class="${varianceClass}">${varianceSign}${variance.toFixed(1)}%</td>`;
-
+    
             // Alert 按钮
             const needsAlert = Math.abs(variance) > varianceThreshold;
             if (needsAlert) {
@@ -423,13 +466,14 @@ const checkForDecrease = (row) => {
             } else {
                 html += `<td>-</td>`;
             }
-
+    
             html += '</tr>';
         });
-
-        container.innerHTML = html + '</tbody></table>';
-        await checkForecastAlertStatuses(container);
+    
+        html += '</tbody></table>';
+        return html;
     };
+    
     // ===== Monthly Tracking 表格渲染 =====
     const loadMonthlyTrackingTable = async (container, year) => {
         const res = await api('getMonthlyTrackingData', { year: year });
@@ -1057,6 +1101,17 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     
                     loadTable('adminClienteling', $('overviewClientelingTableContainer'));
                     loadTable('adminFull', $('overviewFullTableContainer'));
+                        // ========== 添加：初始化 Forecast 年份选择器 ==========
+    const currentYear = new Date().getFullYear();
+    const forecastYearOptions = [
+        `<option value="${currentYear}">${currentYear}</option>`,
+        `<option value="${currentYear + 1}">${currentYear + 1}</option>`,
+        `<option value="${currentYear + 2}">${currentYear + 2}</option>`,
+        `<option value="all">All Years</option>`
+    ].join('');
+    $('forecastYearFilter').innerHTML = forecastYearOptions;
+    $('forecastYearFilter').value = currentYear;
+    // ========== 添加结束 ==========
                     loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
                     loadForecastTable($('fullForecastTableContainer'), 'Full');
                     loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
@@ -1802,20 +1857,35 @@ BT-admin`;
         });
     }
 
-    // Notes 字符计数
-    const maisonNotesInput = $('maisonNotesInput');
-    if (maisonNotesInput) {
-        maisonNotesInput.addEventListener('input', () => {
-            const count = maisonNotesInput.value.length;
-            $('notesCharCount').textContent = `${count}/200`;
-            if (count >= 200) {
-                $('notesCharCount').style.color = '#d32f2f';
-            } else {
-                $('notesCharCount').style.color = '#666';
-            }
-        });
-    }
-
-    // 初始化
-    showPage($('loginPage'));
-});
+        // Notes 字符计数
+        const maisonNotesInput = $('maisonNotesInput');
+        if (maisonNotesInput) {
+            maisonNotesInput.addEventListener('input', () => {
+                const count = maisonNotesInput.value.length;
+                $('notesCharCount').textContent = `${count}/200`;
+                if (count >= 200) {
+                    $('notesCharCount').style.color = '#d32f2f';
+                } else {
+                    $('notesCharCount').style.color = '#666';
+                }
+            });
+        }
+    
+        // ========== 在这里添加年份选择器切换事件 ==========
+        const forecastYearFilter = $('forecastYearFilter');
+        if (forecastYearFilter) {
+            forecastYearFilter.addEventListener('change', () => {
+                // 重新加载当前激活的 Forecast 表格
+                if ($('clientelingForecastTab').classList.contains('active')) {
+                    loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
+                } else {
+                    loadForecastTable($('fullForecastTableContainer'), 'Full');
+                }
+            });
+        }
+        // ========== 添加结束 ==========
+    
+        // 初始化
+        showPage($('loginPage'));
+    });
+    

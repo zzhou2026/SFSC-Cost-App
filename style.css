@@ -654,6 +654,45 @@ table tr.warning-row:hover {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 10px;
 }
+/* === Forecast Year Selection === */
+.forecast-year-selection {
+    margin: 15px 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+}
+
+.forecast-year-selection label {
+    margin: 0;
+    font-weight: bold;
+    color: var(--primary-color);
+    font-size: 1em;
+}
+
+.forecast-year-selection .form-control {
+    max-width: 150px;
+    font-size: 1em;
+    font-weight: bold;
+    padding: 8px;
+    border: 2px solid var(--primary-color);
+    margin: 0;
+}
+
+.forecast-year-selection .form-control:focus {
+    outline: none;
+    border-color: var(--secondary-color);
+    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
+}
+
+/* === Forecast Tabs === */
+.forecast-tabs {
+    display: flex;
+    gap: 0;
+    margin: 20px 0 0 0;
+    border-bottom: 2px solid var(--border-color);
+}
 
 /* === Forecast Tabs === */
 .forecast-tabs {
@@ -984,4 +1023,21 @@ table tr.warning-row:hover {
     background-color: #ccc;
     cursor: pointer;
     color: #666;
+}
+/* === Year Forecast Section (All Years 模式) === */
+.year-forecast-section {
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px dashed var(--border-color);
+}
+
+.year-forecast-section:last-child {
+    border-bottom: none;
+}
+
+.year-forecast-section h4 {
+    background-color: var(--light-bg);
+    padding: 10px;
+    border-radius: var(--border-radius);
+    border-left: 4px solid var(--primary-color);
 }
