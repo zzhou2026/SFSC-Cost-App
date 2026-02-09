@@ -45,6 +45,14 @@ const resetYearTabs = () => {
     if (defaultTab) defaultTab.classList.add('active');
 };
 
+// ===== 更新BT-admin邮箱显示 =====
+const updateBTAdminEmail = () => {
+    const emailSpan = $('btAdminEmail');
+    if (emailSpan && configPrices.BeautyTechEmail) {
+        emailSpan.textContent = `BT-admin (${configPrices.BeautyTechEmail})`;
+    }
+};
+
     // ===== API 调用 =====
     const api = async (act, data = {}) => {
         const silent = ['getQuarterList', 'getConfig', 'checkExistingRecord', 'getUserEmail', 'getAllUsers', 'getAllSfscHistory', 'getMaisonSfscHistory', 'getForecastData', 'getAnnualBudgets'];
@@ -1046,6 +1054,7 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     
                     // 更新标题显示许可证类型
                     $('maisonSubmitTitle').textContent = `Submit Quarterly Forecast (${currentUser.licenseType} Licenses)`;
+                    updateBTAdminEmail();
                       // ========== 在这里添加年份选择器初始化 ==========
     const currentYear = new Date().getFullYear();
     const yearOptions = [currentYear, currentYear + 1, currentYear + 2]
