@@ -654,52 +654,35 @@ table tr.warning-row:hover {
     border-bottom: 1px solid var(--border-color);
     padding-bottom: 10px;
 }
-/* === Forecast Year Selection === */
-.forecast-year-selection {
-    margin: 15px 0;
-    padding: 0;
+
+/* === Forecast Tabs === */
+.forecast-tabs {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 10px;
+    gap: 0;
+    margin: 20px 0 0 0;
+    border-bottom: 2px solid var(--border-color);
 }
 
-.forecast-year-selection label {
+/* === Forecast Tabs === */
+.forecast-tabs {
+    display: flex;
+    gap: 0;
+    margin: 20px 0 0 0;
+    border-bottom: 2px solid var(--border-color);
+}
+
+/* === 第二层 Tab: 年份选择 === */
+.forecast-year-tabs {
+    display: flex;
+    gap: 0;
     margin: 0;
-    font-weight: bold;
-    color: var(--primary-color);
-    font-size: 1em;
+    border-bottom: 2px solid var(--border-color);
+    background-color: #f5f5f5;
 }
 
-.forecast-year-selection .form-control {
+.year-tab {
+    flex: 1;
     max-width: 150px;
-    font-size: 1em;
-    font-weight: bold;
-    padding: 8px;
-    border: 2px solid var(--primary-color);
-    margin: 0;
-}
-
-.forecast-year-selection .form-control:focus {
-    outline: none;
-    border-color: var(--secondary-color);
-    box-shadow: 0 0 5px rgba(0, 123, 255, 0.3);
-}
-
-/* === Forecast Tabs === */
-.forecast-tabs {
-    display: flex;
-    gap: 0;
-    margin: 20px 0 0 0;
-    border-bottom: 2px solid var(--border-color);
-}
-
-/* === Forecast Tabs === */
-.forecast-tabs {
-    display: flex;
-    gap: 0;
-    margin: 20px 0 0 0;
-    border-bottom: 2px solid var(--border-color);
 }
 
 .tab-button {

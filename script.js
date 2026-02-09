@@ -9,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     let allUsers = [];
     let searchTerm = '';
     let currentYear = new Date().getFullYear();
-
+    let selectedForecastYear = new Date().getFullYear(); // 当前选中的Forecast年份
     // ===== 工具函数 =====
     const showPage = page => {
         document.querySelectorAll('.page').forEach(p => { p.classList.add('hidden'); p.classList.remove('active'); });
@@ -32,6 +32,18 @@ document.addEventListener('DOMContentLoaded', () => {
             return isNaN(d) ? ts : d.toLocaleString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
         } catch { return ts; }
     };
+    
+// ===== 重置年份 Tab 为默认年份 =====
+const resetYearTabs = () => {
+    selectedForecastYear = new Date().getFullYear(); // 重置为当前年份
+    
+    // 更新 Tab 激活状态
+    document.querySelectorAll('.year-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    const defaultTab = $(`year${selectedForecastYear}Tab`);
+    if (defaultTab) defaultTab.classList.add('active');
+};
 
     // ===== API 调用 =====
     const api = async (act, data = {}) => {
@@ -324,37 +336,13 @@ const checkForDecrease = (row) => {
 
 
     // ===== Forecast 表格渲染 =====
-    const loadForecastTable = async (container, licenseType) => {
-        const selectedYear = $('forecastYearFilter') ? $('forecastYearFilter').value : new Date().getFullYear();
-        const isAllYears = selectedYear === 'all';
-        
-        if (isAllYears) {
-            // 显示所有年份（堆叠显示）
-            const currentYear = new Date().getFullYear();
-            const years = [currentYear, currentYear + 1, currentYear + 2];
-            
-            let allTablesHtml = '';
-            
-            for (const year of years) {
-                const tableHtml = await generateForecastTableForYear(year, licenseType);
-                allTablesHtml += `
-                    <div class="year-forecast-section">
-                        <h4 style="color: var(--primary-color); margin: 20px 0 10px 0; text-align: center;">${year} Annual Forecast</h4>
-                        ${tableHtml}
-                    </div>
-                `;
-            }
-            
-            container.innerHTML = allTablesHtml;
-            await checkForecastAlertStatuses(container);
-        } else {
-            // 显示单个年份
-            const year = parseInt(selectedYear);
-            const tableHtml = await generateForecastTableForYear(year, licenseType);
-            container.innerHTML = tableHtml;
-            await checkForecastAlertStatuses(container);
-        }
-    };
+const loadForecastTable = async (container, licenseType) => {
+    const year = selectedForecastYear; // 使用全局变量
+    const tableHtml = await generateForecastTableForYear(year, licenseType);
+    container.innerHTML = tableHtml;
+    await checkForecastAlertStatuses(container);
+};
+
     
     // 新增：生成单个年份的 Forecast 表格
     const generateForecastTableForYear = async (year, licenseType) => {
@@ -1101,17 +1089,6 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     
                     loadTable('adminClienteling', $('overviewClientelingTableContainer'));
                     loadTable('adminFull', $('overviewFullTableContainer'));
-                        // ========== 添加：初始化 Forecast 年份选择器 ==========
-    const currentYear = new Date().getFullYear();
-    const forecastYearOptions = [
-        `<option value="${currentYear}">${currentYear}</option>`,
-        `<option value="${currentYear + 1}">${currentYear + 1}</option>`,
-        `<option value="${currentYear + 2}">${currentYear + 2}</option>`,
-        `<option value="all">All Years</option>`
-    ].join('');
-    $('forecastYearFilter').innerHTML = forecastYearOptions;
-    $('forecastYearFilter').value = currentYear;
-    // ========== 添加结束 ==========
                     loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
                     loadForecastTable($('fullForecastTableContainer'), 'Full');
                     loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
@@ -1386,6 +1363,7 @@ values.forEach((val, idx) => {
         },
 
         clientelingForecastTab: () => {
+            resetYearTabs();
             $('clientelingForecastTab').classList.add('active');
             $('fullForecastTab').classList.remove('active');
             $('clientelingForecastContainer').classList.remove('hidden');
@@ -1396,6 +1374,7 @@ values.forEach((val, idx) => {
         },
 
         fullForecastTab: () => {
+            resetYearTabs();
             $('fullForecastTab').classList.add('active');
             $('clientelingForecastTab').classList.remove('active');
             $('fullForecastContainer').classList.remove('hidden');
@@ -1870,20 +1849,27 @@ BT-admin`;
                 }
             });
         }
-    
-        // ========== 在这里添加年份选择器切换事件 ==========
-        const forecastYearFilter = $('forecastYearFilter');
-        if (forecastYearFilter) {
-            forecastYearFilter.addEventListener('change', () => {
-                // 重新加载当前激活的 Forecast 表格
-                if ($('clientelingForecastTab').classList.contains('active')) {
-                    loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
-                } else {
-                    loadForecastTable($('fullForecastTableContainer'), 'Full');
-                }
-            });
+        // ===== 第二层 Tab: 年份切换事件 =====
+document.querySelectorAll('.year-tab').forEach(tab => {
+    tab.addEventListener('click', (e) => {
+        const clickedYear = parseInt(e.target.dataset.year);
+        
+        // 更新选中年份
+        selectedForecastYear = clickedYear;
+        
+        // 更新 Tab 激活状态
+        document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+        
+        // 重新加载当前激活的 Forecast 表格
+        if ($('clientelingForecastTab').classList.contains('active')) {
+            loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
+        } else {
+            loadForecastTable($('fullForecastTableContainer'), 'Full');
         }
-        // ========== 添加结束 ==========
+    });
+});
+
     
         // 初始化
         showPage($('loginPage'));
