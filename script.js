@@ -1056,12 +1056,13 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     $('maisonSubmitTitle').textContent = `Submit Quarterly Forecast (${currentUser.licenseType} Licenses)`;
                     updateBTAdminEmail();
                       // ========== 在这里添加年份选择器初始化 ==========
-    const currentYear = new Date().getFullYear();
-    const yearOptions = [currentYear, currentYear + 1, currentYear + 2]
-        .map(y => `<option value="${y}">${y}</option>`)
-        .join('');
-    $('forecastYearSelect').innerHTML = yearOptions;
-    $('forecastYearSelect').value = currentYear;
+                      const currentYear = new Date().getFullYear();
+                      const yearOptions = [currentYear - 1, currentYear, currentYear + 1]
+                          .map(y => `<option value="${y}">${y}</option>`)
+                          .join('');
+                      $('forecastYearSelect').innerHTML = yearOptions;
+                      $('forecastYearSelect').value = currentYear;
+                      
     // ========== 添加结束 ==========
                     // 清空输入框
                     $('q1Input').value = '';
@@ -1096,8 +1097,35 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     $('adminView').classList.remove('hidden'); 
                     $('maisonView').classList.add('hidden');
                     
-                    loadTable('adminClienteling', $('overviewClientelingTableContainer'));
-                    loadTable('adminFull', $('overviewFullTableContainer'));
+                    // 动态生成 Annual Forecast 年份 Tab
+                    const forecastYearTabs = $('forecastYearTabs');
+                    if (forecastYearTabs) {
+                        const years = [currentYear - 1, currentYear, currentYear + 1];
+                        forecastYearTabs.innerHTML = years.map((y, index) => 
+                            `<button id="year${y}Tab" class="tab-button year-tab ${index === 1 ? 'active' : ''}" data-year="${y}">${y}</button>`
+                        ).join('');
+                        
+                        // 重新绑定年份 Tab 的事件监听
+                        forecastYearTabs.querySelectorAll('.year-tab').forEach(tab => {
+                            tab.addEventListener('click', (e) => {
+                                const clickedYear = parseInt(e.target.dataset.year);
+                                selectedForecastYear = clickedYear;
+                                
+                                document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
+                                e.target.classList.add('active');
+                                
+                                const licenseType = getActiveLicenseType();
+                                const containerId = licenseType === 'Clienteling' ? 'clientelingForecastTableContainer' : 'fullForecastTableContainer';
+                                loadForecastTable($(containerId), licenseType);
+                            });
+                        });
+                        
+                        // 设置默认选中年份为当前年份
+                        selectedForecastYear = currentYear;
+                    }
+                    
+                    loadTable('admin', $('overviewClientelingTableContainer'), { filterLicenseType: 'Clienteling' });
+                    loadTable('admin', $('overviewFullTableContainer'), { filterLicenseType: 'Full' });
                     loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
                     loadForecastTable($('fullForecastTableContainer'), 'Full');
                     loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
@@ -1107,6 +1135,7 @@ if (e.target.classList.contains('approve-button-table') || e.target.classList.co
                     popMaisonSelectors();
                     loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
                 }
+                
             }, 500);
         },
 
@@ -1865,26 +1894,6 @@ const exportForecastData = async (licenseType) => {
                 }
             });
         }
-        // ===== 第二层 Tab: 年份切换事件 =====
-document.querySelectorAll('.year-tab').forEach(tab => {
-    tab.addEventListener('click', (e) => {
-        const clickedYear = parseInt(e.target.dataset.year);
-        
-        // 更新选中年份
-        selectedForecastYear = clickedYear;
-        
-        // 更新 Tab 激活状态
-        document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
-        e.target.classList.add('active');
-        
-        // 重新加载当前激活的 Forecast 表格
-        if ($('clientelingForecastTab').classList.contains('active')) {
-            loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
-        } else {
-            loadForecastTable($('fullForecastTableContainer'), 'Full');
-        }
-    });
-});
 
     
         // 初始化
