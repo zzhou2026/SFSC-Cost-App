@@ -377,14 +377,12 @@ quarters.forEach(q => {
     html += `<th>${q}<br>Qty</th>`;
     html += `<th>${q}<br>Cost (€)</th>`;
 });
-html += '<th>Forecast<br>Annual (€)</th>';
-html += '<th>Budget<br>Annual (€)</th>';
+html += '<th>Annual<br>Forecast (€)</th>';
+html += '<th>Annual<br>Budget (€)</th>';
 html += '<th>Variance</th>';
 html += '<th>Alert</th>';
 html += '</tr></thead><tbody>';
 
-
-    
         // 按 Maison 分组，并过滤该年份的数据
         const grouped = {};
         forecastRes.data.forEach(row => {
