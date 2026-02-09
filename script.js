@@ -372,16 +372,17 @@ const loadForecastTable = async (container, licenseType) => {
         const quarters = [`${year}Q1`, `${year}Q2`, `${year}Q3`, `${year}Q4`];
     
         let html = '<table><thead><tr>';
-        html += '<th>Maison</th>';
-        html += '<th>Budget Annuel</th>';
-        quarters.forEach(q => {
-            html += `<th>${q}<br>Qty</th>`;
-            html += `<th>${q}<br>Cost (€)</th>`;
-        });
-        html += '<th>Forecast<br>Annuel (€)</th>';
-        html += '<th>Variance</th>';
-        html += '<th>Alert</th>';
-        html += '</tr></thead><tbody>';
+html += '<th>Maison</th>';
+html += '<th>Budget Annuel (€)</th>';
+quarters.forEach(q => {
+    html += `<th>${q}<br>Qty</th>`;
+    html += `<th>${q}<br>Cost (€)</th>`;
+});
+html += '<th>Forecast<br>Annuel (€)</th>';
+html += '<th>Variance</th>';
+html += '<th>Alert</th>';
+html += '</tr></thead><tbody>';
+
     
         // 按 Maison 分组，并过滤该年份的数据
         const grouped = {};
