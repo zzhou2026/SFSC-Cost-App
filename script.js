@@ -373,15 +373,16 @@ const loadForecastTable = async (container, licenseType) => {
     
         let html = '<table><thead><tr>';
 html += '<th>Maison</th>';
-html += '<th>Budget Annuel (€)</th>';
 quarters.forEach(q => {
     html += `<th>${q}<br>Qty</th>`;
     html += `<th>${q}<br>Cost (€)</th>`;
 });
-html += '<th>Forecast<br>Annuel (€)</th>';
+html += '<th>Forecast<br>Annual (€)</th>';
+html += '<th>Budget<br>Annual (€)</th>';
 html += '<th>Variance</th>';
 html += '<th>Alert</th>';
 html += '</tr></thead><tbody>';
+
 
     
         // 按 Maison 分组，并过滤该年份的数据
@@ -414,13 +415,12 @@ html += '</tr></thead><tbody>';
         Object.values(grouped).forEach(item => {
             html += '<tr>';
             html += `<td>${item.maisonName}</td>`;
-    
+        
             const budgetKey = `${item.maisonName}|${licenseType}`;
             const budget = budgets[budgetKey] || 0;
-            html += `<td>${budget.toFixed(2)}</td>`;
-    
+        
             let totalForecast = 0;
-    
+        
             quarters.forEach(q => {
                 const qData = item.quarters[q];
                 if (qData) {
@@ -434,8 +434,9 @@ html += '</tr></thead><tbody>';
                     html += `<td>-</td>`;
                 }
             });
-    
+        
             html += `<td><strong>${totalForecast.toFixed(2)}</strong></td>`;
+            html += `<td>${budget.toFixed(2)}</td>`;
     
             // 计算 Variance
             const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
