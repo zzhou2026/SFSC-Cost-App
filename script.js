@@ -123,36 +123,36 @@ const updateBTAdminEmail = () => {
         { key: 'LicenseType', label: 'License Type' },
         { key: 'Year', label: 'Year' },
         { key: 'Q1Count', label: 'Q1 Qty' },
-        { key: 'Q1Cost', label: 'Q1 Cost' },
+        { key: 'Q1Cost', label: 'Q1 Cost (€)' },
         { key: 'Q2Count', label: 'Q2 Qty' },
-        { key: 'Q2Cost', label: 'Q2 Cost' },
+        { key: 'Q2Cost', label: 'Q2 Cost (€)' },
         { key: 'Q3Count', label: 'Q3 Qty' },
-        { key: 'Q3Cost', label: 'Q3 Cost' },
+        { key: 'Q3Cost', label: 'Q3 Cost (€)' },
         { key: 'Q4Count', label: 'Q4 Qty' },
-        { key: 'Q4Cost', label: 'Q4 Cost' },
-        { key: 'TotalCost', label: 'Total Cost' }
-    ];
+        { key: 'Q4Cost', label: 'Q4 Cost (€)' },
+        { key: 'TotalCost', label: 'Total Cost (€)' }
+    ];    
     
     const baseHistoryHeaders = [
         { key: 'MaisonName', label: 'Maison Name' },
         { key: 'LicenseType', label: 'License Type' },
         { key: 'Year', label: 'Year' },
         { key: 'Q1Count', label: 'Q1 Qty' },
-        { key: 'Q1Cost', label: 'Q1 Cost' },
+        { key: 'Q1Cost', label: 'Q1 Cost (€)' },
         { key: 'Q2Count', label: 'Q2 Qty' },
-        { key: 'Q2Cost', label: 'Q2 Cost' },
+        { key: 'Q2Cost', label: 'Q2 Cost (€)' },
         { key: 'Q3Count', label: 'Q3 Qty' },
-        { key: 'Q3Cost', label: 'Q3 Cost' },
+        { key: 'Q3Cost', label: 'Q3 Cost (€)' },
         { key: 'Q4Count', label: 'Q4 Qty' },
-        { key: 'Q4Cost', label: 'Q4 Cost' },
-        { key: 'TotalCost', label: 'Total Cost' },
+        { key: 'Q4Cost', label: 'Q4 Cost (€)' },
+        { key: 'TotalCost', label: 'Total Cost (€)' },
         { key: 'SubmittedBy', label: 'Submitted By' },
         { key: 'Timestamp', label: 'Submission Time' },
         { key: 'ApprovalStatus', label: 'Approval Status' },
         { key: 'Action', label: 'Action Type' },
         { key: 'ActionTimestamp', label: 'Action Time' },
         { key: 'ActionBy', label: 'Action By' }
-    ];
+    ];    
     
 
     const configs = {
