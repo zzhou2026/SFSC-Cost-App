@@ -1706,35 +1706,41 @@ BT-admin`;
     };
 
     // 导出 Forecast 数据的辅助函数
-    const exportForecastData = async (licenseType) => {
-        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-        
-        const budgetRes = await api('getAnnualBudgets', { year: currentYear });
-        const forecastRes = await api('getForecastData', { licenseType: licenseType });
-        
-        if (!forecastRes.success || !forecastRes.data || !forecastRes.data.length) {
-            msg($('loginMessage'), `Export failed: No ${licenseType} forecast data available.`, false);
-            return;
-        }
+const exportForecastData = async (licenseType) => {
+    if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
+    
+    const budgetRes = await api('getAnnualBudgets', { year: selectedForecastYear });
+    const forecastRes = await api('getForecastData', { licenseType: licenseType });
+    
+    if (!forecastRes.success || !forecastRes.data || !forecastRes.data.length) {
+        msg($('loginMessage'), `Export failed: No ${licenseType} forecast data available.`, false);
+        return;
+    }
 
-        const budgets = {};
-        if (budgetRes.success && budgetRes.data) {
-            budgetRes.data.forEach(b => {
-                const key = `${b.MaisonName}|${b.LicenseType}`;
-                budgets[key] = parseFloat(b.AnnualTarget) || 0;
-            });
-        }
-
-        const quarters = [`${currentYear}Q1`, `${currentYear}Q2`, `${currentYear}Q3`, `${currentYear}Q4`];
-
-        let csv = 'Maison,Budget Annuel,';
-        quarters.forEach(q => {
-            csv += `${q} Qty,${q} Cost,`;
+    const budgets = {};
+    if (budgetRes.success && budgetRes.data) {
+        budgetRes.data.forEach(b => {
+            const key = `${b.MaisonName}|${b.LicenseType}`;
+            budgets[key] = parseFloat(b.AnnualTarget) || 0;
         });
-        csv += 'Forecast Annuel,Variance %\n';
+    }
 
-        const grouped = {};
-        forecastRes.data.forEach(row => {
+    const quarters = [`${selectedForecastYear}Q1`, `${selectedForecastYear}Q2`, `${selectedForecastYear}Q3`, `${selectedForecastYear}Q4`];
+
+    let csv = 'Maison,';
+    quarters.forEach(q => {
+        csv += `${q} Qty,${q} Cost (€),`;
+    });
+    csv += 'Annual Forecast (€),Annual Budget (€),Variance %\n';
+
+    const grouped = {};
+    forecastRes.data
+        .filter(row => {
+            // 只导出选中年份的数据
+            const rowYear = parseInt(row.Quarter.substring(0, 4));
+            return rowYear === selectedForecastYear;
+        })
+        .forEach(row => {
             const key = row.MaisonName;
             if (!grouped[key]) {
                 grouped[key] = {
@@ -1748,39 +1754,40 @@ BT-admin`;
             };
         });
 
-        Object.values(grouped).forEach(item => {
-            const budgetKey = `${item.maisonName}|${licenseType}`;
-            const budget = budgets[budgetKey] || 0;
-            let totalForecast = 0;
-            let row = `${item.maisonName},${budget.toFixed(2)},`;
+    Object.values(grouped).forEach(item => {
+        const budgetKey = `${item.maisonName}|${licenseType}`;
+        const budget = budgets[budgetKey] || 0;
+        let totalForecast = 0;
+        let row = `${item.maisonName},`;
 
-            quarters.forEach(q => {
-                const qData = item.quarters[q];
-                if (qData) {
-                    const qty = parseInt(qData.quantity) || 0;
-                    const cost = parseFloat(qData.cost) || 0;
-                    totalForecast += cost;
-                    row += `${qty},${cost.toFixed(2)},`;
-                } else {
-                    row += '-,-,';
-                }
-            });
-
-            const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
-            row += `${totalForecast.toFixed(2)},${variance >= 0 ? '+' : ''}${variance.toFixed(1)}%\n`;
-            csv += row;
+        quarters.forEach(q => {
+            const qData = item.quarters[q];
+            if (qData) {
+                const qty = parseInt(qData.quantity) || 0;
+                const cost = parseFloat(qData.cost) || 0;
+                totalForecast += cost;
+                row += `${qty},${cost.toFixed(2)},`;
+            } else {
+                row += '-,-,';
+            }
         });
 
-        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const l = document.createElement('a');
-        l.href = URL.createObjectURL(b);
-        l.download = `SFSC_${licenseType}_Forecast_${currentYear}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
-        document.body.appendChild(l);
-        l.click();
-        document.body.removeChild(l);
+        const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
+        row += `${totalForecast.toFixed(2)},${budget.toFixed(2)},${variance >= 0 ? '+' : ''}${variance.toFixed(1)}%\n`;
+        csv += row;
+    });
 
-        msg($('loginMessage'), `${licenseType} forecast data exported successfully!`, true);
-    };
+    const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const l = document.createElement('a');
+    l.href = URL.createObjectURL(b);
+    l.download = `SFSC_${licenseType}_Forecast_${selectedForecastYear}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
+    document.body.appendChild(l);
+    l.click();
+    document.body.removeChild(l);
+
+    msg($('loginMessage'), `${licenseType} forecast data for ${selectedForecastYear} exported successfully!`, true);
+};
+
     // 导出 Overview 数据的辅助函数
     const exportOverviewData = async (licenseType) => {
         if (!currentUser || currentUser.role !== 'admin') { 
