@@ -21,7 +21,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const adminNotesText = document.getElementById('adminNotesText');
         const singleNoteText = document.getElementById('singleNoteText');
         
-        modalTitle.textContent = title;
+        // 隐藏大标题
+        modalTitle.classList.add('hidden');
         
         // 隐藏所有 section
         maisonNotesSection.classList.add('hidden');
@@ -33,19 +34,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const hasAdminNotes = adminNotes && adminNotes.trim();
         
         if (hasMaisonNotes && hasAdminNotes) {
-            // 同时显示两种 notes
+            // 同时显示两种 notes（都用小标题）
             maisonNotesText.textContent = maisonNotes;
             adminNotesText.textContent = adminNotes;
             maisonNotesSection.classList.remove('hidden');
             adminNotesSection.classList.remove('hidden');
         } else if (hasMaisonNotes) {
-            // 只显示 Maison notes
-            singleNoteText.textContent = maisonNotes;
-            singleNoteSection.classList.remove('hidden');
+            // 只显示 Maison notes（用小标题）
+            maisonNotesText.textContent = maisonNotes;
+            maisonNotesSection.classList.remove('hidden');
         } else if (hasAdminNotes) {
-            // 只显示 Admin notes
-            singleNoteText.textContent = adminNotes;
-            singleNoteSection.classList.remove('hidden');
+            // 只显示 Admin notes（用小标题）
+            adminNotesText.textContent = adminNotes;
+            adminNotesSection.classList.remove('hidden');
         } else {
             // 都没有
             singleNoteText.textContent = 'No notes available.';
@@ -55,6 +56,7 @@ document.addEventListener('DOMContentLoaded', () => {
         modal.classList.remove('hidden');
         modal.classList.add('active');
     };
+    
     
     
     const closeNotesModal = () => {
@@ -412,20 +414,10 @@ container.querySelectorAll('.notes-link').forEach(link => {
     link.addEventListener('click', () => {
         const maisonNotes = link.dataset.maisonNotes || '';
         const adminNotes = link.dataset.adminNotes || '';
-        
-        // 根据有哪些 notes 决定标题
-        let title = 'Notes';
-        if ((maisonNotes && maisonNotes.trim()) && (adminNotes && adminNotes.trim())) {
-            title = 'Maison Notes & Admin Notes';
-        } else if (maisonNotes && maisonNotes.trim()) {
-            title = 'Maison Notes';
-        } else if (adminNotes && adminNotes.trim()) {
-            title = 'Admin Notes';
-        }
-        
-        showNotesModal(title, maisonNotes, adminNotes);
+        showNotesModal('', maisonNotes, adminNotes);
     });
 });
+
 
 
     };
