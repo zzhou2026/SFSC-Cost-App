@@ -820,6 +820,14 @@ body += `Variance: ${variance}%\n\n`;
         if (!id) return;
 
         if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
+             // 检查按钮是否正在处理中
+    if (e.target.dataset.processing === 'true') {
+        console.log('Button is already being processed, ignoring...');
+        return;
+    }
+    
+    // 标记按钮为处理中
+    e.target.dataset.processing = 'true';
             e.preventDefault(); // 阻止默认行为
             e.stopPropagation(); // 阻止事件冒泡
             const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
