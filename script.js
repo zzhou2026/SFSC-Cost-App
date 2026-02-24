@@ -1282,14 +1282,6 @@ document.addEventListener('DOMContentLoaded', () => {
             msg($('loginMessage'), 'History data exported successfully!', true);
         },
 
-        exportClientelingForecastButton: async () => {
-            await exportForecastData('Clienteling');
-        },
-
-        exportFullForecastButton: async () => {
-            await exportForecastData('Full');
-        },
-
         submitTargetButton: async () => {
             if (!currentUser || currentUser.role !== 'admin') { 
                 msg($('targetSubmitMessage'), 'Admin only!', false); 
