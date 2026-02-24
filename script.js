@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', () => {
     let allUsers = [];
     let searchTerm = '';
     let currentYear = new Date().getFullYear();
-    let selectedForecastYear = new Date().getFullYear();
     
     // ===== 工具函数 =====
     const showPage = page => {
@@ -34,14 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch { return ts; }
     };
     
-    const resetYearTabs = () => {
-        selectedForecastYear = new Date().getFullYear();
-        document.querySelectorAll('.year-tab').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        const defaultTab = $(`year${selectedForecastYear}Tab`);
-        if (defaultTab) defaultTab.classList.add('active');
-    };
 
     const updateBTAdminEmail = () => {
         const emailSpan = $('btAdminEmail');
@@ -336,30 +327,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const checkForecastAlertStatuses = async (container) => {
-        const alertButtons = container.querySelectorAll('.forecast-alert');
-        
-        for (const button of alertButtons) {
-            const maisonName = button.dataset.maison;
-            const licenseType = button.dataset.licenseType;
-            const budget = button.dataset.budget;
-            const forecast = button.dataset.forecast;
-            
-            const latestActualValue = `${budget}|${forecast}`;
-            
-            const checkRes = await api('checkAlertStatus', {
-                maisonName: maisonName,
-                licenseType: licenseType,
-                latestMonth: 'Annual',
-                latestActualValue: latestActualValue
-            });
-            
-            if (checkRes.success && checkRes.alreadySent) {
-                button.disabled = true;
-                button.textContent = 'Alert Sent';
-            }
-        }
-    };
 
     const checkOverviewAlertStatuses = async (container) => {
         const alertButtons = container.querySelectorAll('.overview-alert');
@@ -396,124 +363,6 @@ document.addEventListener('DOMContentLoaded', () => {
         return q2 < q1 || q3 < q2 || q4 < q3;
     };
 
-    const loadForecastTable = async (container, licenseType) => {
-        const year = selectedForecastYear;
-        const tableHtml = await generateForecastTableForYear(year, licenseType);
-        container.innerHTML = tableHtml;
-        await checkForecastAlertStatuses(container);
-    };
-    
-    const generateForecastTableForYear = async (year, licenseType) => {
-        const budgetRes = await api('getAnnualBudgets', { year: year });
-        const forecastRes = await api('getForecastData', { licenseType: licenseType });
-    
-        if (!forecastRes.success || !forecastRes.data) {
-            return `<p>Failed to load forecast data: ${forecastRes.message || 'Unknown error'}</p>`;
-        }
-    
-        const budgets = {};
-        if (budgetRes.success && budgetRes.data) {
-            budgetRes.data.forEach(b => {
-                const key = `${b.MaisonName}|${b.LicenseType}`;
-                budgets[key] = parseFloat(b.AnnualTarget) || 0;
-            });
-        }
-    
-        const quarters = [`${year}Q1`, `${year}Q2`, `${year}Q3`, `${year}Q4`];
-    
-        let html = '<table><thead><tr>';
-        html += '<th>Maison</th>';
-        quarters.forEach(q => {
-            html += `<th>${q}<br>Qty</th>`;
-            html += `<th>${q}<br>Cost (€)</th>`;
-        });
-        html += '<th>Annual<br>Forecast (€)</th>';
-        html += '<th>Annual<br>Budget (€)</th>';
-        html += '<th>Variance</th>';
-        html += '<th>Alert</th>';
-        html += '</tr></thead><tbody>';
-
-        const grouped = {};
-        forecastRes.data.forEach(row => {
-            const quarterYear = parseInt(row.Quarter.substring(0, 4));
-            if (quarterYear !== year) return;
-            
-            const key = row.MaisonName;
-            if (!grouped[key]) {
-                grouped[key] = {
-                    maisonName: row.MaisonName,
-                    quarters: {}
-                };
-            }
-            grouped[key].quarters[row.Quarter] = {
-                quantity: row.TotalQuantity || 0,
-                cost: row.TotalCost || 0
-            };
-        });
-    
-        if (Object.keys(grouped).length === 0) {
-            html += '<tr><td colspan="100%" style="text-align: center; padding: 20px; color: #666;">No forecast data available for this year.</td></tr>';
-            html += '</tbody></table>';
-            return html;
-        }
-    
-        Object.values(grouped).forEach(item => {
-            html += '<tr>';
-            html += `<td>${item.maisonName}</td>`;
-        
-            const budgetKey = `${item.maisonName}|${licenseType}`;
-            const budget = budgets[budgetKey] || 0;
-        
-            let totalForecast = 0;
-        
-            quarters.forEach(q => {
-                const qData = item.quarters[q];
-                if (qData) {
-                    const qty = parseInt(qData.quantity) || 0;
-                    const cost = parseFloat(qData.cost) || 0;
-                    totalForecast += cost;
-                    html += `<td>${qty}</td>`;
-                    html += `<td>${cost.toFixed(2)}</td>`;
-                } else {
-                    html += `<td>-</td>`;
-                    html += `<td>-</td>`;
-                }
-            });
-        
-            html += `<td><strong>${totalForecast.toFixed(2)}</strong></td>`;
-            html += `<td>${budget.toFixed(2)}</td>`;
-    
-            const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
-            const varianceThreshold = parseFloat(configPrices.VarianceThreshold) || 15;
-            
-            let varianceClass = 'variance-good';
-            if (Math.abs(variance) > varianceThreshold) {
-                varianceClass = 'variance-danger';
-            } else if (Math.abs(variance) > varianceThreshold / 2) {
-                varianceClass = 'variance-warning';
-            }
-            
-            const varianceSign = variance >= 0 ? '+' : '';
-            html += `<td class="${varianceClass}">${varianceSign}${variance.toFixed(1)}%</td>`;
-    
-            const needsAlert = Math.abs(variance) > varianceThreshold;
-            if (needsAlert) {
-                html += `<td><button class="alert-button-table forecast-alert" 
-                    data-maison="${item.maisonName}" 
-                    data-license-type="${licenseType}"
-                    data-budget="${budget.toFixed(2)}"
-                    data-forecast="${totalForecast.toFixed(2)}"
-                    data-variance="${variance.toFixed(1)}">🔔 Alert</button></td>`;
-            } else {
-                html += `<td>-</td>`;
-            }
-    
-            html += '</tr>';
-        });
-    
-        html += '</tbody></table>';
-        return html;
-    };
     
     const loadMonthlyTrackingTable = async (container, year) => {
         const res = await api('getMonthlyTrackingData', { year: year });
@@ -620,108 +469,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     document.addEventListener('click', async e => {
-        if (e.target.classList.contains('forecast-alert')) {
-            const maisonName = e.target.dataset.maison;
-            const licenseType = e.target.dataset.licenseType;
-            const budget = e.target.dataset.budget;
-            const forecast = e.target.dataset.forecast;
-            const variance = e.target.dataset.variance;
-            const isAlreadySent = e.target.disabled;
-            
-            if (isAlreadySent) {
-                const confirmMsg = `Alert has already been sent for ${maisonName} ${licenseType}\n` +
-                                 `(Budget: ${budget}€, Forecast: ${forecast}€).\n\n` +
-                                 `Do you want to prepare the email again?`;
-                
-                if (!confirm(confirmMsg)) {
-                    return;
-                }
-            } else {
-                const latestActualValue = `${budget}|${forecast}`;
-                
-                const recordRes = await api('recordAlertSent', {
-                    maisonName: maisonName,
-                    licenseType: licenseType,
-                    latestMonth: 'Annual',
-                    latestActualValue: latestActualValue,
-                    sentBy: currentUser.username
-                });
-                
-                if (!recordRes.success) {
-                    msg($('emailBroadcastMessage'), `Failed to record alert: ${recordRes.message}`, false);
-                    return;
-                }
-            }
-            const targetUsername = `${maisonName}-${licenseType}`;
-            
-            if (!allUsers || !allUsers.length) {
-                msg($('emailBroadcastMessage'), 'User list not loaded. Please wait and try again.', false);
-                return;
-            }
-            
-            const targetUser = allUsers.find(u => u.username === targetUsername);
-            
-            if (!targetUser) {
-                msg($('emailBroadcastMessage'), `User "${targetUsername}" not found in the system.`, false);
-                return;
-            }
-            
-            if (!targetUser.email || !targetUser.email.trim()) {
-                msg($('emailBroadcastMessage'), `User "${targetUsername}" has no registered email address.`, false);
-                return;
-            }
-            
-            searchTerm = '';
-            if ($('userSearchInput')) $('userSearchInput').value = '';
-            renderU();
-            
-            $('userListContainer').querySelectorAll('.user-checkbox').forEach(cb => { 
-                cb.checked = false; 
-            });
-            
-            const targetCheckbox = $('userListContainer').querySelector(`.user-checkbox[data-username="${targetUsername}"]`);
-            if (targetCheckbox) {
-                targetCheckbox.checked = true;
-                updCnt();
-            } else {
-                msg($('emailBroadcastMessage'), `Failed to select user "${targetUsername}".`, false);
-                return;
-            }
-            
-            const subject = `SFSC Budget Variance Alert - ${maisonName} ${licenseType}`;
-            
-            let body = `Dear ${targetUsername},\n\n`;
-            body += `This is an automated alert regarding your SFSC budget variance for ${maisonName} - ${licenseType}.\n\n`;
-            body += `=== Summary ===\n`;
-            body += `Budget Annuel (${currentYear}): ${budget} €\n`;
-            body += `Forecast Annuel (Q1-Q4): ${forecast} €\n`;
-            body += `Variance: ${variance}%\n\n`;
-            
-            if (parseFloat(variance) < 0) {
-                body += `⚠️ Your forecast is BELOW the budget by ${Math.abs(parseFloat(variance)).toFixed(1)}%.\n`;
-            } else if (parseFloat(variance) > 0) {
-                body += `⚠️ Your forecast is ABOVE the budget by ${variance}%.\n`;
-            }
-            
-            body += `\nPlease review your forecast and adjust if necessary.\n`;
-            body += `\nIf you have any questions, please contact the BT team.\n\n`;
-            body += `Best regards,\nBT-admin`;
-            
-            $('emailSubjectInput').value = subject;
-            $('emailContentInput').value = body;
-            
-            $('emailBroadcastSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            msg($('emailBroadcastMessage'), `Alert email prepared for "${targetUsername}". Please review and click "Open in Outlook" to send.`, true);
-            if (!isAlreadySent) {
-                if ($('clientelingForecastTab').classList.contains('active')) {
-                    await loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
-                } else {
-                    await loadForecastTable($('fullForecastTableContainer'), 'Full');
-                }
-            }
-            return;
-        }
 
         if (e.target.classList.contains('overview-alert')) {
             const maisonName = e.target.dataset.maison;
@@ -1161,10 +908,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if ($('actualMaisonSelect')) $('actualMaisonSelect').innerHTML = maisonOptions;
     };
 
-    const getActiveLicenseType = () => {
-        return $('clientelingForecastTab').classList.contains('active') ? 'Clienteling' : 'Full';
-    };
-
     const handlers = {
         loginButton: async () => {
             const u = $('username').value.trim(), p = $('password').value.trim();
@@ -1233,34 +976,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     $('adminView').classList.remove('hidden'); 
                     $('maisonView').classList.add('hidden');
                     
-                    const forecastYearTabs = $('forecastYearTabs');
-                    if (forecastYearTabs) {
-                        const years = [currentYear - 1, currentYear, currentYear + 1];
-                        forecastYearTabs.innerHTML = years.map((y, index) => 
-                            `<button id="year${y}Tab" class="tab-button year-tab ${index === 1 ? 'active' : ''}" data-year="${y}">${y}</button>`
-                        ).join('');
-                        
-                        forecastYearTabs.querySelectorAll('.year-tab').forEach(tab => {
-                            tab.addEventListener('click', (e) => {
-                                const clickedYear = parseInt(e.target.dataset.year);
-                                selectedForecastYear = clickedYear;
-                                
-                                document.querySelectorAll('.year-tab').forEach(t => t.classList.remove('active'));
-                                e.target.classList.add('active');
-                                
-                                const licenseType = getActiveLicenseType();
-                                const containerId = licenseType === 'Clienteling' ? 'clientelingForecastTableContainer' : 'fullForecastTableContainer';
-                                loadForecastTable($(containerId), licenseType);
-                            });
-                        });
-                        
-                        selectedForecastYear = currentYear;
-                    }
+                    
                     
                     loadTable('adminClienteling', $('overviewClientelingTableContainer'));
                     loadTable('adminFull', $('overviewFullTableContainer'));
-                    loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
-                    loadForecastTable($('fullForecastTableContainer'), 'Full');
                     loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
                     initBcast();
                     
@@ -1507,39 +1226,12 @@ document.addEventListener('DOMContentLoaded', () => {
             
             if (res.success) {
                 $('budgetAnnuelInput').value = '0';
-                
-                if ($('clientelingForecastTab').classList.contains('active')) {
-                    loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
-                } else {
-                    loadForecastTable($('fullForecastTableContainer'), 'Full');
-                }
-                
                 loadTable('adminClienteling', $('overviewClientelingTableContainer'));
                 loadTable('adminFull', $('overviewFullTableContainer'));
             }
         },
 
-        clientelingForecastTab: () => {
-            resetYearTabs();
-            $('clientelingForecastTab').classList.add('active');
-            $('fullForecastTab').classList.remove('active');
-            $('clientelingForecastContainer').classList.remove('hidden');
-            $('clientelingForecastContainer').classList.add('active');
-            $('fullForecastContainer').classList.add('hidden');
-            $('fullForecastContainer').classList.remove('active');
-            loadForecastTable($('clientelingForecastTableContainer'), 'Clienteling');
-        },
 
-        fullForecastTab: () => {
-            resetYearTabs();
-            $('fullForecastTab').classList.add('active');
-            $('clientelingForecastTab').classList.remove('active');
-            $('fullForecastContainer').classList.remove('hidden');
-            $('fullForecastContainer').classList.add('active');
-            $('clientelingForecastContainer').classList.add('hidden');
-            $('clientelingForecastContainer').classList.remove('active');
-            loadForecastTable($('fullForecastTableContainer'), 'Full');
-        },
 
         overviewClientelingTab: () => {
             $('overviewClientelingTab').classList.add('active');
@@ -1559,13 +1251,6 @@ document.addEventListener('DOMContentLoaded', () => {
             $('overviewClientelingContainer').classList.remove('active');
         },
 
-        exportClientelingDataButton: async () => {
-            await exportOverviewData('Clienteling');
-        },
-
-        exportFullDataButton: async () => {
-            await exportOverviewData('Full');
-        },
 
         exportHistoryDataButton: async () => {
             if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
@@ -1853,86 +1538,6 @@ BT-admin`;
         }
     };
 
-    const exportForecastData = async (licenseType) => {
-        if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
-        
-        const budgetRes = await api('getAnnualBudgets', { year: selectedForecastYear });
-        const forecastRes = await api('getForecastData', { licenseType: licenseType });
-        
-        if (!forecastRes.success || !forecastRes.data || !forecastRes.data.length) {
-            msg($('loginMessage'), `Export failed: No ${licenseType} forecast data available.`, false);
-            return;
-        }
-
-        const budgets = {};
-        if (budgetRes.success && budgetRes.data) {
-            budgetRes.data.forEach(b => {
-                const key = `${b.MaisonName}|${b.LicenseType}`;
-                budgets[key] = parseFloat(b.AnnualTarget) || 0;
-            });
-        }
-
-        const quarters = [`${selectedForecastYear}Q1`, `${selectedForecastYear}Q2`, `${selectedForecastYear}Q3`, `${selectedForecastYear}Q4`];
-
-        let csv = 'Maison,';
-        quarters.forEach(q => {
-            csv += `${q} Qty,${q} Cost (€),`;
-        });
-        csv += 'Annual Forecast (€),Annual Budget (€),Variance %\n';
-
-        const grouped = {};
-        forecastRes.data
-            .filter(row => {
-                const rowYear = parseInt(row.Quarter.substring(0, 4));
-                return rowYear === selectedForecastYear;
-            })
-            .forEach(row => {
-                const key = row.MaisonName;
-                if (!grouped[key]) {
-                    grouped[key] = {
-                        maisonName: row.MaisonName,
-                        quarters: {}
-                    };
-                }
-                grouped[key].quarters[row.Quarter] = {
-                    quantity: row.TotalQuantity || 0,
-                    cost: row.TotalCost || 0
-                };
-            });
-
-        Object.values(grouped).forEach(item => {
-            const budgetKey = `${item.maisonName}|${licenseType}`;
-            const budget = budgets[budgetKey] || 0;
-            let totalForecast = 0;
-            let row = `${item.maisonName},`;
-
-            quarters.forEach(q => {
-                const qData = item.quarters[q];
-                if (qData) {
-                    const qty = parseInt(qData.quantity) || 0;
-                    const cost = parseFloat(qData.cost) || 0;
-                    totalForecast += cost;
-                    row += `${qty},${cost.toFixed(2)},`;
-                } else {
-                    row += '-,-,';
-                }
-            });
-
-            const variance = budget > 0 ? ((totalForecast - budget) / budget * 100) : 0;
-            row += `${totalForecast.toFixed(2)},${budget.toFixed(2)},${variance >= 0 ? '+' : ''}${variance.toFixed(1)}%\n`;
-            csv += row;
-        });
-
-        const b = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-        const l = document.createElement('a');
-        l.href = URL.createObjectURL(b);
-        l.download = `SFSC_${licenseType}_Forecast_${selectedForecastYear}_${new Date().toLocaleDateString('en-US').replace(/\//g, '-')}.csv`;
-        document.body.appendChild(l);
-        l.click();
-        document.body.removeChild(l);
-
-        msg($('loginMessage'), `${licenseType} forecast data for ${selectedForecastYear} exported successfully!`, true);
-    };
 
     const exportOverviewData = async (licenseType) => {
         if (!currentUser || currentUser.role !== 'admin') { 
