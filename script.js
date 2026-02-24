@@ -1146,7 +1146,13 @@ body += `Variance: ${variance}%\n\n`;
                 msg($('maisonSubmitMessage'), 'Maison user only!', false); 
                 return; 
             }
-            
+                // 防止重复提交
+    const submitButton = $('submitForecastButton');
+    if (submitButton.dataset.processing === 'true') {
+        console.log('Already processing, ignoring...');
+        return;
+    }
+    submitButton.dataset.processing = 'true';
             clr($('validationMessage'));
             clr($('maisonSubmitMessage'));
             
@@ -1235,8 +1241,10 @@ body += `Variance: ${variance}%\n\n`;
             
             if (!confirm(confirmMsg)) {
                 msg($('maisonSubmitMessage'), 'Submission cancelled.', false);
+                submitButton.dataset.processing = 'false';
                 return;
             }
+            
             
             const quarterData = quarters.slice(0, 4).map((q, idx) => ({
                 quarter: q,
@@ -1272,6 +1280,7 @@ body += `Variance: ${variance}%\n\n`;
             } else {
                 msg($('maisonSubmitMessage'), 'Failed to submit: ' + res.message, false);
             }
+            submitButton.dataset.processing = 'false';
         },
 
         calculateCostButton: () => {
