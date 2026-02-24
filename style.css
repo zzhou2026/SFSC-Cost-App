@@ -1134,6 +1134,33 @@ table tr.warning-row:hover {
     white-space: pre-wrap;
     word-wrap: break-word;
 }
+.notes-section {
+    margin-bottom: 20px;
+}
+
+.notes-section:last-child {
+    margin-bottom: 0;
+}
+
+.notes-section h4 {
+    margin: 0 0 10px 0;
+    color: var(--primary-color);
+    font-size: 1.1em;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 5px;
+}
+
+.notes-section p {
+    margin: 0;
+    line-height: 1.6;
+    color: var(--text-color);
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
+.notes-section.hidden {
+    display: none;
+}
 
 .notes-link {
     color: var(--primary-color);

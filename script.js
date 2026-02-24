@@ -9,18 +9,53 @@ document.addEventListener('DOMContentLoaded', () => {
     let allUsers = [];
     let searchTerm = '';
     let currentYear = new Date().getFullYear();
-     // === Modal 控制函数 ===
-     const showNotesModal = (title, content) => {
+    const showNotesModal = (title, maisonNotes, adminNotes) => {
         const modal = document.getElementById('notesModal');
         const modalTitle = document.getElementById('notesModalTitle');
-        const modalText = document.getElementById('notesModalText');
+        
+        const maisonNotesSection = document.getElementById('maisonNotesSection');
+        const adminNotesSection = document.getElementById('adminNotesSection');
+        const singleNoteSection = document.getElementById('singleNoteSection');
+        
+        const maisonNotesText = document.getElementById('maisonNotesText');
+        const adminNotesText = document.getElementById('adminNotesText');
+        const singleNoteText = document.getElementById('singleNoteText');
         
         modalTitle.textContent = title;
-        modalText.textContent = content || 'No notes available.';
+        
+        // 隐藏所有 section
+        maisonNotesSection.classList.add('hidden');
+        adminNotesSection.classList.add('hidden');
+        singleNoteSection.classList.add('hidden');
+        
+        // 判断显示模式
+        const hasMaisonNotes = maisonNotes && maisonNotes.trim();
+        const hasAdminNotes = adminNotes && adminNotes.trim();
+        
+        if (hasMaisonNotes && hasAdminNotes) {
+            // 同时显示两种 notes
+            maisonNotesText.textContent = maisonNotes;
+            adminNotesText.textContent = adminNotes;
+            maisonNotesSection.classList.remove('hidden');
+            adminNotesSection.classList.remove('hidden');
+        } else if (hasMaisonNotes) {
+            // 只显示 Maison notes
+            singleNoteText.textContent = maisonNotes;
+            singleNoteSection.classList.remove('hidden');
+        } else if (hasAdminNotes) {
+            // 只显示 Admin notes
+            singleNoteText.textContent = adminNotes;
+            singleNoteSection.classList.remove('hidden');
+        } else {
+            // 都没有
+            singleNoteText.textContent = 'No notes available.';
+            singleNoteSection.classList.remove('hidden');
+        }
         
         modal.classList.remove('hidden');
         modal.classList.add('active');
     };
+    
     
     const closeNotesModal = () => {
         const modal = document.getElementById('notesModal');
@@ -172,14 +207,14 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         adminClienteling: {
             action: 'getAllSfscData',
-            headers: [...baseHeaders, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
+            headers: [...baseHeaders, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Notes' }],
             actionColumn: 'approve',
             filterLicenseType: 'Clienteling',
             showBudgetVariance: true
         },
         adminFull: {
             action: 'getAllSfscData',
-            headers: [...baseHeaders, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Maison Notes' }],
+            headers: [...baseHeaders, { key: 'ApprovalStatus', label: 'Approval Status' }, { key: 'MaisonNotes', label: 'Notes' }],
             actionColumn: 'approve',
             filterLicenseType: 'Full',
             showBudgetVariance: true
@@ -271,15 +306,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
                 
                 // Notes 列特殊处理：显示 "See" 链接
-                if (h.key === 'MaisonNotes' || h.key === 'AdminNotes') {
-                    if (v && v.trim()) {
-                        const notesData = String(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-                        const notesTitle = h.key === 'MaisonNotes' ? 'Maison Notes' : 'Admin Notes';
-                        v = `<span class="notes-link" data-notes="${notesData}" data-notes-title="${notesTitle}"><u>See</u></span>`;
-                    } else {
-                        v = '<span class="no-notes">-</span>';
-                    }
-                }
+if (h.key === 'MaisonNotes' || h.key === 'AdminNotes') {
+    const maisonNotes = row['MaisonNotes'] || '';
+    const adminNotes = row['AdminNotes'] || '';
+    const hasMaisonNotes = maisonNotes && maisonNotes.trim();
+    const hasAdminNotes = adminNotes && adminNotes.trim();
+    
+    if (hasMaisonNotes || hasAdminNotes) {
+        const maisonNotesData = String(maisonNotes).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        const adminNotesData = String(adminNotes).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+        v = `<span class="notes-link" data-maison-notes="${maisonNotesData}" data-admin-notes="${adminNotesData}"><u>See</u></span>`;
+    } else {
+        v = '<span class="no-notes">-</span>';
+    }
+}
+
                 
                 return `<td>${v ?? ''}</td>`;
             }).join('');        
@@ -369,11 +410,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // 添加 Notes 链接的点击事件
 container.querySelectorAll('.notes-link').forEach(link => {
     link.addEventListener('click', () => {
-        const notesContent = link.dataset.notes;
-        const notesTitle = link.dataset.notesTitle || 'Notes';
-        showNotesModal(notesTitle, notesContent);
+        const maisonNotes = link.dataset.maisonNotes || '';
+        const adminNotes = link.dataset.adminNotes || '';
+        showNotesModal('Notes', maisonNotes, adminNotes);
     });
 });
+
     };
 
 
@@ -778,6 +820,8 @@ body += `Variance: ${variance}%\n\n`;
         if (!id) return;
 
         if (e.target.classList.contains('approve-button-table') || e.target.classList.contains('reject-button-table')) {
+            e.preventDefault(); // 阻止默认行为
+            e.stopPropagation(); // 阻止事件冒泡
             const st = e.target.classList.contains('approve-button-table') ? 'Approved' : 'Rejected';
             
             const submittedBy = e.target.dataset.submittedBy || '';
@@ -811,6 +855,7 @@ body += `Variance: ${variance}%\n\n`;
                     sendApprovalNotification(submittedBy, st, maisonName, year, licenseType, quarterDetails, totalCost, timestamp, maisonNotes, adminNotes);
                 }
             }
+            return; 
         }
     });
 

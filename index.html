@@ -277,17 +277,27 @@
         </div>
     </div>
     <!-- Notes Modal -->
-    <div id="notesModal" class="notes-modal hidden">
-        <div class="notes-modal-content">
-            <div class="notes-modal-header">
-                <h3 id="notesModalTitle">Notes</h3>
-                <button class="notes-modal-close" id="closeNotesModal">&times;</button>
+<div id="notesModal" class="notes-modal hidden">
+    <div class="notes-modal-content">
+        <div class="notes-modal-header">
+            <h3 id="notesModalTitle">Notes</h3>
+            <button class="notes-modal-close" id="closeNotesModal">&times;</button>
+        </div>
+        <div class="notes-modal-body">
+            <div id="maisonNotesSection" class="notes-section hidden">
+                <h4>Maison Notes:</h4>
+                <p id="maisonNotesText"></p>
             </div>
-            <div class="notes-modal-body">
-                <p id="notesModalText"></p>
+            <div id="adminNotesSection" class="notes-section hidden">
+                <h4>Admin Notes:</h4>
+                <p id="adminNotesText"></p>
+            </div>
+            <div id="singleNoteSection" class="notes-section hidden">
+                <p id="singleNoteText"></p>
             </div>
         </div>
     </div>
+</div>
 
     <script src="script.js"></script>
 </body>
