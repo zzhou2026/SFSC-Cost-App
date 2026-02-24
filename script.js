@@ -391,19 +391,21 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     
         let html = '<table><thead><tr>';
-        html += '<th>Maison</th>';
-        html += '<th>License Type</th>';
-        
-        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-        quarters.forEach(q => {
-            html += `<th>${year} ${q}</th>`;
-        });
-        
-        html += `<th>${year}<br>Budget (€)</th>`;
-        html += `<th>${year}<br>Actual Cost (€)</th>`;
-        html += '<th>Variance</th>';
-        html += '<th>Alert</th>';
-        html += '</tr></thead><tbody>';
+html += '<th>Maison</th>';
+html += '<th>Year</th>';
+html += '<th>License Type</th>';
+
+const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+quarters.forEach(q => {
+    html += `<th>${q}</th>`;
+});
+
+html += `<th>Budget (€)</th>`;
+html += `<th>Actual Cost (€)</th>`;
+html += '<th>Variance</th>';
+html += '<th>Alert</th>';
+html += '</tr></thead><tbody>';
+
     
         // 遍历所有有 Budget 的 Maison + LicenseType 组合
         const sortedKeys = Object.keys(budgets).sort();
@@ -414,10 +416,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const quarterlyActuals = actuals[key] || {};
     
             html += '<tr>';
-            html += `<td>${maisonName}</td>`;
-            html += `<td>${licenseType}</td>`;
-    
-            let totalActualCost = 0;
+html += `<td>${maisonName}</td>`;
+html += `<td>${year}</td>`;
+html += `<td>${licenseType}</td>`;
+
+let totalActualCost = 0;
+
             let latestQuarter = null;
             let latestActual = null;
     
@@ -1399,9 +1403,10 @@ body += `Variance: ${variance}%\n\n`;
             }
             
             const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-            let csv = 'Maison,License Type,';
-            quarters.forEach(q => { csv += `${year} ${q},`; });
-            csv += `${year} Budget (€),${year} Actual Cost (€),Variance %\n`;
+let csv = 'Maison,Year,License Type,';
+quarters.forEach(q => { csv += `${q},`; });
+csv += `Budget (€),Actual Cost (€),Variance %\n`;
+
             
             const sortedKeys = Object.keys(budgets).sort();
             
@@ -1410,7 +1415,8 @@ body += `Variance: ${variance}%\n\n`;
                 const budget = budgets[key];
                 const quarterlyActuals = actuals[key] || {};
                 
-                csv += `${maisonName},${licenseType},`;
+                csv += `${maisonName},${year},${licenseType},`;
+            
                 
                 let totalActualCost = 0;
                 const unitPrice = licenseType === 'Clienteling' 
