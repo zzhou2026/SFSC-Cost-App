@@ -9,7 +9,41 @@ document.addEventListener('DOMContentLoaded', () => {
     let allUsers = [];
     let searchTerm = '';
     let currentYear = new Date().getFullYear();
+     // === Modal 控制函数 ===
+     const showNotesModal = (title, content) => {
+        const modal = document.getElementById('notesModal');
+        const modalTitle = document.getElementById('notesModalTitle');
+        const modalText = document.getElementById('notesModalText');
+        
+        modalTitle.textContent = title;
+        modalText.textContent = content || 'No notes available.';
+        
+        modal.classList.remove('hidden');
+        modal.classList.add('active');
+    };
     
+    const closeNotesModal = () => {
+        const modal = document.getElementById('notesModal');
+        modal.classList.remove('active');
+        modal.classList.add('hidden');
+    };
+    
+    // 关闭按钮事件
+    document.getElementById('closeNotesModal').addEventListener('click', closeNotesModal);
+    
+    // 点击模态框外部关闭
+    document.getElementById('notesModal').addEventListener('click', (e) => {
+        if (e.target.id === 'notesModal') {
+            closeNotesModal();
+        }
+    });
+    
+    // ESC 键关闭
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeNotesModal();
+        }
+    });
     // ===== 工具函数 =====
     const showPage = page => {
         document.querySelectorAll('.page').forEach(p => { p.classList.add('hidden'); p.classList.remove('active'); });
@@ -158,10 +192,10 @@ document.addEventListener('DOMContentLoaded', () => {
         },
         adminActionsLog: {
             action: 'getAllSfscHistory',
-            headers: [...baseHistoryHeaders, { key: 'MaisonNotes', label: 'Maison Notes' }, { key: 'AdminNotes', label: 'Admin Notes' }],
+            headers: [...baseHistoryHeaders],
             renderStatusBadge: false,
             actionColumn: null
-        }
+        }        
     };
 
     const loadTable = async (type, container, params = {}) => {
@@ -236,12 +270,19 @@ document.addEventListener('DOMContentLoaded', () => {
                     v = isNaN(num) ? '0.00' : num.toFixed(2);
                 }
                 
-                if ((h.key === 'MaisonNotes' || h.key === 'AdminNotes') && v && v.length > 50) {
-                    v = `<span title="${v}">${v.substring(0, 50)}...</span>`;
+                // Notes 列特殊处理：显示 "See" 链接
+                if (h.key === 'MaisonNotes' || h.key === 'AdminNotes') {
+                    if (v && v.trim()) {
+                        const notesData = String(v).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+                        const notesTitle = h.key === 'MaisonNotes' ? 'Maison Notes' : 'Admin Notes';
+                        v = `<span class="notes-link" data-notes="${notesData}" data-notes-title="${notesTitle}"><u>See</u></span>`;
+                    } else {
+                        v = '<span class="no-notes">-</span>';
+                    }
                 }
                 
                 return `<td>${v ?? ''}</td>`;
-            }).join('');
+            }).join('');        
 
             if (cfg.actionColumn === 'approve') {
                 const submittedBy = row.SubmittedBy || '';
@@ -325,6 +366,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cfg.showBudgetVariance) {
             await checkOverviewAlertStatuses(container);
         }
+        // 添加 Notes 链接的点击事件
+container.querySelectorAll('.notes-link').forEach(link => {
+    link.addEventListener('click', () => {
+        const notesContent = link.dataset.notes;
+        const notesTitle = link.dataset.notesTitle || 'Notes';
+        showNotesModal(notesTitle, notesContent);
+    });
+});
     };
 
 
