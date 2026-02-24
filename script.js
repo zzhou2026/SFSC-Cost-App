@@ -365,11 +365,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
     
     const loadMonthlyTrackingTable = async (container, year) => {
-        const res = await api('getMonthlyTrackingData', { year: year });
+        // 获取所有 Maisons 的 Budget 数据
+        const budgetRes = await api('getAnnualBudgets', { year: year });
+        const actualRes = await api('getMonthlyTrackingData', { year: year });
 
-        if (!res.success || !res.data || !res.data.length) {
-            container.innerHTML = `<p>${res.data && res.data.length === 0 ? 'No monthly tracking data available. Please set annual targets first.' : 'Failed to load monthly tracking data: ' + (res.message || 'Unknown error')}</p>`;
+        if (!budgetRes.success || !budgetRes.data || budgetRes.data.length === 0) {
+            container.innerHTML = `<p>No budget data available. Please set annual budgets first.</p>`;
             return;
+        }
+
+        // 构建 Budget 映射
+        const budgets = {};
+        budgetRes.data.forEach(b => {
+            const key = `${b.MaisonName}|${b.LicenseType}`;
+            budgets[key] = parseFloat(b.AnnualTarget) || 0;
+        });
+
+        // 构建 Actual 数据映射
+        const actuals = {};
+        if (actualRes.success && actualRes.data) {
+            actualRes.data.forEach(row => {
+                const key = `${row.MaisonName}|${row.LicenseType}`;
+                actuals[key] = row.MonthlyActuals || {};
+            });
         }
 
         let html = '<table><thead><tr>';
@@ -382,24 +400,41 @@ document.addEventListener('DOMContentLoaded', () => {
             html += `<th>${year}.${m}<br>${monthNames[idx]}</th>`;
         });
         
-        html += `<th>${year}<br>Forecast</th>`;
+        html += `<th>${year}<br>Budget (€)</th>`;
+        html += `<th>${year}<br>Actual Cost (€)</th>`;
         html += '<th>Variance</th>';
         html += '<th>Alert</th>';
         html += '</tr></thead><tbody>';
 
-        for (let rowIdx = 0; rowIdx < res.data.length; rowIdx++) {
-            const row = res.data[rowIdx];
+        // 遍历所有有 Budget 的 Maison + LicenseType 组合
+        const sortedKeys = Object.keys(budgets).sort();
+        
+        for (const key of sortedKeys) {
+            const [maisonName, licenseType] = key.split('|');
+            const budget = budgets[key];
+            const monthlyActuals = actuals[key] || {};
+
             html += '<tr>';
-            html += `<td>${row.MaisonName}</td>`;
-            html += `<td>${row.LicenseType}</td>`;
+            html += `<td>${maisonName}</td>`;
+            html += `<td>${licenseType}</td>`;
 
-            let latestActual = null;
+            let totalActualCost = 0;
             let latestMonth = null;
+            let latestActual = null;
 
+            // 获取单价
+            const unitPrice = licenseType === 'Clienteling' 
+                ? parseFloat(configPrices.ClientelingUnitPrice) || 16
+                : parseFloat(configPrices.FullUnitPrice) || 52;
+
+            // 显示每月数量并计算成本
             months.forEach(m => {
-                const actualQty = row.MonthlyActuals[m];
+                const actualQty = monthlyActuals[m];
                 if (actualQty !== undefined && actualQty !== null) {
                     html += `<td>${actualQty}</td>`;
+                    // 计算该月成本：数量 × 单价 × 3个月
+                    const monthlyCost = actualQty * unitPrice * 3;
+                    totalActualCost += monthlyCost;
                     latestActual = actualQty;
                     latestMonth = m;
                 } else {
@@ -407,33 +442,36 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            const annualTarget = row.AnnualTarget || 0;
-            html += `<td>${annualTarget}</td>`;
+            // Budget 列
+            html += `<td><strong>${budget.toFixed(2)}</strong></td>`;
 
-            if (latestActual !== null) {
-                const variance = latestActual - annualTarget;
-                const variancePercent = annualTarget > 0 ? Math.abs(variance / annualTarget * 100) : 0;
+            // Actual Cost 列
+            html += `<td><strong>${totalActualCost.toFixed(2)}</strong></td>`;
+
+            // Variance 列
+            if (totalActualCost > 0) {
+                const variance = budget > 0 ? ((totalActualCost - budget) / budget * 100) : 0;
+                const varianceThreshold = parseFloat(configPrices.VarianceThreshold) || 15;
                 
                 let varianceClass = 'variance-good';
-                if (variancePercent > 15) {
+                if (Math.abs(variance) > varianceThreshold) {
                     varianceClass = 'variance-danger';
-                } else if (variancePercent > 5) {
+                } else if (Math.abs(variance) > varianceThreshold / 2) {
                     varianceClass = 'variance-warning';
                 }
                 
                 const varianceSign = variance >= 0 ? '+' : '';
-                html += `<td class="${varianceClass}">${varianceSign}${variance}</td>`;
+                html += `<td class="${varianceClass}">${varianceSign}${variance.toFixed(1)}%</td>`;
             } else {
                 html += `<td>-</td>`;
             }
 
-            const maisonName = row.MaisonName;
-            const licenseType = row.LicenseType;
+            // Alert 按钮
             const checkRes = await api('checkAlertStatus', {
                 maisonName: maisonName,
                 licenseType: licenseType,
                 latestMonth: latestMonth || '',
-                latestActualValue: latestActual !== null ? latestActual : ''
+                latestActualValue: totalActualCost > 0 ? totalActualCost.toFixed(2) : ''
             });
 
             let buttonDisabled = '';
@@ -444,29 +482,28 @@ document.addEventListener('DOMContentLoaded', () => {
                 buttonText = 'Alert Sent';
             }
 
-            const alertData = {
-                maisonName: maisonName,
-                licenseType: licenseType,
-                annualTarget: annualTarget,
-                latestMonth: latestMonth || '',
-                latestActual: latestActual !== null ? latestActual : '',
-                variance: latestActual !== null ? (latestActual - annualTarget) : ''
-            };
-            
-            html += `<td><button class="alert-button-table monthly-tracking-alert" 
-                data-maison="${alertData.maisonName}" 
-                data-license-type="${alertData.licenseType}"
-                data-annual-target="${alertData.annualTarget}"
-                data-latest-month="${alertData.latestMonth}"
-                data-latest-actual="${alertData.latestActual}"
-                data-variance="${alertData.variance}"
-                ${buttonDisabled}>${buttonText}</button></td>`;
+            const needsAlert = totalActualCost > 0 && budget > 0 && Math.abs((totalActualCost - budget) / budget * 100) > (parseFloat(configPrices.VarianceThreshold) || 15);
+
+            if (needsAlert) {
+                html += `<td><button class="alert-button-table monthly-tracking-alert" 
+                    data-maison="${maisonName}" 
+                    data-license-type="${licenseType}"
+                    data-budget="${budget.toFixed(2)}"
+                    data-actual-cost="${totalActualCost.toFixed(2)}"
+                    data-latest-month="${latestMonth || ''}"
+                    data-variance="${budget > 0 ? ((totalActualCost - budget) / budget * 100).toFixed(1) : '0'}"
+                    ${buttonDisabled}>${buttonText}</button></td>`;
+            } else {
+                html += `<td>-</td>`;
+            }
 
             html += '</tr>';
         }
 
-        container.innerHTML = html + '</tbody></table>';
+        html += '</tbody></table>';
+        container.innerHTML = html;
     };
+
 
     document.addEventListener('click', async e => {
 
@@ -580,16 +617,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('monthly-tracking-alert')) {
             const maisonName = e.target.dataset.maison;
             const licenseType = e.target.dataset.licenseType;
-            const annualTarget = e.target.dataset.annualTarget;
+            const budget = e.target.dataset.budget;
+            const actualCost = e.target.dataset.actualCost;
             const latestMonth = e.target.dataset.latestMonth;
-            const latestActual = e.target.dataset.latestActual;
             const variance = e.target.dataset.variance;
             
             const isAlreadySent = e.target.disabled;
             
             if (isAlreadySent) {
                 const confirmMsg = `Alert has already been sent for ${maisonName} ${licenseType}\n` +
-                                 `(Month: ${latestMonth || 'N/A'}, Actual: ${latestActual || 'N/A'}).\n\n` +
+                                 `(Budget: ${budget}€, Actual Cost: ${actualCost}€).\n\n` +
                                  `Do you want to prepare the email again?`;
                 
                 if (!confirm(confirmMsg)) {
@@ -600,7 +637,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     maisonName: maisonName,
                     licenseType: licenseType,
                     latestMonth: latestMonth || '',
-                    latestActualValue: latestActual !== null && latestActual !== '' ? latestActual : '',
+                    latestActualValue: actualCost || '',
                     sentBy: currentUser.username
                 });
                 
@@ -609,7 +646,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
             }
-
+        
             const targetUsername = `${maisonName}-${licenseType}`;
             
             if (!allUsers || !allUsers.length) {
@@ -646,35 +683,24 @@ document.addEventListener('DOMContentLoaded', () => {
                 return;
             }
             
-            const subject = `SFSC License Variance Alert - ${maisonName} ${licenseType}`;
+            const subject = `SFSC Cost Variance Alert - ${maisonName} ${licenseType}`;
             
             let body = `Dear ${targetUsername},\n\n`;
-            body += `This is an automated alert regarding your SFSC license usage for ${maisonName} - ${licenseType}.\n\n`;
+            body += `This is an automated alert regarding your SFSC cost variance for ${maisonName} - ${licenseType}.\n\n`;
             body += `=== Summary ===\n`;
-            body += `Annual Target (${currentYear} Forecast): ${annualTarget}\n`;
+            body += `Annual Budget (${currentYear}): ${budget} €\n`;
+            body += `Actual Cost (累计): ${actualCost} €\n`;
+            body += `Variance: ${variance}%\n\n`;
             
-            if (latestMonth && latestActual !== '') {
-                const monthNames = {
-                    '01': 'January', '02': 'February', '03': 'March', '04': 'April',
-                    '05': 'May', '06': 'June', '07': 'July', '08': 'August',
-                    '09': 'September', '10': 'October', '11': 'November', '12': 'December'
-                };
-                body += `Latest Month: ${monthNames[latestMonth] || latestMonth}\n`;
-                body += `Latest Actual: ${latestActual}\n`;
-                body += `Variance: ${variance}\n\n`;
-                
-                if (parseFloat(variance) < 0) {
-                    body += `⚠️ Your actual usage is BELOW the target by ${Math.abs(variance)} licenses.\n`;
-                } else if (parseFloat(variance) > 0) {
-                    body += `⚠️ Your actual usage is ABOVE the target by ${variance} licenses.\n`;
-                } else {
-                    body += `✓ Your actual usage matches the target.\n`;
-                }
+            if (parseFloat(variance) < 0) {
+                body += `✓ Your actual cost is BELOW the budget by ${Math.abs(parseFloat(variance)).toFixed(1)}%.\n`;
+            } else if (parseFloat(variance) > 0) {
+                body += `⚠️ Your actual cost is ABOVE the budget by ${variance}%.\n`;
             } else {
-                body += `No monthly actual data has been submitted yet.\n`;
+                body += `✓ Your actual cost matches the budget.\n`;
             }
             
-            body += `\nPlease review your license usage and take appropriate action if needed.\n`;
+            body += `\nPlease review your spending and take appropriate action if needed.\n`;
             body += `\nIf you have any questions, please contact the BT team.\n\n`;
             body += `Best regards,\nBT-admin`;
             
@@ -692,6 +718,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             return;
         }
+        
 
         const id = e.target.dataset.id;
         if (!id) return;
@@ -1282,59 +1309,7 @@ document.addEventListener('DOMContentLoaded', () => {
             msg($('loginMessage'), 'History data exported successfully!', true);
         },
 
-        submitTargetButton: async () => {
-            if (!currentUser || currentUser.role !== 'admin') { 
-                msg($('targetSubmitMessage'), 'Admin only!', false); 
-                return; 
-            }
-            
-            const year = parseInt($('targetYearSelect').value);
-            const maison = $('targetMaisonSelect').value;
-            const clientelingTarget = parseInt($('targetClientelingInput').value) || 0;
-            const fullTarget = parseInt($('targetFullInput').value) || 0;
-            
-            if (!maison) { 
-                msg($('targetSubmitMessage'), 'Please select a Maison!', false); 
-                return; 
-            }
-            
-            clr($('targetSubmitMessage'));
-            msg($('targetSubmitMessage'), 'Submitting targets...', true);
-            
-            if (clientelingTarget >= 0) {
-                const resC = await api('setAnnualTarget', {
-                    maisonName: maison,
-                    licenseType: 'Clienteling',
-                    year: year,
-                    annualTarget: clientelingTarget,
-                    updatedBy: currentUser.username
-                });
-                if (!resC.success) {
-                    msg($('targetSubmitMessage'), 'Failed to set Clienteling target: ' + resC.message, false);
-                    return;
-                }
-            }
-            
-            if (fullTarget >= 0) {
-                const resF = await api('setAnnualTarget', {
-                    maisonName: maison,
-                    licenseType: 'Full',
-                    year: year,
-                    annualTarget: fullTarget,
-                    updatedBy: currentUser.username
-                });
-                if (!resF.success) {
-                    msg($('targetSubmitMessage'), 'Failed to set Full target: ' + resF.message, false);
-                    return;
-                }
-            }
-            
-            msg($('targetSubmitMessage'), 'Annual targets set successfully!', true);
-            $('targetClientelingInput').value = '0';
-            $('targetFullInput').value = '0';
-            
-            loadMonthlyTrackingTable($('monthlyTrackingTableContainer'), year);
-        },
+
 
         submitActualButton: async () => {
             if (!currentUser || currentUser.role !== 'admin') { 
@@ -1397,36 +1372,68 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!currentUser || currentUser.role !== 'admin') { alert('Admin only!'); return; }
             
             const year = parseInt($('actualYearSelect').value) || currentYear;
-            const res = await api('getMonthlyTrackingData', { year: year });
             
-            if (!res.success || !res.data || !res.data.length) {
-                msg($('loginMessage'), 'Export failed: No monthly tracking data available.', false);
+            // 获取 Budget 数据
+            const budgetRes = await api('getAnnualBudgets', { year: year });
+            const actualRes = await api('getMonthlyTrackingData', { year: year });
+            
+            if (!budgetRes.success || !budgetRes.data || budgetRes.data.length === 0) {
+                msg($('loginMessage'), 'Export failed: No budget data available.', false);
                 return;
+            }
+        
+            // 构建 Budget 映射
+            const budgets = {};
+            budgetRes.data.forEach(b => {
+                const key = `${b.MaisonName}|${b.LicenseType}`;
+                budgets[key] = parseFloat(b.AnnualTarget) || 0;
+            });
+        
+            // 构建 Actual 数据映射
+            const actuals = {};
+            if (actualRes.success && actualRes.data) {
+                actualRes.data.forEach(row => {
+                    const key = `${row.MaisonName}|${row.LicenseType}`;
+                    actuals[key] = row.MonthlyActuals || {};
+                });
             }
             
             const months = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
             let csv = 'Maison,License Type,';
             months.forEach(m => { csv += `${year}.${m},`; });
-            csv += `${year} Forecast,Variance\n`;
+            csv += `${year} Budget (€),${year} Actual Cost (€),Variance %\n`;
             
-            res.data.forEach(row => {
-                csv += `${row.MaisonName},${row.LicenseType},`;
+            const sortedKeys = Object.keys(budgets).sort();
+            
+            sortedKeys.forEach(key => {
+                const [maisonName, licenseType] = key.split('|');
+                const budget = budgets[key];
+                const monthlyActuals = actuals[key] || {};
                 
-                let latestActual = null;
+                csv += `${maisonName},${licenseType},`;
+                
+                let totalActualCost = 0;
+                const unitPrice = licenseType === 'Clienteling' 
+                    ? parseFloat(configPrices.ClientelingUnitPrice) || 16
+                    : parseFloat(configPrices.FullUnitPrice) || 52;
+                
                 months.forEach(m => {
-                    const actualQty = row.MonthlyActuals[m];
-                    csv += actualQty !== undefined && actualQty !== null ? `${actualQty},` : '-,';
+                    const actualQty = monthlyActuals[m];
                     if (actualQty !== undefined && actualQty !== null) {
-                        latestActual = actualQty;
+                        csv += `${actualQty},`;
+                        const monthlyCost = actualQty * unitPrice * 3;
+                        totalActualCost += monthlyCost;
+                    } else {
+                        csv += '-,';
                     }
                 });
                 
-                const annualTarget = row.AnnualTarget || 0;
-                csv += `${annualTarget},`;
+                csv += `${budget.toFixed(2)},`;
+                csv += `${totalActualCost.toFixed(2)},`;
                 
-                if (latestActual !== null) {
-                    const variance = latestActual - annualTarget;
-                    csv += `${variance >= 0 ? '+' : ''}${variance}`;
+                if (totalActualCost > 0 && budget > 0) {
+                    const variance = ((totalActualCost - budget) / budget * 100);
+                    csv += `${variance >= 0 ? '+' : ''}${variance.toFixed(1)}%`;
                 } else {
                     csv += '-';
                 }
@@ -1443,6 +1450,7 @@ document.addEventListener('DOMContentLoaded', () => {
             
             msg($('loginMessage'), 'Monthly tracking data exported successfully!', true);
         },
+        
 
         selectAllButton: () => { 
             $('userListContainer').querySelectorAll('.user-checkbox:not(:disabled)').forEach(c => c.checked = true); 
