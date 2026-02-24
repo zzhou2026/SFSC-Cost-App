@@ -232,27 +232,20 @@
                     <p id="recipientCountDisplay" class="recipient-count"></p>
                 </div>
 
-                <!-- Monthly Tracking Section -->
+                <!-- Quarterly Tracking Section -->
 <div class="monthly-tracking-form-section" style="background-color: var(--light-bg); border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; margin: 20px 0; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);">
-    <h3 style="margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Submit Monthly Actual</h3>
+    <h3 style="margin-top: 0; color: var(--primary-color); border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Submit Quarterly Actual</h3>
     <label for="actualYearSelect">Select Year:</label>
     <select id="actualYearSelect" class="form-control"></select>
 
-    <label for="actualMonthSelect">Select Month:</label>
-    <select id="actualMonthSelect" class="form-control">
-        <option value="01">January</option>
-        <option value="02">February</option>
-        <option value="03">March</option>
-        <option value="04">April</option>
-        <option value="05">May</option>
-        <option value="06">June</option>
-        <option value="07">July</option>
-        <option value="08">August</option>
-        <option value="09">September</option>
-        <option value="10">October</option>
-        <option value="11">November</option>
-        <option value="12">December</option>
+    <label for="actualQuarterSelect">Select Quarter:</label>
+    <select id="actualQuarterSelect" class="form-control">
+        <option value="Q1">Q1</option>
+        <option value="Q2">Q2</option>
+        <option value="Q3">Q3</option>
+        <option value="Q4">Q4</option>
     </select>
+
 
     <label for="actualMaisonSelect">Select Maison:</label>
     <select id="actualMaisonSelect" class="form-control"></select>
@@ -268,11 +261,12 @@
 </div>
 
 
-                <h3>Monthly Actual Tracking</h3>
-                <div id="monthlyTrackingTableContainer" class="table-container">
-                    <!-- Monthly tracking table will be displayed here -->
-                </div>
-                <button id="exportMonthlyTrackingButton">Export Monthly Tracking (CSV)</button>
+<h3>Quarterly Actual Tracking</h3>
+<div id="monthlyTrackingTableContainer" class="table-container">
+    <!-- Quarterly tracking table will be displayed here -->
+</div>
+<button id="exportMonthlyTrackingButton">Export Quarterly Tracking (CSV)</button>
+
 
                 <h3>All Historical Actions Log</h3>
                 <div id="adminActionsLogTableContainer" class="table-container">
