@@ -412,9 +412,21 @@ container.querySelectorAll('.notes-link').forEach(link => {
     link.addEventListener('click', () => {
         const maisonNotes = link.dataset.maisonNotes || '';
         const adminNotes = link.dataset.adminNotes || '';
-        showNotesModal('Notes', maisonNotes, adminNotes);
+        
+        // 根据有哪些 notes 决定标题
+        let title = 'Notes';
+        if ((maisonNotes && maisonNotes.trim()) && (adminNotes && adminNotes.trim())) {
+            title = 'Maison Notes & Admin Notes';
+        } else if (maisonNotes && maisonNotes.trim()) {
+            title = 'Maison Notes';
+        } else if (adminNotes && adminNotes.trim()) {
+            title = 'Admin Notes';
+        }
+        
+        showNotesModal(title, maisonNotes, adminNotes);
     });
 });
+
 
     };
 
