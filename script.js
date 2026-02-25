@@ -1632,21 +1632,24 @@ csv += `Budget (€),Actual Cost (€),Variance %\n`;
         },
 
         quickStartDataCollection: () => {
+            // 获取BT管理员邮箱
+            const btAdminEmail = configPrices.BeautyTechEmail || 'zzhou@pcis.lvmh-pc.com';
+            
             const subject = 'SFSC License Quantity Forecast Data Collection';
             const body = `Dear All,
-
-As part of our regular business forecast process, we kindly ask you to submit your forecasted SFSC license quantities for the period from Q1 ${currentYear} to Q4 ${currentYear}. This information is essential for our upcoming budget planning cycle. Please complete the required details using the form below.
-
-Deadline: 
-Form Link: 
-
-Your timely response is critical to ensuring accurate business planning. If you have any questions or require assistance, please contact [contact person or team].
-
-Thank you for your cooperation.
-
-Best regards,
-BT-admin`;
-
+        
+        As part of our regular business forecast process, we kindly ask you to submit your forecasted SFSC license quantities for the period from Q1 ${currentYear} to Q4 ${currentYear}. This information is essential for our upcoming budget planning cycle. Please complete the required details using the form below.
+        
+        Deadline: YYYY/MM/DD
+        Form Link: https://zzhou2026.github.io/SFSC-Cost-App/
+        
+        Your timely response is critical to ensuring accurate business planning. If you have any questions or require assistance, please contact BT-admin at ${btAdminEmail}.
+        
+        Thank you for your cooperation.
+        
+        Best regards,
+        BT-admin`;
+        
             $('emailSubjectInput').value = subject;
             $('emailContentInput').value = body;
             
@@ -1657,6 +1660,7 @@ BT-admin`;
             
             $('emailSubjectInput').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
+        
     };
 
 
