@@ -597,111 +597,122 @@ container.querySelectorAll('.notes-link').forEach(link => {
         container.innerHTML = html;
     };
     // ===== Maison 端的 Quarterly Actual Tracking 函数 =====
-const loadMaisonQuarterlyTrackingTable = async (container, maisonName, licenseType) => {
-    const currentYear = new Date().getFullYear();
-    const years = [currentYear - 1, currentYear, currentYear + 1];
-    
-    // 获取所有年份的数据
-    const allBudgets = {};
-    const allActuals = {};
-    
-    for (const year of years) {
-        const budgetRes = await api('getAnnualBudgets', { year: year });
-        const actualRes = await api('getQuarterlyTrackingData', { year: year });
+    const loadMaisonQuarterlyTrackingTable = async (container, maisonName, licenseType) => {
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear - 1, currentYear, currentYear + 1];
         
-        if (budgetRes.success && budgetRes.data) {
-            budgetRes.data.forEach(b => {
-                // 只保留当前 Maison 和 LicenseType 的数据
-                if (b.MaisonName === maisonName && b.LicenseType === licenseType) {
-                    const key = `${b.MaisonName}|${b.LicenseType}|${year}`;
-                    allBudgets[key] = parseFloat(b.AnnualTarget) || 0;
-                }
-            });
+        // 获取所有年份的数据
+        const allBudgets = {};
+        const allActuals = {};
+        
+        for (const year of years) {
+            const budgetRes = await api('getAnnualBudgets', { year: year });
+            const actualRes = await api('getQuarterlyTrackingData', { year: year });
+            
+            if (budgetRes.success && budgetRes.data) {
+                budgetRes.data.forEach(b => {
+                    if (b.MaisonName === maisonName && b.LicenseType === licenseType) {
+                        const key = `${b.MaisonName}|${b.LicenseType}|${year}`;
+                        allBudgets[key] = parseFloat(b.AnnualTarget) || 0;
+                    }
+                });
+            }
+            
+            if (actualRes.success && actualRes.data) {
+                actualRes.data.forEach(row => {
+                    if (row.MaisonName === maisonName && row.LicenseType === licenseType) {
+                        const key = `${row.MaisonName}|${row.LicenseType}|${year}`;
+                        allActuals[key] = row.QuarterlyActuals || {};
+                    }
+                });
+            }
         }
         
-        if (actualRes.success && actualRes.data) {
-            actualRes.data.forEach(row => {
-                // 只保留当前 Maison 和 LicenseType 的数据
-                if (row.MaisonName === maisonName && row.LicenseType === licenseType) {
-                    const key = `${row.MaisonName}|${row.LicenseType}|${year}`;
-                    allActuals[key] = row.QuarterlyActuals || {};
-                }
-            });
-        }
-    }
+        let html = '<table><thead><tr>';
+        html += '<th>Year</th>';
     
-    if (Object.keys(allBudgets).length === 0) {
-        container.innerHTML = `<p>No budget data available for ${maisonName} - ${licenseType}.</p>`;
-        return;
-    }
-    
-    let html = '<table><thead><tr>';
-    html += '<th>Year</th>';
-
-    const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-    quarters.forEach(q => {
-        html += `<th>${q}</th>`;
-    });
-
-    html += `<th>Budget (€)</th>`;
-    html += `<th>Actual Cost (€)</th>`;
-    html += '<th>Variance</th>';
-    html += '</tr></thead><tbody>';
-
-    const sortedKeys = Object.keys(allBudgets).sort();
-    
-    for (const key of sortedKeys) {
-        const [_, __, year] = key.split('|');
-        const budget = allBudgets[key];
-        const quarterlyActuals = allActuals[key] || {};
-
-        html += '<tr>';
-        html += `<td>${year}</td>`;
-
-        let totalActualCost = 0;
-
-        const unitPrice = licenseType === 'Clienteling' 
-            ? parseFloat(configPrices.ClientelingUnitPrice) || 16
-            : parseFloat(configPrices.FullUnitPrice) || 52;
-
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
         quarters.forEach(q => {
-            const actualQty = quarterlyActuals[q];
-            if (actualQty !== undefined && actualQty !== null) {
-                html += `<td>${actualQty}</td>`;
-                const quarterlyCost = actualQty * unitPrice * 3;
-                totalActualCost += quarterlyCost;
+            html += `<th>${q}</th>`;
+        });
+    
+        html += `<th>Budget (€)</th>`;
+        html += `<th>Actual Cost (€)</th>`;
+        html += '<th>Variance</th>';
+        html += '</tr></thead><tbody>';
+    
+        const sortedKeys = Object.keys(allBudgets).sort();
+        let hasAnyData = false;
+        
+        for (const key of sortedKeys) {
+            const [_, __, year] = key.split('|');
+            const budget = allBudgets[key];
+            const quarterlyActuals = allActuals[key] || {};
+    
+            // 检查是否有任何季度的 Actual 数据
+            const hasActualData = Object.keys(quarterlyActuals).length > 0 && 
+                                 Object.values(quarterlyActuals).some(val => val !== undefined && val !== null);
+            
+            // 如果没有 Actual 数据，跳过这一行
+            if (!hasActualData) {
+                continue;
+            }
+            
+            hasAnyData = true;
+    
+            html += '<tr>';
+            html += `<td>${year}</td>`;
+    
+            let totalActualCost = 0;
+    
+            const unitPrice = licenseType === 'Clienteling' 
+                ? parseFloat(configPrices.ClientelingUnitPrice) || 16
+                : parseFloat(configPrices.FullUnitPrice) || 52;
+    
+            quarters.forEach(q => {
+                const actualQty = quarterlyActuals[q];
+                if (actualQty !== undefined && actualQty !== null) {
+                    html += `<td>${actualQty}</td>`;
+                    const quarterlyCost = actualQty * unitPrice * 3;
+                    totalActualCost += quarterlyCost;
+                } else {
+                    html += `<td>-</td>`;
+                }
+            });
+    
+            html += `<td><strong>${budget.toFixed(2)}</strong></td>`;
+            html += `<td><strong>${totalActualCost.toFixed(2)}</strong></td>`;
+    
+            if (totalActualCost > 0) {
+                const variance = budget > 0 ? ((totalActualCost - budget) / budget * 100) : 0;
+                const varianceThreshold = parseFloat(configPrices.VarianceThreshold) || 15;
+                
+                let varianceClass = 'variance-good';
+                if (Math.abs(variance) > varianceThreshold) {
+                    varianceClass = 'variance-danger';
+                } else if (Math.abs(variance) > varianceThreshold / 2) {
+                    varianceClass = 'variance-warning';
+                }
+                
+                const varianceSign = variance >= 0 ? '+' : '';
+                html += `<td class="${varianceClass}">${varianceSign}${variance.toFixed(1)}%</td>`;
             } else {
                 html += `<td>-</td>`;
             }
-        });
-
-        html += `<td><strong>${budget.toFixed(2)}</strong></td>`;
-        html += `<td><strong>${totalActualCost.toFixed(2)}</strong></td>`;
-
-        if (totalActualCost > 0) {
-            const variance = budget > 0 ? ((totalActualCost - budget) / budget * 100) : 0;
-            const varianceThreshold = parseFloat(configPrices.VarianceThreshold) || 15;
-            
-            let varianceClass = 'variance-good';
-            if (Math.abs(variance) > varianceThreshold) {
-                varianceClass = 'variance-danger';
-            } else if (Math.abs(variance) > varianceThreshold / 2) {
-                varianceClass = 'variance-warning';
-            }
-            
-            const varianceSign = variance >= 0 ? '+' : '';
-            html += `<td class="${varianceClass}">${varianceSign}${variance.toFixed(1)}%</td>`;
-        } else {
-            html += `<td>-</td>`;
+    
+            html += '</tr>';
         }
-
-        html += '</tr>';
-    }
-
-    html += '</tbody></table>';
-    container.innerHTML = html;
-};
-
+    
+        html += '</tbody></table>';
+    
+        // 如果没有任何有 Actual 数据的记录，显示提示信息
+        if (!hasAnyData) {
+            container.innerHTML = `<p>No actual data has been recorded yet for ${maisonName} - ${licenseType}.</p>`;
+        } else {
+            container.innerHTML = html;
+        }
+    };
+    
     
 
 
