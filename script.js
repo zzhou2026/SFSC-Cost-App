@@ -1225,13 +1225,19 @@ body += `Variance: ${variance}%\n\n`;
             confirmMsg += `License Type: ${currentUser.licenseType}\n\n`;
 
             values.forEach((val, idx) => {
-                const marker = isUpdate && existingData && existingData[idx] !== val 
-                    ? ` (changed from ${existingData[idx]})` 
-                    : isUpdate 
-                    ? ' (no change)' 
-                    : ' (new)';
+                let marker = ' (new)';  // 默认是新提交
+                
+                if (isUpdate && existingData) {
+                    if (existingData[idx] !== val) {
+                        marker = ` (changed from ${existingData[idx]})`;
+                    } else {
+                        marker = ' (no change)';
+                    }
+                }
+                
                 confirmMsg += `Q${idx + 1}: ${val}${marker}\n`;
             });
+            
             
             if (maisonNotes) {
                 confirmMsg += `\nYour Notes: ${maisonNotes}\n`;
