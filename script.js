@@ -459,78 +459,78 @@ container.querySelectorAll('.notes-link').forEach(link => {
     };
 
     
-    const loadQuarterlyTrackingTable = async (container, year) => {
-        // 获取所有 Maisons 的 Budget 数据
-        const budgetRes = await api('getAnnualBudgets', { year: year });
-        const actualRes = await api('getQuarterlyTrackingData', { year: year });
-    
-        if (!budgetRes.success || !budgetRes.data || budgetRes.data.length === 0) {
-            container.innerHTML = `<p>No budget data available. Please set annual budgets first.</p>`;
+    const loadQuarterlyTrackingTable = async (container) => {
+        const currentYear = new Date().getFullYear();
+        const years = [currentYear - 1, currentYear, currentYear + 1];
+        
+        // 获取所有年份的数据
+        const allBudgets = {};
+        const allActuals = {};
+        
+        for (const year of years) {
+            const budgetRes = await api('getAnnualBudgets', { year: year });
+            const actualRes = await api('getQuarterlyTrackingData', { year: year });
+            
+            if (budgetRes.success && budgetRes.data) {
+                budgetRes.data.forEach(b => {
+                    const key = `${b.MaisonName}|${b.LicenseType}|${year}`;
+                    allBudgets[key] = parseFloat(b.AnnualTarget) || 0;
+                });
+            }
+            
+            if (actualRes.success && actualRes.data) {
+                actualRes.data.forEach(row => {
+                    const key = `${row.MaisonName}|${row.LicenseType}|${year}`;
+                    allActuals[key] = row.QuarterlyActuals || {};
+                });
+            }
+        }
+        
+        if (Object.keys(allBudgets).length === 0) {
+            container.innerHTML = `<p>No budget data available.</p>`;
             return;
         }
+        
+        let html = '<table><thead><tr>';
+        html += '<th>Maison</th>';
+        html += '<th>Year</th>';
+        html += '<th>License Type</th>';
     
-        // 构建 Budget 映射
-        const budgets = {};
-        budgetRes.data.forEach(b => {
-            const key = `${b.MaisonName}|${b.LicenseType}`;
-            budgets[key] = parseFloat(b.AnnualTarget) || 0;
+        const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
+        quarters.forEach(q => {
+            html += `<th>${q}</th>`;
         });
     
-        // 构建 Actual 数据映射
-        const actuals = {};
-        if (actualRes.success && actualRes.data) {
-            actualRes.data.forEach(row => {
-                const key = `${row.MaisonName}|${row.LicenseType}`;
-                actuals[key] = row.QuarterlyActuals || {};
-            });
-        }
+        html += `<th>Budget (€)</th>`;
+        html += `<th>Actual Cost (€)</th>`;
+        html += '<th>Variance</th>';
+        html += '<th>Alert</th>';
+        html += '</tr></thead><tbody>';
     
-        let html = '<table><thead><tr>';
-html += '<th>Maison</th>';
-html += '<th>Year</th>';
-html += '<th>License Type</th>';
-
-const quarters = ['Q1', 'Q2', 'Q3', 'Q4'];
-quarters.forEach(q => {
-    html += `<th>${q}</th>`;
-});
-
-html += `<th>Budget (€)</th>`;
-html += `<th>Actual Cost (€)</th>`;
-html += '<th>Variance</th>';
-html += '<th>Alert</th>';
-html += '</tr></thead><tbody>';
-
-    
-        // 遍历所有有 Budget 的 Maison + LicenseType 组合
-        const sortedKeys = Object.keys(budgets).sort();
+        const sortedKeys = Object.keys(allBudgets).sort();
         
         for (const key of sortedKeys) {
-            const [maisonName, licenseType] = key.split('|');
-            const budget = budgets[key];
-            const quarterlyActuals = actuals[key] || {};
+            const [maisonName, licenseType, year] = key.split('|');
+            const budget = allBudgets[key];
+            const quarterlyActuals = allActuals[key] || {};
     
             html += '<tr>';
-html += `<td>${maisonName}</td>`;
-html += `<td>${year}</td>`;
-html += `<td>${licenseType}</td>`;
-
-let totalActualCost = 0;
-
+            html += `<td>${maisonName}</td>`;
+            html += `<td>${year}</td>`;
+            html += `<td>${licenseType}</td>`;
+    
+            let totalActualCost = 0;
             let latestQuarter = null;
             let latestActual = null;
     
-            // 获取单价
             const unitPrice = licenseType === 'Clienteling' 
                 ? parseFloat(configPrices.ClientelingUnitPrice) || 16
                 : parseFloat(configPrices.FullUnitPrice) || 52;
     
-            // 显示每季度数量并计算成本
             quarters.forEach(q => {
                 const actualQty = quarterlyActuals[q];
                 if (actualQty !== undefined && actualQty !== null) {
                     html += `<td>${actualQty}</td>`;
-                    // 计算该季度成本：数量 × 单价 × 3个月
                     const quarterlyCost = actualQty * unitPrice * 3;
                     totalActualCost += quarterlyCost;
                     latestActual = actualQty;
@@ -540,13 +540,9 @@ let totalActualCost = 0;
                 }
             });
     
-            // Budget 列
             html += `<td><strong>${budget.toFixed(2)}</strong></td>`;
-    
-            // Actual Cost 列
             html += `<td><strong>${totalActualCost.toFixed(2)}</strong></td>`;
     
-            // Variance 列
             if (totalActualCost > 0) {
                 const variance = budget > 0 ? ((totalActualCost - budget) / budget * 100) : 0;
                 const varianceThreshold = parseFloat(configPrices.VarianceThreshold) || 15;
@@ -564,7 +560,6 @@ let totalActualCost = 0;
                 html += `<td>-</td>`;
             }
     
-            // Alert 按钮
             const checkRes = await api('checkAlertStatus', {
                 maisonName: maisonName,
                 licenseType: licenseType,
@@ -601,6 +596,7 @@ let totalActualCost = 0;
         html += '</tbody></table>';
         container.innerHTML = html;
     };
+    
     
 
 
@@ -1123,7 +1119,7 @@ body += `Variance: ${variance}%\n\n`;
                     
                     popYearSelectors();
                     popMaisonSelectors();
-                    loadQuarterlyTrackingTable($('monthlyTrackingTableContainer'), currentYear);
+                    loadQuarterlyTrackingTable($('monthlyTrackingTableContainer'));
                 }
                 
             }, 500);
