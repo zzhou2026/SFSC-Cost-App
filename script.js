@@ -1901,26 +1901,21 @@ csv += `Budget (€),Actual Cost (€),Variance %\n`;
     }
 
              // ===== 修改：检查是否有保存的登录信息（使用 sessionStorage） =====
-             const savedUser = sessionStorage.getItem('sfscUser');
-             if (savedUser) {
-                 try {
-                     currentUser = JSON.parse(savedUser);
-                     console.log('Auto login with saved user:', currentUser.username);
-                     performLogin();
-                 } catch (e) {
-                     console.error('Failed to parse saved user data:', e);
-                     sessionStorage.removeItem('sfscUser');
-                     showPage($('loginPage'));
-                 }
-             } else {
-                 showPage($('loginPage'));
-             }
-             
-             // ===== 新增：移除加载状态 =====
-             document.body.classList.remove('loading');
-             // ===== 新增结束 =====
-         });
-         
+    const savedUser = sessionStorage.getItem('sfscUser');
+    if (savedUser) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            console.log('Auto login with saved user:', currentUser.username);
+            performLogin();
+        } catch (e) {
+            console.error('Failed to parse saved user data:', e);
+            sessionStorage.removeItem('sfscUser');
+            showPage($('loginPage'));
+        }
+    } else {
+        showPage($('loginPage'));
+    }
+    // ===== 修改结束 =====
+});
 
    
-

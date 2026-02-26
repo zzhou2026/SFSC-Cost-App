@@ -1,25 +1,3 @@
-/* === 页面加载动画 === */
-body.loading .app-container {
-    display: none !important;  /* ← 加载时隐藏整个容器 */
-}
-
-body.loading {
-    overflow: hidden;
-    background-color: #e0f7fa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-}
-
-body.loading::after {
-    content: 'Loading...';
-    font-size: 1.5em;
-    color: var(--primary-color);
-    font-weight: bold;
-}
-
-
 /* === 全局变量 === */
 :root {
     --primary-color: #00796b;
