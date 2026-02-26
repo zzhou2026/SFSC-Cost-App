@@ -3,8 +3,86 @@ document.addEventListener('DOMContentLoaded', () => {
     const APP_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxIVoYBQtqkFB52frxB8e81899ISf_pDwJ_Fj3f9blb7mI2c3QhT4pHoz3sQuG1l6EDVQ/exec';
 
     const $ = id => document.getElementById(id);
+
+// ===== 新增：自动登录函数 =====
+const performLogin = async () => {
+    const cfg = await api('getConfig');
+    if (cfg.success && cfg.data) {
+        Object.assign(configPrices, { 
+            ClientelingUnitPrice: parseFloat(cfg.data.ClientelingUnitPrice) || 16, 
+            FullUnitPrice: parseFloat(cfg.data.FullUnitPrice) || 52,
+            VarianceThreshold: parseFloat(cfg.data.VarianceThreshold) || 15,
+            BeautyTechEmail: cfg.data.BeautyTechEmail || 'beautytech@example.com'
+        });
+    }
     
-    let currentUser = null;
+    showPage($('mainPage'));
+    $('welcomeMessage').textContent = `Welcome, ${currentUser.username} (${currentUser.role})!`;
+    
+    if (currentUser.role === 'maison') {
+        $('maisonView').classList.remove('hidden'); 
+        $('adminView').classList.add('hidden');
+        
+        $('maisonSubmitTitle').textContent = `Submit Quarterly Forecast (${currentUser.licenseType} Licenses)`;
+        updateBTAdminEmail();
+        
+        const currentYear = new Date().getFullYear();
+        const yearOptions = [currentYear - 1, currentYear, currentYear + 1]
+            .map(y => `<option value="${y}">${y}</option>`)
+            .join('');
+        $('forecastYearSelect').innerHTML = yearOptions;
+        $('forecastYearSelect').value = currentYear;
+        
+        $('q1Input').value = '';
+        $('q2Input').value = '';
+        $('q3Input').value = '';
+        $('q4Input').value = '';
+        $('maisonNotesInput').value = '';
+        clr($('validationMessage'));
+        clr($('maisonSubmitMessage'));
+        
+        $('calcQ1Input').value = '0';
+        $('calcQ2Input').value = '0';
+        $('calcQ3Input').value = '0';
+        $('calcQ4Input').value = '0';
+        $('q1CostDisplay').textContent = '0.00';
+        $('q2CostDisplay').textContent = '0.00';
+        $('q3CostDisplay').textContent = '0.00';
+        $('q4CostDisplay').textContent = '0.00';
+        $('totalForecastDisplay').textContent = '0.00';
+        
+        loadTable('maison', $('maisonHistoryTableContainer'), { 
+            submittedBy: currentUser.username,
+            licenseType: currentUser.licenseType
+        });
+        loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { 
+            submittedBy: currentUser.username,
+            licenseType: currentUser.licenseType
+        });
+        loadMaisonQuarterlyTrackingTable(
+            $('maisonQuarterlyTrackingTableContainer'), 
+            currentUser.maisonName, 
+            currentUser.licenseType
+        );
+        initEmail();
+    } else {
+        $('adminView').classList.remove('hidden'); 
+        $('maisonView').classList.add('hidden');
+        
+        loadTable('adminClienteling', $('overviewClientelingTableContainer'));
+        loadTable('adminFull', $('overviewFullTableContainer'));
+        loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
+        initBcast();
+        
+        popYearSelectors();
+        popMaisonSelectors();
+        loadQuarterlyTrackingTable($('monthlyTrackingTableContainer'));
+    }
+};
+// ===== 新增结束 =====
+    
+let currentUser = null;
+
     let configPrices = { ClientelingUnitPrice: 16, FullUnitPrice: 52 };
     let allUsers = [];
     let searchTerm = '';
@@ -1166,7 +1244,7 @@ body += `Variance: ${variance}%\n\n`;
             if (!res.success) { msg($('loginMessage'), 'Login failed: ' + res.message, false); return; }
             msg($('loginMessage'), 'Login successful!', true);
             currentUser = { username: u, role: res.role, maisonName: res.maisonName, licenseType: res.licenseType };
-            
+            localStorage.setItem('sfscUser', JSON.stringify(currentUser));
             const cfg = await api('getConfig');
             if (cfg.success && cfg.data) {
                 Object.assign(configPrices, { 
@@ -1177,79 +1255,18 @@ body += `Variance: ${variance}%\n\n`;
                 });
             }
             
-            setTimeout(async () => {
-                showPage($('mainPage'));
-                $('welcomeMessage').textContent = `Welcome, ${currentUser.username} (${currentUser.role})!`;
-                
-                if (currentUser.role === 'maison') {
-                    $('maisonView').classList.remove('hidden'); 
-                    $('adminView').classList.add('hidden');
-                    
-                    $('maisonSubmitTitle').textContent = `Submit Quarterly Forecast (${currentUser.licenseType} Licenses)`;
-                    updateBTAdminEmail();
-                    
-                    const currentYear = new Date().getFullYear();
-                    const yearOptions = [currentYear - 1, currentYear, currentYear + 1]
-                        .map(y => `<option value="${y}">${y}</option>`)
-                        .join('');
-                    $('forecastYearSelect').innerHTML = yearOptions;
-                    $('forecastYearSelect').value = currentYear;
-                    
-                    $('q1Input').value = '';
-                    $('q2Input').value = '';
-                    $('q3Input').value = '';
-                    $('q4Input').value = '';
-                    $('maisonNotesInput').value = '';
-                    clr($('validationMessage'));
-                    clr($('maisonSubmitMessage'));
-                    
-                    $('calcQ1Input').value = '0';
-                    $('calcQ2Input').value = '0';
-                    $('calcQ3Input').value = '0';
-                    $('calcQ4Input').value = '0';
-                    $('q1CostDisplay').textContent = '0.00';
-                    $('q2CostDisplay').textContent = '0.00';
-                    $('q3CostDisplay').textContent = '0.00';
-                    $('q4CostDisplay').textContent = '0.00';
-                    $('totalForecastDisplay').textContent = '0.00';
-                    
-                    loadTable('maison', $('maisonHistoryTableContainer'), { 
-                        submittedBy: currentUser.username,
-                        licenseType: currentUser.licenseType
-                    });
-                    loadTable('maisonActionsLog', $('maisonActionsLogTableContainer'), { 
-                        submittedBy: currentUser.username,
-                        licenseType: currentUser.licenseType
-                    });
-                     // ↓↓↓ 添加这一行 ↓↓↓
-    loadMaisonQuarterlyTrackingTable(
-        $('maisonQuarterlyTrackingTableContainer'), 
-        currentUser.maisonName, 
-        currentUser.licenseType
-    );
-    // ↑↑↑ 添加结束 ↑↑↑
-                    initEmail();
-                } else {
-                    $('adminView').classList.remove('hidden'); 
-                    $('maisonView').classList.add('hidden');
-                    
-                    
-                    
-                    loadTable('adminClienteling', $('overviewClientelingTableContainer'));
-                    loadTable('adminFull', $('overviewFullTableContainer'));
-                    loadTable('adminActionsLog', $('adminActionsLogTableContainer'));
-                    initBcast();
-                    
-                    popYearSelectors();
-                    popMaisonSelectors();
-                    loadQuarterlyTrackingTable($('monthlyTrackingTableContainer'));
-                }
-                
-            }, 500);
+            // ===== 修改：使用新的登录函数 =====
+setTimeout(() => {
+    performLogin();
+}, 500);
+// ===== 修改结束 =====
+
         },
 
         logoutButton: () => {
             currentUser = null;
+            localStorage.removeItem('sfscUser');
+            console.log('User logged out, localStorage cleared');
             $('username').value = $('password').value = '';
             clr($('loginMessage')); 
             clr($('maisonSubmitMessage')); 
@@ -1883,6 +1900,22 @@ csv += `Budget (€),Actual Cost (€),Variance %\n`;
         });
     }
 
-    showPage($('loginPage'));
-});
+       // ===== 修改：检查是否有保存的登录信息 =====
+       const savedUser = localStorage.getItem('sfscUser');
+       if (savedUser) {
+           try {
+               currentUser = JSON.parse(savedUser);
+               console.log('Auto login with saved user:', currentUser.username);
+               performLogin();
+           } catch (e) {
+               console.error('Failed to parse saved user data:', e);
+               localStorage.removeItem('sfscUser');
+               showPage($('loginPage'));
+           }
+       } else {
+           showPage($('loginPage'));
+       }
+       // ===== 修改结束 =====
+   });
+   
 
