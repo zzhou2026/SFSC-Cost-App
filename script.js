@@ -1900,22 +1900,25 @@ csv += `Budget (€),Actual Cost (€),Variance %\n`;
         });
     }
 
-       // ===== 修改：检查是否有保存的登录信息 =====
-       const savedUser = localStorage.getItem('sfscUser');
-       if (savedUser) {
-           try {
-               currentUser = JSON.parse(savedUser);
-               console.log('Auto login with saved user:', currentUser.username);
-               performLogin();
-           } catch (e) {
-               console.error('Failed to parse saved user data:', e);
-               localStorage.removeItem('sfscUser');
-               showPage($('loginPage'));
-           }
-       } else {
-           showPage($('loginPage'));
-       }
-       // ===== 修改结束 =====
-   });
+         // ===== 修改：检查是否有保存的登录信息（不显示登录页面闪烁） =====
+    const savedUser = localStorage.getItem('sfscUser');
+    if (savedUser) {
+        try {
+            currentUser = JSON.parse(savedUser);
+            console.log('Auto login with saved user:', currentUser.username);
+            // 直接调用 performLogin，不要先显示登录页面
+            performLogin();
+        } catch (e) {
+            console.error('Failed to parse saved user data:', e);
+            localStorage.removeItem('sfscUser');
+            showPage($('loginPage'));
+        }
+    } else {
+        // 只有在没有保存的用户信息时，才显示登录页面
+        showPage($('loginPage'));
+    }
+    // ===== 修改结束 =====
+});
+
    
 
