@@ -1244,7 +1244,7 @@ body += `Variance: ${variance}%\n\n`;
             if (!res.success) { msg($('loginMessage'), 'Login failed: ' + res.message, false); return; }
             msg($('loginMessage'), 'Login successful!', true);
             currentUser = { username: u, role: res.role, maisonName: res.maisonName, licenseType: res.licenseType };
-            localStorage.setItem('sfscUser', JSON.stringify(currentUser));
+            sessionStorage.setItem('sfscUser', JSON.stringify(currentUser));
             const cfg = await api('getConfig');
             if (cfg.success && cfg.data) {
                 Object.assign(configPrices, { 
@@ -1265,8 +1265,8 @@ setTimeout(() => {
 
         logoutButton: () => {
             currentUser = null;
-            localStorage.removeItem('sfscUser');
-            console.log('User logged out, localStorage cleared');
+            sessionStorage.removeItem('sfscUser');
+    console.log('User logged out, sessionStorage cleared');
             $('username').value = $('password').value = '';
             clr($('loginMessage')); 
             clr($('maisonSubmitMessage')); 
@@ -1900,21 +1900,19 @@ csv += `Budget (€),Actual Cost (€),Variance %\n`;
         });
     }
 
-         // ===== 修改：检查是否有保存的登录信息（不显示登录页面闪烁） =====
-    const savedUser = localStorage.getItem('sfscUser');
+             // ===== 修改：检查是否有保存的登录信息（使用 sessionStorage） =====
+    const savedUser = sessionStorage.getItem('sfscUser');
     if (savedUser) {
         try {
             currentUser = JSON.parse(savedUser);
             console.log('Auto login with saved user:', currentUser.username);
-            // 直接调用 performLogin，不要先显示登录页面
             performLogin();
         } catch (e) {
             console.error('Failed to parse saved user data:', e);
-            localStorage.removeItem('sfscUser');
+            sessionStorage.removeItem('sfscUser');
             showPage($('loginPage'));
         }
     } else {
-        // 只有在没有保存的用户信息时，才显示登录页面
         showPage($('loginPage'));
     }
     // ===== 修改结束 =====
