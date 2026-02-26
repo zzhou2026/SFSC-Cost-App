@@ -1,3 +1,34 @@
+/* === 页面加载动画 === */
+body.loading {
+    overflow: hidden;
+}
+
+body.loading::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: #e0f7fa;
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+body.loading::after {
+    content: 'Loading...';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 1.5em;
+    color: var(--primary-color);
+    z-index: 10000;
+    font-weight: bold;
+}
+
 /* === 全局变量 === */
 :root {
     --primary-color: #00796b;
