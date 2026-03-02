@@ -17,7 +17,9 @@ const performLogin = async () => {
     }
     
     showPage($('mainPage'));
-    $('welcomeMessage').textContent = `Welcome, ${currentUser.username} (${currentUser.role})!`;
+    const roleDisplay = currentUser.role === 'maison' ? 'App Business Owner' : 'BT Budget Owner';
+$('welcomeMessage').textContent = `Welcome, ${currentUser.username} (${roleDisplay})!`;
+
     
     if (currentUser.role === 'maison') {
         $('maisonView').classList.remove('hidden'); 
